@@ -6,8 +6,13 @@ int main(void)
 
     smartgreen = malloc(sizeof(t_smartgreen));
     if (!smartgreen)
-        exit (1);
+        return (1);
     memset(smartgreen, 0, sizeof(t_smartgreen));
+    if (ft_check_database(smartgreen) == -1)
+    {
+        free(smartgreen);
+        return (1);
+    }
     
     return (0);
 }

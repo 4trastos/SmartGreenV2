@@ -59,7 +59,7 @@ typedef struct  s_thread_ctrl
     pthread_mutex_t mutex;
     t_thread_status status;
     int             unit_id;                    // qué cooler controla este hilo
-}  
+}   t_thread_ctrl:  
 
 typedef struct  s_cooler_state
 {
@@ -82,13 +82,13 @@ typedef struct  s_cooler_state
 
 typedef struct  s_sensor_state
 {
-    int     sensor_id;                // dirección Modbus (177-178)
-    int     flags;
-    int     valid;
-    float   temperature;
-    float   humidity;
-    char    type[4];                // "INT" o "EXT"
-    time_t  last_read;
+    int             sensor_id;                // dirección Modbus (177-178)
+    int             flags;
+    int             valid;
+    float           temperature;
+    float           humidity;
+    char            type[4];                // "INT" o "EXT"
+    time_t          last_read;
 }   t_sensor_state;
 
 typedef struct s_smartgreen
@@ -104,6 +104,7 @@ typedef struct s_smartgreen
 
 /*  FUNCTIONS   */
 int     main(void);
+int     ft_check_database(t_smartgreen *smartgreen);
 
 /*  MODBUS  */
 int     modbus_init(t_smartgreen *smartgreen);

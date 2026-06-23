@@ -22,7 +22,8 @@ SRC = src/main.c \
 
 OBJTS = $(SRC:.c=.o)
 
-all: $(NAME)
+all: setup 
+	$(NAME)
 
 $(NAME): $(OBJTS)
 	$(CC) $(CFLAGS) $(OBJTS) -o $(NAME) $(LDFLAGS)
@@ -39,6 +40,9 @@ fclean: clean
 debug: CFLAGS += -fsanitize=address
 
 debug: re
+
+setup:
+	@mkdir -p /var/lib/sqlite
 
 re: fclean all
 
