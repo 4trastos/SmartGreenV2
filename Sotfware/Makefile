@@ -8,10 +8,11 @@ CC = gcc
 #CC = aarch64-linux-gnu-gcc
 
 CFLAGS = -Wall -Wextra -Werror -g3
-INCLUDES = -Iincl
+INCLUDES = -Iincl -I/usr/include/modbus
 LDFLAGS = -lmodbus -lsqlite3 -lm -lpthread
 
 RM = rm -f
+DB_DIR = /var/lib/smartgreen
 
 SRC = src/main.c \
 		api/api_server.c \
@@ -22,8 +23,7 @@ SRC = src/main.c \
 
 OBJTS = $(SRC:.c=.o)
 
-all: setup 
-	$(NAME)
+all: setup  $(NAME)
 
 $(NAME): $(OBJTS)
 	$(CC) $(CFLAGS) $(OBJTS) -o $(NAME) $(LDFLAGS)
@@ -31,6 +31,10 @@ $(NAME): $(OBJTS)
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
+setup:
+	@mkdir -p $(DB_DIR)
+	@sudo chmod $$USER:$$USER $(DB_DIR)
+	
 clean:
 	$(RM) $(OBJTS)
 
@@ -41,9 +45,6 @@ debug: CFLAGS += -fsanitize=address
 
 debug: re
 
-setup:
-	@mkdir -p /var/lib/sqlite
-
 re: fclean all
 
-.PHONY: all clean fclean re
+.PHONY: all clean fclean re setup debug

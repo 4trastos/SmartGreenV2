@@ -3,6 +3,7 @@
 
 # include <string.h>
 # include <stdio.h>
+# include <stdlib.h>
 # include <unistd.h>
 # include <ctype.h>
 # include <stdint.h>
@@ -14,6 +15,10 @@
 # include <signal.h>
 # include <stdbool.h>
 # include <limits.h>
+# include <fcntl.h>
+
+/*  PATHS   */
+# define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
 
 /*  MODBUS CONST   */
 # define MODBUS_PORT            "/dev/ttyUSB0"
@@ -59,7 +64,7 @@ typedef struct  s_thread_ctrl
     pthread_mutex_t mutex;
     t_thread_status status;
     int             unit_id;                    // qué cooler controla este hilo
-}   t_thread_ctrl:  
+}   t_thread_ctrl;
 
 typedef struct  s_cooler_state
 {
