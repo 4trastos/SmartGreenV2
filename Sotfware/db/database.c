@@ -32,6 +32,9 @@ int db_init(t_smartgreen *smartgreen)
 
 int ft_check_database(t_smartgreen *smartgreen)
 {
+    smartgreen->num_coolers = 0;
+    smartgreen->num_sensors = 0;
+    smartgreen->num_zones = 0;
     if (db_init(smartgreen) == -1)
         return (-1);
     if (db_save_cooler(smartgreen, smartgreen->coolers) == -1)
