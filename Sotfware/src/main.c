@@ -13,14 +13,10 @@ int main(void)
         free(smartgreen);
         return (1);
     }
-    
+    if (smartgreen->db)
+        sqlite3_close(smartgreen->db);
     return (0);
 }
-
-
-
-
-
 
 
 

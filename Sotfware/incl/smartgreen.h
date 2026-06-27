@@ -47,6 +47,9 @@
 # define DB_MAX_RETRIES         10
 # define DB_RETRY_US            50000
 
+
+extern const char *SCHEMA_SQL;
+
 /*  STRUCTS */
 
 typedef enum    e_thread_status
@@ -112,11 +115,11 @@ int     main(void);
 int     ft_check_database(t_smartgreen *smartgreen);
 
 /*  MODBUS  */
-int     modbus_init(t_smartgreen *smartgreen);
-int     modbus_read_cooler(t_smartgreen *smartgreen, int unit_id);
-int     modbus_read_sensor(t_smartgreen *smartgreen, int unit_id);
-int     modbus_write_cooler(t_smartgreen *smartgreen, int unit_id, int addr, int value);
-void    modbus_close(t_smartgreen *smartgreen);
+int     ft_modbus_init(t_smartgreen *smartgreen);
+int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id);
+int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id);
+int     ft_modbus_write_cooler(t_smartgreen *smartgreen, int unit_id, int addr, int value);
+void    ft_modbus_close(t_smartgreen *smartgreen);
 
 /*  REGISTERS   */
 void    decode_cooler_state(uint16_t *regs, t_cooler_state *state);

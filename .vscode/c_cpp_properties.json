@@ -4,11 +4,15 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-		"/usr/include/modbus"
+                "/usr/include",
+                "/usr/include/modbus",
+                "/usr/include/x86_64-linux-gnu"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
-            "intelliSenseMode": "linux-gcc-x64"
+            "intelliSenseMode": "linux-gcc-x64",
+            "cStandard": "c17",
+            "cppStandard": "c++17"
         }
     ],
     "version": 4

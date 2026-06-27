@@ -17,7 +17,7 @@ DB_DIR = /var/lib/smartgreen
 SRC = src/main.c \
 		api/api_server.c \
 		control/cooler.c control/error_control.c control/scheduler.c control/sensor.c \
-		db/database.c \
+		db/database.c db/schema.c \
 		modbus/modbus_client.c modbus/registers.c \
 		utils/utils.c
 
@@ -33,7 +33,7 @@ $(NAME): $(OBJTS)
 
 setup:
 	@mkdir -p $(DB_DIR)
-	@sudo chmod $$USER:$$USER $(DB_DIR)
+	@sudo chown $$USER:$$USER $(DB_DIR)
 	
 clean:
 	$(RM) $(OBJTS)
