@@ -2,6 +2,44 @@
 
 int     db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
 {
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = SQL_INSERT_COOLER;
+    int             rc;
+    
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);          // Pepare the consultation
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "The database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return (-1);
+    }
+ 
+    sqlite3_bind_int(stmt, 1, cooler->unit_id);                                     // Vincular valores (bind)
+    sqlite3_bind_int(stmt, 2, cooler->zone_id);
+    sqlite3_bind_int(stmt, 3, cooler->is_extractor);
+    sqlite3_bind_int(stmt, 4, cooler->error_count);
+    sqlite3_bind_int(stmt, 5, cooler->drain_valve_open);
+    sqlite3_bind_int(stmt, 6, cooler->cool_mode_on);
+    sqlite3_bind_int(stmt, 7, cooler->fan_on);
+    sqlite3_bind_int(stmt, 8, cooler->fault_present);
+    sqlite3_bind_int(stmt, 9, cooler->inlet_valve_open);
+    sqlite3_bind_int(stmt, 10, cooler->actual_fan_speed);
+    sqlite3_bind_int(stmt, 11, cooler->most_recent_fault);
+    sqlite3_bind_int(stmt, 12, cooler->water_present);
+    sqlite3_bind_double(stmt, 13, cooler->salinity_ppm);
+    sqlite3_bind_double(stmt, 14, cooler->salinity_us);
+    sqlite3_bind_int(stmt, 15, cooler->last_read);
+    sqlite3_bind_int(stmt,16, cooler->last_mod);
+
+    rc = sqlite3_step(stmt);                                                        // Run and clean
+    if (rc == SQLITE_DONE)
+        printf("Cooler inserted correctly\n");
+    else
+    {
+        printf("Error inserting: %s\n", sqlite3_errmsg(smartgreen->db));
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
+    sqlite3_finalize(stmt);
     return (0);
 }
 
@@ -27,17 +65,5 @@ int db_init(t_smartgreen *smartgreen)
         return (-1);
     }
     printf("Tables created/verified correctly\n");
-    return (0);
-}
-
-int ft_check_database(t_smartgreen *smartgreen)
-{
-    smartgreen->num_coolers = 0;
-    smartgreen->num_sensors = 0;
-    smartgreen->num_zones = 0;
-    if (db_init(smartgreen) == -1)
-        return (-1);
-    if (db_save_cooler(smartgreen, smartgreen->coolers) == -1)
-        return (-1);
     return (0);
 }

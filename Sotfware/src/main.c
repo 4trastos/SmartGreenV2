@@ -1,5 +1,40 @@
 #include "../incl/smartgreen.h"
 
+int ft_check_database(t_smartgreen *smartgreen)
+{
+    smartgreen->num_coolers = 0;
+    smartgreen->num_sensors = 0;
+    smartgreen->num_zones = 0;
+    if (db_init(smartgreen) == -1)
+        return (-1);
+    smartgreen->coolers = malloc(sizeof(t_cooler_state));
+    if (!smartgreen->coolers)
+        return (-1);
+    
+    smartgreen->coolers->unit_id = 101;
+    smartgreen->coolers->zone_id = 1;
+    smartgreen->coolers->is_extractor = 0;
+    smartgreen->coolers->error_count = 0;
+    smartgreen->coolers->drain_valve_open = 0;
+    smartgreen->coolers->cool_mode_on = 0;
+    smartgreen->coolers->fan_on = 0;
+    smartgreen->coolers->fault_present = 0;
+    smartgreen->coolers->inlet_valve_open = 0;
+    smartgreen->coolers->actual_fan_speed = 0;
+    smartgreen->coolers->most_recent_fault = 0;
+    smartgreen->coolers->water_present = 0;
+    smartgreen->coolers->salinity_ppm = 0.00;
+    smartgreen->coolers->salinity_us = 0.00;
+    smartgreen->coolers->last_read = 0;
+    smartgreen->coolers->last_mod = 0;    
+
+    if (db_save_cooler(smartgreen, smartgreen->coolers) == -1)
+        return (-1);
+    if (db_save_sensor(smartgreen, smartgreen->sensors) == -1)
+        return (-1);
+    return (0);
+}
+
 int main(void)
 {
     t_smartgreen    *smartgreen;
@@ -10,11 +45,13 @@ int main(void)
     memset(smartgreen, 0, sizeof(t_smartgreen));
     if (ft_check_database(smartgreen) == -1)
     {
+        free(smartgreen->coolers);
         free(smartgreen);
         return (1);
     }
     if (smartgreen->db)
         sqlite3_close(smartgreen->db);
+    free(smartgreen);
     return (0);
 }
 

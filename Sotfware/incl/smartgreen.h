@@ -19,6 +19,8 @@
 
 /*  PATHS   */
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
+# define SQL_INSERT_COOLER      "INSERT INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, most_recent_fault, " \
+                                "water_present, salinity_ppm, salinity_us, last_read, last_mod) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 /*  MODBUS CONST   */
 # define MODBUS_PORT            "/dev/ttyUSB0"
@@ -86,17 +88,21 @@ typedef struct  s_cooler_state
     double          salinity_ppm;
     double          salinity_us;
     time_t          last_read;
+    time_t          last_mod;
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
 {
     int             sensor_id;                // dirección Modbus (177-178)
-    int             flags;
-    int             valid;
+    char            type[4];                  // "INT" o "EXT"
+    char            name[1024];                 
     float           temperature;
     float           humidity;
-    char            type[4];                // "INT" o "EXT"
+    int             flags;
+    int             valid;
+    int             offset_val;
     time_t          last_read;
+    time_t          last_mod;
 }   t_sensor_state;
 
 typedef struct s_smartgreen
