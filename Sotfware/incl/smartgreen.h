@@ -21,6 +21,8 @@
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
 # define SQL_INSERT_COOLER      "INSERT INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, most_recent_fault, " \
                                 "water_present, salinity_ppm, salinity_us, last_read, last_mod) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+# define SQL_INSERT_SENSOR      "INSERT INTO sensor_state (sensor_id, type, name, temperature, humidity, flags, valid, offset_val, last_read, last_mod) " \
+                                "VALUE(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 /*  MODBUS CONST   */
 # define MODBUS_PORT            "/dev/ttyUSB0"
@@ -119,6 +121,7 @@ typedef struct s_smartgreen
 /*  FUNCTIONS   */
 int     main(void);
 int     ft_check_database(t_smartgreen *smartgreen);
+void    ft_free_structs(t_smartgreen *smartgreen);
 
 /*  MODBUS  */
 int     ft_modbus_init(t_smartgreen *smartgreen);

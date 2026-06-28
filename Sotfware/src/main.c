@@ -30,6 +30,9 @@ int ft_check_database(t_smartgreen *smartgreen)
 
     if (db_save_cooler(smartgreen, smartgreen->coolers) == -1)
         return (-1);
+    smartgreen->sensors = malloc(sizeof(t_sensor_state));
+    if (!smartgreen->sensors)
+        return (-1);
     if (db_save_sensor(smartgreen, smartgreen->sensors) == -1)
         return (-1);
     return (0);
@@ -46,12 +49,14 @@ int main(void)
     if (ft_check_database(smartgreen) == -1)
     {
         free(smartgreen->coolers);
+        free(smartgreen->sensors);
         free(smartgreen);
         return (1);
     }
     if (smartgreen->db)
         sqlite3_close(smartgreen->db);
-    free(smartgreen);
+    
+    ft_free_structs(smartgreen);
     return (0);
 }
 

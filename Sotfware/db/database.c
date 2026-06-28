@@ -1,5 +1,42 @@
 #include "../incl/smartgreen.h"
 
+int     db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = SQL_INSERT_SENSOR;
+    int             rc;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "The sensor_state database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return(-1);
+    }
+
+    sqlite3_bind_int(stmt, 1, sensor->sensor_id);
+    sqlite3_bind_text(stmt, 2, sensor->type, 4, NULL);
+    sqlite3_bind_text(stmt, 3, sensor->name, 1024, NULL);
+    sqlite3_bind_double(stmt, 4, sensor->temperature);
+    sqlite3_bind_double(stmt, 5, sensor->humidity);
+    sqlite3_bind_int(stmt, 6, sensor->flags);
+    sqlite3_bind_int(stmt, 7, sensor->offset_val);
+    sqlite3_bind_int(stmt, 6, sensor->last_read);
+    sqlite3_bind_int(stmt, 9, sensor->last_mod);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_DONE)
+        printf("Sensor inserted correctly\n");
+    else
+    {
+        printf("Error Sensor inserting: %s\n", sqlite3_errmsg(smartgreen->db));
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
+
+    sqlite3_finalize((stmt));
+    return (0);
+}
+
 int     db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
 {
     sqlite3_stmt    *stmt = NULL;
@@ -9,7 +46,7 @@ int     db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);          // Pepare the consultation
     if (rc != SQLITE_OK)
     {
-        fprintf(stderr, "The database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        fprintf(stderr, "The cooler_state database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
         return (-1);
     }
  
@@ -35,7 +72,7 @@ int     db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
         printf("Cooler inserted correctly\n");
     else
     {
-        printf("Error inserting: %s\n", sqlite3_errmsg(smartgreen->db));
+        printf("Error Cooler inserting: %s\n", sqlite3_errmsg(smartgreen->db));
         sqlite3_finalize(stmt);
         return (-1);
     }
