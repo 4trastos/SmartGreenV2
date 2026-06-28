@@ -14,14 +14,15 @@ int     db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
     }
 
     sqlite3_bind_int(stmt, 1, sensor->sensor_id);
-    sqlite3_bind_text(stmt, 2, sensor->type, 4, NULL);
-    sqlite3_bind_text(stmt, 3, sensor->name, 1024, NULL);
+    sqlite3_bind_text(stmt, 2, sensor->type, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, sensor->name, -1, SQLITE_TRANSIENT);
     sqlite3_bind_double(stmt, 4, sensor->temperature);
     sqlite3_bind_double(stmt, 5, sensor->humidity);
     sqlite3_bind_int(stmt, 6, sensor->flags);
-    sqlite3_bind_int(stmt, 7, sensor->offset_val);
-    sqlite3_bind_int(stmt, 6, sensor->last_read);
-    sqlite3_bind_int(stmt, 9, sensor->last_mod);
+    sqlite3_bind_int(stmt, 7, sensor->valid);
+    sqlite3_bind_int(stmt, 8, sensor->offset_val);
+    sqlite3_bind_int(stmt, 9, sensor->last_read);
+    sqlite3_bind_int(stmt, 10, sensor->last_mod);
 
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_DONE)

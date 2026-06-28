@@ -33,6 +33,18 @@ int ft_check_database(t_smartgreen *smartgreen)
     smartgreen->sensors = malloc(sizeof(t_sensor_state));
     if (!smartgreen->sensors)
         return (-1);
+
+    smartgreen->sensors->sensor_id = 101;
+    strcpy(smartgreen->sensors->type, "INT");
+    strcpy(smartgreen->sensors->name, "TEST SENSOR");
+    smartgreen->sensors->temperature = -200.00;
+    smartgreen->sensors->humidity = -200.00;
+    smartgreen->sensors->flags = 0;
+    smartgreen->sensors->valid = 0;
+    smartgreen->sensors->offset_val = 0;
+    smartgreen->sensors->last_read = 0;
+    smartgreen->sensors->last_mod = 0;
+
     if (db_save_sensor(smartgreen, smartgreen->sensors) == -1)
         return (-1);
     return (0);
