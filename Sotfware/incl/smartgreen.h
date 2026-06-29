@@ -146,6 +146,7 @@ typedef struct s_smartgreen
 int     main(void);
 int     ft_check_database(t_smartgreen *smartgreen);
 void    ft_free_structs(t_smartgreen *smartgreen);
+void    ft_init_struct(t_smartgreen *smartgreen);
 
 /*  MODBUS  */
 int     ft_modbus_init(t_smartgreen *smartgreen);

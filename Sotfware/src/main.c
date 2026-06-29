@@ -2,52 +2,58 @@
 
 int ft_check_database(t_smartgreen *smartgreen)
 {
-    smartgreen->num_coolers = 0;
-    smartgreen->num_sensors = 0;
-    smartgreen->num_zones = 0;
     if (db_init(smartgreen) == -1)
         return (-1);
-    smartgreen->coolers = malloc(sizeof(t_cooler_state));
-    if (!smartgreen->coolers)
-        return (-1);
+    smartgreen->coolers = NULL;
+    if (smartgreen->num_coolers < 0)
+    {
+        smartgreen->coolers = malloc(sizeof(t_cooler_state) * smartgreen->num_coolers);
+        if (!smartgreen->coolers)
+            return (-1);    
+        smartgreen->coolers->unit_id = 101;
+        smartgreen->coolers->zone_id = 1;
+        smartgreen->coolers->is_extractor = 0;
+        smartgreen->coolers->error_count = 0;
+        smartgreen->coolers->drain_valve_open = 0;
+        smartgreen->coolers->cool_mode_on = 0;
+        smartgreen->coolers->fan_on = 0;
+        smartgreen->coolers->fault_present = 0;
+        smartgreen->coolers->inlet_valve_open = 0;
+        smartgreen->coolers->actual_fan_speed = 0;
+        smartgreen->coolers->most_recent_fault = 0;
+        smartgreen->coolers->water_present = 0;
+        smartgreen->coolers->salinity_ppm = 0.00;
+        smartgreen->coolers->salinity_us = 0.00;
+        smartgreen->coolers->last_read = 0;
+        smartgreen->coolers->last_mod = 0;    
     
-    smartgreen->coolers->unit_id = 101;
-    smartgreen->coolers->zone_id = 1;
-    smartgreen->coolers->is_extractor = 0;
-    smartgreen->coolers->error_count = 0;
-    smartgreen->coolers->drain_valve_open = 0;
-    smartgreen->coolers->cool_mode_on = 0;
-    smartgreen->coolers->fan_on = 0;
-    smartgreen->coolers->fault_present = 0;
-    smartgreen->coolers->inlet_valve_open = 0;
-    smartgreen->coolers->actual_fan_speed = 0;
-    smartgreen->coolers->most_recent_fault = 0;
-    smartgreen->coolers->water_present = 0;
-    smartgreen->coolers->salinity_ppm = 0.00;
-    smartgreen->coolers->salinity_us = 0.00;
-    smartgreen->coolers->last_read = 0;
-    smartgreen->coolers->last_mod = 0;    
+        if (db_save_cooler(smartgreen, smartgreen->coolers) == -1)
+            return (-1);
+    }
 
-    if (db_save_cooler(smartgreen, smartgreen->coolers) == -1)
-        return (-1);
-    smartgreen->sensors = malloc(sizeof(t_sensor_state));
-    if (!smartgreen->sensors)
-        return (-1);
+    smartgreen->sensors = NULL;
+    if (smartgreen->num_sensors > 0)
+    {
+        smartgreen->sensors = malloc(sizeof(t_sensor_state) * smartgreen->num_sensors);
+        if (!smartgreen->sensors)
+            return (-1);
+        
+        smartgreen->sensors->sensor_id = 101;
+        smartgreen->sensors->zone_id = 1;
+        ft_strcpy(smartgreen->sensors->type, "INT", sizeof(smartgreen->sensors->type));
+        ft_strcpy(smartgreen->sensors->name, "TEST SENSOR", sizeof(smartgreen->sensors->name));
+        smartgreen->sensors->temperature = -200.00;
+        smartgreen->sensors->humidity = -200.00;
+        smartgreen->sensors->flags = 0;
+        smartgreen->sensors->valid = 0;
+        smartgreen->sensors->offset_val = 0;
+        smartgreen->sensors->last_read = 0;
+        smartgreen->sensors->last_mod = 0;
+    
+        if (db_save_sensor(smartgreen, smartgreen->sensors) == -1)
+            return (-1);
+    }
 
-    smartgreen->sensors->sensor_id = 101;
-    smartgreen->sensors->zone_id = 1;
-    ft_strcpy(smartgreen->sensors->type, "INT", sizeof(smartgreen->sensors->type));
-    ft_strcpy(smartgreen->sensors->name, "TEST SENSOR", sizeof(smartgreen->sensors->name));
-    smartgreen->sensors->temperature = -200.00;
-    smartgreen->sensors->humidity = -200.00;
-    smartgreen->sensors->flags = 0;
-    smartgreen->sensors->valid = 0;
-    smartgreen->sensors->offset_val = 0;
-    smartgreen->sensors->last_read = 0;
-    smartgreen->sensors->last_mod = 0;
-
-    if (db_save_sensor(smartgreen, smartgreen->sensors) == -1)
-        return (-1);
     if (db_save_history(smartgreen) == -1)
         return (-1);
     return (0);
@@ -56,14 +62,14 @@ int ft_check_database(t_smartgreen *smartgreen)
 int main(void)
 {
     t_smartgreen    *smartgreen;
-    const char      *key;
 
-    if (db_read_config(smartgreen, key) == -1)
-        return (1);
     smartgreen = malloc(sizeof(t_smartgreen));
     if (!smartgreen)
         return (1);
     memset(smartgreen, 0, sizeof(t_smartgreen));
+
+    ft_init_struct(smartgreen);
+    
     if (ft_check_database(smartgreen) == -1)
     {
         free(smartgreen->coolers);
