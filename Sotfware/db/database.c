@@ -1,6 +1,12 @@
 #include "../incl/smartgreen.h"
 
-int     db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
+int db_save_history(t_smartgreen *smartgreen)
+{
+    (void)smartgreen;
+    return (0);
+}
+
+int db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
 {
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_INSERT_SENSOR;
@@ -14,15 +20,16 @@ int     db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
     }
 
     sqlite3_bind_int(stmt, 1, sensor->sensor_id);
-    sqlite3_bind_text(stmt, 2, sensor->type, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 3, sensor->name, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 4, sensor->temperature);
-    sqlite3_bind_double(stmt, 5, sensor->humidity);
-    sqlite3_bind_int(stmt, 6, sensor->flags);
-    sqlite3_bind_int(stmt, 7, sensor->valid);
-    sqlite3_bind_int(stmt, 8, sensor->offset_val);
-    sqlite3_bind_int(stmt, 9, sensor->last_read);
-    sqlite3_bind_int(stmt, 10, sensor->last_mod);
+    sqlite3_bind_int(stmt, 2, sensor->zone_id);
+    sqlite3_bind_text(stmt, 3, sensor->type, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, sensor->name, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 5, sensor->temperature);
+    sqlite3_bind_double(stmt, 6, sensor->humidity);
+    sqlite3_bind_int(stmt, 7, sensor->flags);
+    sqlite3_bind_int(stmt, 8, sensor->valid);
+    sqlite3_bind_int(stmt, 9, sensor->offset_val);
+    sqlite3_bind_int(stmt, 10, sensor->last_read);
+    sqlite3_bind_int(stmt, 11, sensor->last_mod);
 
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_DONE)
@@ -38,7 +45,7 @@ int     db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
     return (0);
 }
 
-int     db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
+int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
 {
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_INSERT_COOLER;

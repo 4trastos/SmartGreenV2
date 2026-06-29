@@ -17,7 +17,7 @@ DB_DIR = /var/lib/smartgreen
 SRC = src/main.c \
 		api/api_server.c \
 		control/cooler.c control/error_control.c control/scheduler.c control/sensor.c \
-		db/database.c db/schema.c \
+		db/database.c db/schema.c db/config.c \
 		modbus/modbus_client.c modbus/registers.c \
 		utils/utils.c
 

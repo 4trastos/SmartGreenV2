@@ -35,8 +35,9 @@ int ft_check_database(t_smartgreen *smartgreen)
         return (-1);
 
     smartgreen->sensors->sensor_id = 101;
-    strcpy(smartgreen->sensors->type, "INT");
-    strcpy(smartgreen->sensors->name, "TEST SENSOR");
+    smartgreen->sensors->zone_id = 1;
+    ft_strcpy(smartgreen->sensors->type, "INT", sizeof(smartgreen->sensors->type));
+    ft_strcpy(smartgreen->sensors->name, "TEST SENSOR", sizeof(smartgreen->sensors->name));
     smartgreen->sensors->temperature = -200.00;
     smartgreen->sensors->humidity = -200.00;
     smartgreen->sensors->flags = 0;
@@ -47,13 +48,18 @@ int ft_check_database(t_smartgreen *smartgreen)
 
     if (db_save_sensor(smartgreen, smartgreen->sensors) == -1)
         return (-1);
+    if (db_save_history(smartgreen) == -1)
+        return (-1);
     return (0);
 }
 
 int main(void)
 {
     t_smartgreen    *smartgreen;
+    const char      *key;
 
+    if (db_read_config(smartgreen, key) == -1)
+        return (1);
     smartgreen = malloc(sizeof(t_smartgreen));
     if (!smartgreen)
         return (1);

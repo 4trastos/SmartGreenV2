@@ -3,8 +3,8 @@
 const char *SCHEMA_SQL = 
     "-- Configuración del Sistema\n"
     "CREATE TABLE IF NOT EXISTS config (\n"
-    "    key         TEXT    PRIMARY KEY,\n"
-    "    value       TEXT    NOT NULL,\n"
+    "    key                TEXT    PRIMARY KEY,\n"
+    "    value              TEXT    NOT NULL,\n"
     "    last_mod    INTEGER DEFAULT (strftime('%s', 'now'))\n"
     ");\n"
     "\n"
@@ -59,6 +59,7 @@ const char *SCHEMA_SQL =
     "-- Estado actual de los sensores\n"
     "CREATE TABLE IF NOT EXISTS sensor_state (\n"
     "    sensor_id   INTEGER PRIMARY KEY,\n"
+    "    zone_id            INTEGER,\n"
     "    type        TEXT    DEFAULT 'INT',\n"
     "    name        TEXT,\n"
     "    temperature REAL    DEFAULT -200.00,\n"

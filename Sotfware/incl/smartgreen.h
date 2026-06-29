@@ -21,8 +21,8 @@
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
 # define SQL_INSERT_COOLER      "INSERT INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, most_recent_fault, " \
                                 "water_present, salinity_ppm, salinity_us, last_read, last_mod) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-# define SQL_INSERT_SENSOR      "INSERT INTO sensor_state (sensor_id, type, name, temperature, humidity, flags, valid, offset_val, last_read, last_mod) " \
-                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+# define SQL_INSERT_SENSOR      "INSERT INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, last_read, last_mod) " \
+                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 /*  MODBUS CONST   */
 # define MODBUS_PORT            "/dev/ttyUSB0"
@@ -73,6 +73,29 @@ typedef struct  s_thread_ctrl
     int             unit_id;                    // qué cooler controla este hilo
 }   t_thread_ctrl;
 
+typedef struct s_scheduler_entry
+{
+    int             id;
+    char            name[64];
+    int             zone_id;
+    int             active;
+    char            action[8];
+    char            hour[8];
+    int             mon;
+    int             tue;
+    int             wed;
+    int             thu;
+    int             fri;
+    int             sat;
+    int             sun;
+}t_scheduler_entry;
+
+typedef struct s_zones
+{
+    int             id;
+    char            *name;
+}   t_zones;
+
 typedef struct  s_cooler_state
 {
     int             unit_id;                    // dirección Modbus (2-6)
@@ -96,8 +119,9 @@ typedef struct  s_cooler_state
 typedef struct  s_sensor_state
 {
     int             sensor_id;                // dirección Modbus (177-178)
+    int             zone_id;
     char            type[4];                  // "INT" o "EXT"
-    char            name[1024];                 
+    char            name[64];                 
     float           temperature;
     float           humidity;
     int             flags;
@@ -142,10 +166,12 @@ double  calculate_salinity_us(int raw);
 
 /*  DATABASE    */
 int     db_init(t_smartgreen *smartgreen);
+int     db_read_config(t_smartgreen *smartgreen, const char *key);
 int     db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler);
 int     db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor);
 int     db_save_history(t_smartgreen *smartgreen);
 int     db_save_error(t_smartgreen *smartgreen, const char *message);
+int     db_save_fault(t_smartgreen *smartgreen, int unit_id, int fault_code);
 
 /*  CONTROL */
 void    scheduler_run(t_smartgreen *smartgreen);
@@ -159,5 +185,7 @@ void    log_info(const char *message);
 time_t  get_timestamp(void);
 
 /*  AUXILIARS   */
+int     ft_strlen(char *str);
+char    *ft_strcpy(char *dst, char *src, int max_len);
 
 #endif
