@@ -23,6 +23,7 @@
                                 "water_present, salinity_ppm, salinity_us, last_read, last_mod) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 # define SQL_INSERT_SENSOR      "INSERT INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, last_read, last_mod) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+# define SQL_SAVE_CONFIG        "INSERT INTO config (key, value) VALUES(?, ?)"
 
 /*  MODBUS CONST   */
 # define MODBUS_PORT            "/dev/ttyUSB0"
@@ -173,6 +174,7 @@ int     db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor);
 int     db_save_history(t_smartgreen *smartgreen);
 int     db_save_error(t_smartgreen *smartgreen, const char *message);
 int     db_save_fault(t_smartgreen *smartgreen, int unit_id, int fault_code);
+int     db_save_config(t_smartgreen *smartgreen, const char *key, int value);
 
 /*  CONTROL */
 void    scheduler_run(t_smartgreen *smartgreen);

@@ -4,8 +4,14 @@ int ft_check_database(t_smartgreen *smartgreen)
 {
     if (db_init(smartgreen) == -1)
         return (-1);
+    
+    if (db_save_config(smartgreen, "num_coolers", 3) == -1)
+        return (-1);
+
+    ft_init_struct(smartgreen);
+
     smartgreen->coolers = NULL;
-    if (smartgreen->num_coolers < 0)
+    if (smartgreen->num_coolers > 0)
     {
         smartgreen->coolers = malloc(sizeof(t_cooler_state) * smartgreen->num_coolers);
         if (!smartgreen->coolers)
@@ -67,8 +73,6 @@ int main(void)
     if (!smartgreen)
         return (1);
     memset(smartgreen, 0, sizeof(t_smartgreen));
-
-    ft_init_struct(smartgreen);
     
     if (ft_check_database(smartgreen) == -1)
     {
