@@ -6,17 +6,6 @@ int db_save_history(t_smartgreen *smartgreen)
     return (0);
 }
 
-/*
-** Guarda (o actualiza si ya existe) un par clave/valor en la tabla config.
-** Usado para persistir parámetros de instalación (num_coolers, num_sensors,
-** num_zones...) que en producción real vendrán del scan Modbus durante
-** la instalación física, pero que ahora mismo se insertan a mano como
-** datos de prueba. Esta función NO desaparece cuando Modbus esté listo:
-** sigue siendo la forma de guardar de forma persistente, en SQLite,
-** el resultado del descubrimiento de dispositivos, para no tener que
-** reescanear el bus completo en cada arranque del sistema.
-*/
-
 int db_save_config(t_smartgreen *smartgreen, const char *key, int value)
 {
     sqlite3_stmt    *stmt = NULL;
@@ -35,7 +24,7 @@ int db_save_config(t_smartgreen *smartgreen, const char *key, int value)
 
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_DONE)
-        printf("Config inserted correcty\n");
+        printf("Config inserted correctly\n");
     else
     {
         printf("Error config inserting %s\n", sqlite3_errmsg(smartgreen->db));
