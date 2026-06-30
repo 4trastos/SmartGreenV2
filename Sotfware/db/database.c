@@ -1,10 +1,50 @@
 #include "../incl/smartgreen.h"
 
-int db_save_history(t_smartgreen *smartgreen)
-{
-    (void)smartgreen;
-    return (0);
-}
+// int db_save_history(t_smartgreen *smartgreen)
+// {
+//     sqlite3_stmt    *stmt = NULL;
+//     const char      *sql = SQL_SAVE_HISTOTY;
+//     int             rc;
+
+//     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+//     if (rc != SQLITE_OK)
+//     {
+//         fprintf(stderr, "The history database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+//     }
+
+//     sqlite3_bind_int(stmt, 2, "NO SE QUE PONER AQUI");
+//     sqlite3_bind_int(stmt, 3, smartgreen->coolers->unit_id);
+//     sqlite3_bind_int(stmt, 4, smartgreen->coolers->zone_id);
+//     sqlite3_bind_text(stmt, 5, "device_type", -1 , SQLITE_TRANSIENT);
+//     sqlite3_bind_int(stmt, 6, smartgreen->sensors->temperature);
+//     sqlite3_bind_int(stmt, 7, smartgreen->sensors->humidity);
+//     sqlite3_bind_int(stmt, 8, smartgreen->coolers->actual_fan_speed);
+//     sqlite3_bind_double(stmt, 9, "target_temp");
+//     sqlite3_bind_double(stmt, 10, "humidity_min");
+//     sqlite3_bind_double(stmt, 11, "humidity_max");
+//     sqlite3_bind_int(stmt, 12, "pump_on");
+//     sqlite3_bind_int(stmt, 13, smartgreen->coolers->fan_on);
+//     sqlite3_bind_int(stmt, 14, smartgreen->coolers->water_present);
+//     sqlite3_bind_double(stmt, 15, smartgreen->coolers->salinity_ppm);
+//     sqlite3_bind_double(stmt, 16, smartgreen->coolers->salinity_us);
+//     sqlite3_bind_int(stmt, 17, smartgreen->coolers->drain_valve_open);
+//     sqlite3_bind_int(stmt, 18, "solenoid_on");
+//     sqlite3_bind_text(stmt, 19, smartgreen->coolers->cool_mode_on, -1, SQLITE_TRANSIENT);
+//     sqlite3_bind_int(stmt, 20, smartgreen->coolers->fault_present);
+
+//     rc = sqlite3_step(stmt);
+//     if (rc == SQLITE_DONE)
+//         printf("History inserted correctly\n");
+//     else
+//     {
+//         printf("Error history inserting %s\n", sqlite3_errmsg(smartgreen->db));
+//         sqlite3_finalize(stmt);
+//         return (-1);
+//     }
+
+//     sqlite3_finalize(stmt);
+//     return (0);
+// }
 
 int db_save_config(t_smartgreen *smartgreen, const char *key, int value)
 {

@@ -13,6 +13,9 @@ int ft_check_database(t_smartgreen *smartgreen)
     if (db_save_config(smartgreen, "num_sensors", 2) == -1)
         return (-1);
 
+    if (db_save_config(smartgreen, "num_zones", 1) == -1)
+        return (-1);
+
     ft_init_struct(smartgreen);
 
     smartgreen->coolers = NULL;

@@ -24,6 +24,8 @@
 # define SQL_INSERT_SENSOR      "INSERT INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, last_read, last_mod) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT INTO config (key, value) VALUES(?, ?)"
+# define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
+                                "salinity_us, drain_open, solenoid_on, on_off, fault_code) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 /*  MODBUS CONST   */
 # define MODBUS_PORT            "/dev/ttyUSB0"
