@@ -1,50 +1,93 @@
 #include "../incl/smartgreen.h"
 
-// int db_save_history(t_smartgreen *smartgreen)
-// {
-//     sqlite3_stmt    *stmt = NULL;
-//     const char      *sql = SQL_SAVE_HISTOTY;
-//     int             rc;
+int db_save_history(t_smartgreen *smartgreen, const char *device_type, t_cooler_state *cooler, t_sensor_state *sensor)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = SQL_SAVE_HISTOTY;
+    int             rc;
 
-//     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
-//     if (rc != SQLITE_OK)
-//     {
-//         fprintf(stderr, "The history database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
-//     }
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "The history database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return (-1);
+    }
 
-//     sqlite3_bind_int(stmt, 2, "NO SE QUE PONER AQUI");
-//     sqlite3_bind_int(stmt, 3, smartgreen->coolers->unit_id);
-//     sqlite3_bind_int(stmt, 4, smartgreen->coolers->zone_id);
-//     sqlite3_bind_text(stmt, 5, "device_type", -1 , SQLITE_TRANSIENT);
-//     sqlite3_bind_int(stmt, 6, smartgreen->sensors->temperature);
-//     sqlite3_bind_int(stmt, 7, smartgreen->sensors->humidity);
-//     sqlite3_bind_int(stmt, 8, smartgreen->coolers->actual_fan_speed);
-//     sqlite3_bind_double(stmt, 9, "target_temp");
-//     sqlite3_bind_double(stmt, 10, "humidity_min");
-//     sqlite3_bind_double(stmt, 11, "humidity_max");
-//     sqlite3_bind_int(stmt, 12, "pump_on");
-//     sqlite3_bind_int(stmt, 13, smartgreen->coolers->fan_on);
-//     sqlite3_bind_int(stmt, 14, smartgreen->coolers->water_present);
-//     sqlite3_bind_double(stmt, 15, smartgreen->coolers->salinity_ppm);
-//     sqlite3_bind_double(stmt, 16, smartgreen->coolers->salinity_us);
-//     sqlite3_bind_int(stmt, 17, smartgreen->coolers->drain_valve_open);
-//     sqlite3_bind_int(stmt, 18, "solenoid_on");
-//     sqlite3_bind_text(stmt, 19, smartgreen->coolers->cool_mode_on, -1, SQLITE_TRANSIENT);
-//     sqlite3_bind_int(stmt, 20, smartgreen->coolers->fault_present);
+    sqlite3_bind_int(stmt, 2, get_timestamp());
+    sqlite3_bind_int(stmt, 3, cooler ? cooler->unit_id : 0);
+    sqlite3_bind_int(stmt, 4, cooler ? cooler->zone_id : 0);
+    sqlite3_bind_text(stmt, 5, device_type, -1 , SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 6, sensor ? sensor->temperature : 0);
+    sqlite3_bind_double(stmt, 7, sensor ? sensor->humidity : 0);
+    sqlite3_bind_int(stmt, 8, smartgreen->zone_params->fan_speed_cmd);
+    sqlite3_bind_double(stmt, 9, smartgreen->zone_params->target_temp);
+    sqlite3_bind_double(stmt, 10, smartgreen->zone_params->humidity_min);
+    sqlite3_bind_double(stmt, 11, smartgreen->zone_params->humidity_max);
+    sqlite3_bind_int(stmt, 12, smartgreen->zone_params->pump_on);
+    sqlite3_bind_text(stmt, 13, smartgreen->zone_params->cool_fan_mode, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 14, cooler ? cooler->water_present : 0);
+    sqlite3_bind_double(stmt, 15, cooler ? cooler->salinity_ppm : 0);
+    sqlite3_bind_double(stmt, 16, cooler ? cooler->salinity_us : 0);
+    sqlite3_bind_int(stmt, 17, cooler ? cooler->drain_valve_open : 0);
+    sqlite3_bind_text(stmt, 18, smartgreen->zone_params->solenoid, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 19, cooler ? cooler->cool_mode_on : 0);
+    sqlite3_bind_int(stmt, 20, cooler ? cooler->fault_present : 0);
 
-//     rc = sqlite3_step(stmt);
-//     if (rc == SQLITE_DONE)
-//         printf("History inserted correctly\n");
-//     else
-//     {
-//         printf("Error history inserting %s\n", sqlite3_errmsg(smartgreen->db));
-//         sqlite3_finalize(stmt);
-//         return (-1);
-//     }
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_DONE)
+        printf("History inserted correctly\n");
+    else
+    {
+        printf("Error history inserting %s\n", sqlite3_errmsg(smartgreen->db));
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
 
-//     sqlite3_finalize(stmt);
-//     return (0);
-// }
+    sqlite3_finalize(stmt);
+    return (0);
+}
+
+int     db_save_zone_params(t_smartgreen *smartgreen, t_zone_params *zone_params)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = SQL_SAVE_ZONE_PARAMS;
+    int             rc;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "The zone params database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return (-1);
+    }
+
+    sqlite3_bind_int(stmt, 1, zone_params->zone_id);
+    sqlite3_bind_int(stmt, 2, zone_params->fan_speed_cmd);
+    sqlite3_bind_double(stmt, 3, zone_params->target_temp);
+    sqlite3_bind_double(stmt, 4, zone_params->humidity_min);
+    sqlite3_bind_double(stmt,5, zone_params->humidity_max);
+    sqlite3_bind_int(stmt, 6, zone_params->pump_on);
+    sqlite3_bind_text(stmt, 7, zone_params->cool_fan_mode, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 8, zone_params->drain_valve, -1 , SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 9, zone_params->solenoid, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 10, zone_params->on_off, -1 , SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 11, zone_params->inmediate_drain, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 12, zone_params->prewet_in_progress, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 13, zone_params->last_prewet);
+    sqlite3_bind_int(stmt, 14, zone_params->last_drain);
+    sqlite3_bind_int(stmt, 15, zone_params->last_pump_time);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_DONE)
+        printf("Zone params inserted correctly\n");
+    else
+    {
+        printf("Error zone params inserting %s\n", sqlite3_errmsg(smartgreen->db));
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
+    sqlite3_finalize(stmt);
+    return(0);
+}
 
 int db_save_config(t_smartgreen *smartgreen, const char *key, int value)
 {

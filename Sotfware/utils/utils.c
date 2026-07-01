@@ -1,9 +1,15 @@
 #include "../incl/smartgreen.h"
 
+time_t  get_timestamp(void)
+{
+    return (time(NULL));
+}
+
 void    ft_free_structs(t_smartgreen *smartgreen)
 {
     free(smartgreen->coolers);
     free(smartgreen->sensors);
+    free(smartgreen->zone_params);
     free(smartgreen);
 }
 
