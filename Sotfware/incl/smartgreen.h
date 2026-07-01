@@ -19,14 +19,14 @@
 
 /*  PATHS   */
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
-# define SQL_INSERT_COOLER      "INSERT INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, most_recent_fault, " \
+# define SQL_INSERT_COOLER      "INSERT OR REPLACE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, most_recent_fault, " \
                                 "water_present, salinity_ppm, salinity_us, last_read, last_mod) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-# define SQL_INSERT_SENSOR      "INSERT INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, last_read, last_mod) " \
+# define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, last_read, last_mod) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR REPLACE INTO config (key, value) VALUES(?, ?)"
 # define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
                                 "salinity_us, drain_open, solenoid_on, on_off, fault_code) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-# define SQL_SAVE_ZONE_PARAMS   "INSERT INTO (zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, prewet_in_progress, last_prewet, last_drain, last_pump_time) "\
+# define SQL_SAVE_ZONE_PARAMS   "INSERT OR REPLACE INTO zone_params (zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, prewet_in_progress, last_prewet, last_drain, last_pump_time) "\
                                 " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 /*  MODBUS CONST   */

@@ -5,7 +5,7 @@ int ft_check_database(t_smartgreen *smartgreen)
     if (db_init(smartgreen) == -1)
         return (-1);
     
-    if (db_save_config(smartgreen, "num_coolers", 3) == -1)
+    if (db_save_config(smartgreen, "num_coolers", 50) == -1)
         return (-1);
     
     if (db_save_config(smartgreen, "num_sensors", 2) == -1)
