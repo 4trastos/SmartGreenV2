@@ -19,6 +19,10 @@ int ft_check_database(t_smartgreen *smartgreen)
     if (ft_init_data(smartgreen) == -1)
         return (-1);
 
+    if (db_save_error(smartgreen, "FUNCIONA") == -1)
+        return (-1);
+    if (db_save_fault(smartgreen, 2, 400) == -1)
+        return (-1);
     return (0);
 }
 
@@ -39,6 +43,7 @@ int main(void)
         free(smartgreen);
         return (1);
     }
+
     if (smartgreen->db)
         sqlite3_close(smartgreen->db);
     
