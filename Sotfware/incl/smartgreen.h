@@ -30,6 +30,8 @@
                                 " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_ERROR         "INSERT INTO error_log (id, unit_id, timestamp, level, message) VALUES(?, ?, ?, ?, ?)"
 # define SQL_SAVE_FAULT_LOG     "INSERT INTO fault_log (id, unit_id, fault_code, fault_present, time_created, time_cleared) VALUES(?, ?, ?, ?, ?, ?)"
+# define SQL_SAVE_ZONES         "INSERT OR REPLACE INTO zones (id, name, enabled) VALUES(?, ?, ?)"
+# define SQL_SAVE_SENSOR_ZONE   "INSERT OR REPLACE INTO sensor_zone (sensor_id, zone_id) VALUES(?, ?)"
 
 /*  MODBUS CONST   */
 # define MODBUS_PORT            "/dev/ttyUSB0"
@@ -100,7 +102,8 @@ typedef struct s_scheduler_entry
 typedef struct s_zones
 {
     int             id;
-    char            *name;
+    char            name[64];
+    int             enabled;
 }   t_zones;
 
 typedef struct s_zone_params
@@ -167,6 +170,7 @@ typedef struct s_smartgreen
     t_cooler_state  *coolers;
     t_sensor_state  *sensors;
     t_zone_params   *zone_params;
+    t_zones         *zones;
 }   t_smartgreen;
 
 /*  FUNCTIONS   */
@@ -203,6 +207,8 @@ int     db_save_history(t_smartgreen *smartgreen, const char *device_type, t_coo
 int     db_save_error(t_smartgreen *smartgreen, const char *message);
 int     db_save_fault(t_smartgreen *smartgreen, int unit_id, int fault_code);
 int     db_save_config(t_smartgreen *smartgreen, const char *key, int value);
+int     db_save_zones(t_smartgreen *smartgreen, t_zones *zones);
+int     db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor);
 
 /*  CONTROL */
 void    scheduler_run(t_smartgreen *smartgreen);

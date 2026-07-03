@@ -61,7 +61,8 @@ int ft_init_data(t_smartgreen *smartgreen)
         
             if (db_save_sensor(smartgreen, &smartgreen->sensors[i]) == -1)
                 return (-1);
-            
+            if (db_save_sensor_zone(smartgreen, &smartgreen->sensors[i]) == -1)
+                return (-1);
             if (db_save_history(smartgreen, "SE", NULL, &smartgreen->sensors[i]) == -1)
                 return (-1);    
             i++;
@@ -72,6 +73,9 @@ int ft_init_data(t_smartgreen *smartgreen)
     if (smartgreen->num_zones > 0)
     {
         i = 0;
+        smartgreen->zones = malloc(sizeof(t_zones) * smartgreen->num_zones);
+        if (!smartgreen->zones)
+            return (-1);
         smartgreen->zone_params = malloc(sizeof(t_zone_params) * smartgreen->num_zones);
         if (!smartgreen->zone_params)
             return(-1);
@@ -93,7 +97,13 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->zone_params[i].last_drain = 0;
             smartgreen->zone_params[i].last_pump_time = 0;
 
+            smartgreen->zones[i].id = smartgreen->zone_params[i].zone_id;
+            ft_strcpy(smartgreen->zones[i].name, "Zona de Prueba", sizeof(smartgreen->zones[i].name));
+            smartgreen->zones[i].enabled = 1;
+
             if (db_save_zone_params(smartgreen, &smartgreen->zone_params[i]) == -1)
+                return (-1);
+            if (db_save_zones(smartgreen, &smartgreen->zones[i]) == -1)
                 return (-1);
             i++;
         }

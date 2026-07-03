@@ -8,10 +8,10 @@ int ft_check_database(t_smartgreen *smartgreen)
     if (db_save_config(smartgreen, "num_coolers", 50) == -1)
         return (-1);
     
-    if (db_save_config(smartgreen, "num_sensors", 2) == -1)
+    if (db_save_config(smartgreen, "num_sensors", 5) == -1)
         return (-1);
 
-    if (db_save_config(smartgreen, "num_zones", 1) == -1)
+    if (db_save_config(smartgreen, "num_zones", 5) == -1)
         return (-1);
 
     ft_init_struct(smartgreen);
@@ -39,6 +39,7 @@ int main(void)
     {
         free(smartgreen->coolers);
         free(smartgreen->sensors);
+        free(smartgreen->zones);
         free(smartgreen->zone_params);
         free(smartgreen);
         return (1);

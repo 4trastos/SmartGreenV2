@@ -1,5 +1,66 @@
 #include "../incl/smartgreen.h"
 
+int     db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = SQL_SAVE_SENSOR_ZONE;
+    int             rc;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "The sensor_zone database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return (-1);
+    }
+
+    sqlite3_bind_int(stmt, 1, sensor->sensor_id);
+    sqlite3_bind_int(stmt, 2, sensor->zone_id);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_DONE)
+        printf("Sensor_zone inserted correctly\n");
+    else
+    {
+        printf("Error sensor_zone inserting %s\n", sqlite3_errmsg(smartgreen->db));
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
+
+    sqlite3_finalize(stmt);
+    return (0);
+}
+
+int     db_save_zones(t_smartgreen *smartgreen, t_zones *zones)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = SQL_SAVE_ZONES;
+    int             rc;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "The zones database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return (-1);
+    }
+
+    sqlite3_bind_int(stmt, 1, zones->id);
+    sqlite3_bind_text(stmt, 2, zones->name, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 3, zones->enabled);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_DONE)
+        printf("Zones inserted correctly\n");
+    else
+    {
+        printf("Error zones inserting %s\n", sqlite3_errmsg(smartgreen->db));
+        sqlite3_finalize(stmt);
+        return(-1);
+    }
+
+    sqlite3_finalize(stmt);
+    return(0);
+}
+
 int db_save_history(t_smartgreen *smartgreen, const char *device_type, t_cooler_state *cooler, t_sensor_state *sensor)
 {
     sqlite3_stmt    *stmt = NULL;
