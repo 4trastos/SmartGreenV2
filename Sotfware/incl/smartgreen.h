@@ -19,8 +19,8 @@
 
 /*  PATHS   */
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
-# define SQL_INSERT_COOLER      "INSERT OR REPLACE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, most_recent_fault, " \
-                                "water_present, salinity_ppm, salinity_us, last_read, last_mod) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+# define SQL_INSERT_COOLER      "INSERT OR REPLACE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, drain_valve_confirm, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, fan_speed_confirmed, most_recent_fault, " \
+                                "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 # define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, last_read, last_mod) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR REPLACE INTO config (key, value) VALUES(?, ?)"
@@ -131,14 +131,18 @@ typedef struct  s_cooler_state
     int             zone_id;
     int             is_extractor;
     int             error_count;
-    int             drain_valve_open;
+    int             drain_valve_open;           // drain valve open/close" (estado leído)
+    int             drain_valve_confirm;        // drain valve open/close" (comando/confirmación)
     int             cool_mode_on;
     int             fan_on;
     int             fault_present;
     int             inlet_valve_open;
     int             actual_fan_speed;
+    int             fan_speed_confirmed;
     int             most_recent_fault;
     int             water_present;
+    int             pump_on;
+    int             solenoid_on;
     double          salinity_ppm;
     double          salinity_us;
     time_t          last_read;
@@ -190,8 +194,9 @@ void    ft_modbus_close(t_smartgreen *smartgreen);
 /*  REGISTERS   */
 void    decode_cooler_state(uint16_t *regs, t_cooler_state *state);
 void    decode_sensor_state(uint16_t *regs, t_sensor_state *state);
+int     decode_water_present_zone(int r_40054, int zone);
 int     calculate_register_0(t_smartgreen *smartgreen);
-int     calculate_register_50(int imd, int pump_on, int fan_speed);
+int     calculate_register_50(int drain_valve, int pump_on, int fan_speed);
 int     calculate_register_51(int solenoid_on, int drain_closed);
 int     calculate_register_52(int fan_speed);
 double  calculate_salinity_ppm(int raw_value);

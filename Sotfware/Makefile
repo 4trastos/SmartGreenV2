@@ -18,7 +18,7 @@ SRC = src/main.c \
 		api/api_server.c \
 		control/cooler.c control/error_control.c control/scheduler.c control/sensor.c \
 		db/database.c db/schema.c db/config.c  db/error.c \
-		modbus/modbus_client.c modbus/registers.c \
+		modbus/modbus_client.c modbus/registers.c modbus/calculators.c \
 		utils/utils.c
 
 OBJTS = $(SRC:.c=.o)

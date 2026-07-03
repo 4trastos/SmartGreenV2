@@ -237,17 +237,21 @@ int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
     sqlite3_bind_int(stmt, 3, cooler->is_extractor);
     sqlite3_bind_int(stmt, 4, cooler->error_count);
     sqlite3_bind_int(stmt, 5, cooler->drain_valve_open);
-    sqlite3_bind_int(stmt, 6, cooler->cool_mode_on);
-    sqlite3_bind_int(stmt, 7, cooler->fan_on);
-    sqlite3_bind_int(stmt, 8, cooler->fault_present);
-    sqlite3_bind_int(stmt, 9, cooler->inlet_valve_open);
-    sqlite3_bind_int(stmt, 10, cooler->actual_fan_speed);
-    sqlite3_bind_int(stmt, 11, cooler->most_recent_fault);
-    sqlite3_bind_int(stmt, 12, cooler->water_present);
-    sqlite3_bind_double(stmt, 13, cooler->salinity_ppm);
-    sqlite3_bind_double(stmt, 14, cooler->salinity_us);
-    sqlite3_bind_int(stmt, 15, cooler->last_read);
-    sqlite3_bind_int(stmt,16, cooler->last_mod);
+    sqlite3_bind_int(stmt, 6, cooler->drain_valve_confirm);
+    sqlite3_bind_int(stmt, 7, cooler->cool_mode_on);
+    sqlite3_bind_int(stmt, 8, cooler->fan_on);
+    sqlite3_bind_int(stmt, 9, cooler->fault_present);
+    sqlite3_bind_int(stmt, 10, cooler->inlet_valve_open);
+    sqlite3_bind_int(stmt, 11, cooler->actual_fan_speed);
+    sqlite3_bind_int(stmt, 12, cooler->fan_speed_confirmed);
+    sqlite3_bind_int(stmt, 13, cooler->most_recent_fault);
+    sqlite3_bind_int(stmt, 14, cooler->water_present);
+    sqlite3_bind_int(stmt, 15, cooler->pump_on);
+    sqlite3_bind_int(stmt, 16, cooler->pump_on);
+    sqlite3_bind_double(stmt, 17, cooler->salinity_ppm);
+    sqlite3_bind_double(stmt, 18, cooler->salinity_us);
+    sqlite3_bind_int(stmt, 19, cooler->last_read);
+    sqlite3_bind_int(stmt, 20, cooler->last_mod);
 
     rc = sqlite3_step(stmt);                                                        // Run and clean
     if (rc == SQLITE_DONE)

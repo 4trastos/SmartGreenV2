@@ -18,13 +18,17 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].is_extractor = 0;
             smartgreen->coolers[i].error_count = 0;
             smartgreen->coolers[i].drain_valve_open = 0;
+            smartgreen->coolers[i].drain_valve_confirm = 0;
             smartgreen->coolers[i].cool_mode_on = 0;
             smartgreen->coolers[i].fan_on = 0;
             smartgreen->coolers[i].fault_present = 0;
             smartgreen->coolers[i].inlet_valve_open = 0;
             smartgreen->coolers[i].actual_fan_speed = 0;
+            smartgreen->coolers[i].fan_speed_confirmed = 0;
             smartgreen->coolers[i].most_recent_fault = 0;
             smartgreen->coolers[i].water_present = 0;
+            smartgreen->coolers[i].pump_on = 0;
+            smartgreen->coolers[i].solenoid_on = 0;
             smartgreen->coolers[i].salinity_ppm = 0.00;
             smartgreen->coolers[i].salinity_us = 0.00;
             smartgreen->coolers[i].last_read = get_timestamp();

@@ -1,17 +1,50 @@
 #include "../incl/smartgreen.h"
 
-double  calculate_salinity_ppm(int raw_value)
+int    decode_water_present_zone(int r_40054, int zone)
 {
-    double  x;
-
-    x = (double)(raw_value & 0xFF);  // extraer byte bajo (LSB)
-    return ((-1.06044991723606e-6 * pow(x, 3.0)) + (0.027993053 * pow(x, 2.0)) + (7.22299846 * x));
+    int shift = (zone - 1) * 4;
+    return ((r_40054 >> shift) & 0x0F);
 }
 
-double  calculate_salinity_us(int raw_value)
+void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
 {
-    double  x;
+    // offset  49 - r_40050 - bits de estado 
+    state->drain_valve_open = (regs[49] >> 0) & 0x01;           // drain valve open/close" (estado leído) 
+    state->cool_mode_on = (regs[49] >> 1) & 0x01;
+    state->fan_on = (regs[49] >> 2) & 0x01;
+    state->fault_present = (regs[49] >> 3) & 0x01;
+    state->inlet_valve_open = (regs[49] >> 4) & 0x01;
+    state->actual_fan_speed = (regs[49] >> 8) & 0x0F;           // velocidad actual (antes de arranque)
+    state->most_recent_fault = (regs[49] >> 12) & 0x0F;
 
-    x = (double)(raw_value & 0xFF);  // extraer byte bajo (LSB)
-    return ((3.7502257285455e-7 * pow(x, 3.0)) + (0.0501146383216609 * pow(x, 2.0)) + (13.1533305274848 * x));
+    // offset 50 - r_40051 - bits de estado 
+    state->pump_on = (regs[50] >> 0) & 0x01;
+    state->solenoid_on = (regs[50] >> 3) & 0x01;
+    state->drain_valve_confirm = (regs[50] >> 4) & 0x01;        // drain valve open/close" (comando/confirmación)
+    state->fan_speed_confirmed = (regs[50] >> 8) & 0x0F;           // velocidad actual (post arranque)
+
+    // offset 53 - r_40054 - water present (nibbles por zona)
+    state->water_present = decode_water_present_zone(regs[53], state->zone_id);
+
+    // offset 54 - r_40055 -> salinidad
+    state->salinity_ppm = calculate_salinity_ppm(regs[54]);
+    state->salinity_us = calculate_salinity_us(regs[54]);
+}
+
+void    decode_sensor_state(uint16_t *regs, t_sensor_state *state)
+{
+    state->sensor_id = regs[0];
+    state->flags = regs[3];
+    if ((int16_t)regs[1] == SENSOR_NO_SIGNAL || (int16_t)regs[1] > MAX_SENSOR_TEMP || (int16_t)regs[2] == SENSOR_NO_SIGNAL || (int16_t)regs[2] > MAX_SENSOR_HUM)
+    {
+        state->valid = 0;
+        state->temperature = 0.0f;
+        state->humidity = 0.0f;
+    }
+    else
+    {
+        state->valid = 1;
+        state->temperature = (int16_t)regs[1] / 10.0f;
+        state->humidity = (int16_t)regs[2] / 10.0f;
+    }
 }

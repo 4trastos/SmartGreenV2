@@ -296,7 +296,7 @@ this.r_40055 = jsonObj.get("54").getAsInt();  // offset 54 — entrada fórmulas
 | bit 3 | solenoid | 0=off, 1=on |
 | bit 4 | drain | 0=open, 1=close |
 | bits 5-7 | reservados | — |
-| bits 8-11 | fan_speed_actual | 0-10 |
+| bits 8-11 | fan_speed_confirmed | 0-10 |
 | bits 12-15 | reservados | — |
 
 **Decodificación completa del offset 53 / r_40054 (water present por zona):**
