@@ -226,44 +226,111 @@ Address:       0
 Quantity:      59  (registros 40000 a 40058)
 ```
 
-**Mapa de los 59 registros del cooler (offsets 0-58):**
-| Offset | Registro | Contenido |
-|---|---|---|
-| 0 | 40000 | R_0: configuración global (bitmap) |
-| 1-3 | 40001-40003 | Identificador fabricante |
-| 4 | 40004 | Versión firmware |
-| 5 | 40005 | Identificador modelo |
-| 8 | 40008 | Dirección Modbus actual |
-| 10 | 40010 | Estado extendido |
-| 19-23 | 40019-40023 | Fan Speed Setpoints zonas 1-5 |
-| 24 | 40024 | Ramp rate actual |
-| 25 | 40025 | Tiempo mínimo llenado tanque |
-| 26 | 40026 | Tiempo máximo llenado tanque |
-| 27 | 40027 | Número de cold starts |
-| 28 | 40028 | Número de fan starts |
-| 29 | 40029 | Horas funcionamiento ventilador |
-| 32 | 40032 | Número de tank drains |
-| 43 | 40043 | Average tank fill time |
-| 44 | 40044 | Número mensajes RF recibidos |
-| 49 | 40049 | R_49: inmediate drain (escritura) |
-| 50 | 40050 | R_50: bomba + fan speed (escritura) |
-| 51 | 40051 | R_51: solenoide + drenaje (escritura) |
-| 52 | 40052 | R_52: fan on/speed individual |
-| 53 | 40053 | Estado adicional |
-| 54 | 40054 | Salinidad PPM raw |
-| 55 | 40055 | Salinidad uS raw |
-| 56 | 40056 | Registros servicio/test |
+**Mapa completo de los 59 registros del cooler (offsets 0-58):**
 
-**Decodificación del registro de estado 40050 (lectura):**
-| Bit(s) | Campo |
-|---|---|
-| bit 0 | drain_valve_open |
-| bit 1 | cool_mode_on |
-| bit 2 | fan_on |
-| bit 3 | fault_present |
-| bit 4 | inlet_valve_open |
-| bits 8-11 | actual_fan_speed (0-10) |
-| bits 12-15 | most_recent_fault_code (0-15) |
+⚠️ **IMPORTANTE — Desfase de nombres en sistema EQTic original:**
+El sistema EQTic nombra sus columnas de BD con un desfase de +1 respecto al offset real del array.
+Verificado en `CoolerRegistros.java` líneas 287-288:
+```java
+this.r_40053 = jsonObj.get("52").getAsInt();  // offset 52
+this.r_40054 = jsonObj.get("53").getAsInt();  // offset 53
+this.r_40055 = jsonObj.get("54").getAsInt();  // offset 54 — entrada fórmulas salinidad
+```
+
+| Offset array | Nombre EQTic BD | Contenido |
+|---|---|---|
+| 0 | r_40000 | R_0: configuración global (bitmap) — ver sección 9 |
+| 1 | — | Identificador fabricante parte 1 (8977) |
+| 2 | — | Identificador fabricante parte 2 (20547) |
+| 3 | — | Identificador fabricante parte 3 (17485) |
+| 4 | — | Versión firmware (100) |
+| 5 | — | Identificador modelo (20051) |
+| 6-7 | — | Reservados |
+| 8 | — | Dirección Modbus actual del cooler |
+| 9 | — | Reservado |
+| 10 | — | Estado extendido (33706) |
+| 11-18 | — | Reservados |
+| 19 | r_40020 | Fan Speed Setpoint zona 1 |
+| 20 | r_40021 | Fan Speed Setpoint zona 2 |
+| 21 | r_40022 | Fan Speed Setpoint zona 3 |
+| 22 | r_40023 | Fan Speed Setpoint zona 4 |
+| 23 | r_40024 | Fan Speed Setpoint zona 5 |
+| 24 | — | Ramp rate actual |
+| 25 | — | Tiempo mínimo llenado tanque |
+| 26 | — | Tiempo máximo llenado tanque |
+| 27 | — | Número de cold starts |
+| 28 | — | Número de fan starts |
+| 29 | — | Horas funcionamiento ventilador |
+| 30-31 | — | Reservados |
+| 32 | — | Número de tank drains |
+| 33-42 | — | Reservados |
+| 43 | — | Average tank fill time |
+| 44 | — | Número mensajes RF recibidos |
+| 45-48 | — | Reservados |
+| 49 | r_40050 | R_50: comando bomba + fan speed (escritura/lectura estado) |
+| 50 | r_40051 | R_51: comando solenoide + drenaje (escritura/lectura estado) |
+| 51 | r_40052 | R_52: fan on/speed individual (escritura) |
+| 52 | r_40053 | Estado extendido (bitmap nibbles) |
+| 53 | r_40054 | Water present por zona (bitmap nibbles) — NO es salinidad |
+| 54 | r_40055 | Salinidad raw — entrada fórmulas PPM y uS (& 0xFF) |
+| 55 | r_40056 | Registros servicio/test |
+| 56-58 | — | Reservados |
+
+**Decodificación completa del offset 49 / r_40050 (estado lectura):**
+| Bit(s) | Campo | Valores |
+|---|---|---|
+| bit 0 | drain_valve | 0=close, 1=open |
+| bit 1 | cool_mode | 0=fan, 1=cool |
+| bit 2 | fan | 0=off, 1=on |
+| bit 3 | fault_present | 0=no, 1=yes |
+| bit 4 | inlet_valve | 0=close, 1=open |
+| bits 5-7 | reservados | — |
+| bits 8-11 | actual_fan_speed | 0-10 |
+| bits 12-15 | most_recent_fault_code | 0-15 |
+
+**Decodificación completa del offset 50 / r_40051 (solenoide/bomba):**
+| Bit(s) | Campo | Valores |
+|---|---|---|
+| bit 0 | pump | 0=off, 1=on |
+| bits 1-2 | reservados | — |
+| bit 3 | solenoid | 0=off, 1=on |
+| bit 4 | drain | 0=open, 1=close |
+| bits 5-7 | reservados | — |
+| bits 8-11 | fan_speed_actual | 0-10 |
+| bits 12-15 | reservados | — |
+
+**Decodificación completa del offset 53 / r_40054 (water present por zona):**
+```
+r_40054 → binario 16 bits → 4 nibbles de 4 bits cada uno
+
+nibble3 (bits 0-3)   → water_present zona 1 (0=no agua, >0=agua presente)
+nibble2 (bits 4-7)   → water_present zona 2
+nibble1 (bits 8-11)  → water_present zona 3
+nibble0 (bits 12-15) → water_present zona 4
+```
+
+```c
+int decode_water_present_zone(int r_40054, int zone)  // zone 1-4
+{
+    int shift = (zone - 1) * 4;
+    return ((r_40054 >> shift) & 0x0F);
+}
+```
+
+**Decodificación del offset 54 / r_40055 (salinidad):**
+```
+AMBAS fórmulas (PPM y uS) reciben el MISMO registro r_40055.
+El campo r_40054 NO es entrada de las fórmulas de salinidad.
+La entrada es el byte bajo (LSB):
+  x = r_40055 & 0xFF
+
+Ejemplo instalación Calders cooler 2:
+  r_40055 (offset 54) = 63534
+  63534 hex           = 0xF82E
+  LSB (& 0xFF)        = 0x2E = 46
+  PPM(46)             = 391.39 PPM  ✅ (sistema EQTic muestra 391)
+  uS(46)              = 711.13 uS   ✅ (sistema EQTic muestra 711)
+```
 
 ### Operación 3 — Escribir comando (FC 16)
 ```
@@ -1212,7 +1279,7 @@ double  calculate_salinity_ppm(int raw_value)
 {
     double  x;
 
-    x = (double)raw_value;
+    x = (double)(raw_value & 0xFF);  // extraer byte bajo (LSB) — verificado datos reales
     return ((-1.06044991723606e-6 * pow(x, 3.0))
             + (0.027993053 * pow(x, 2.0))
             + (7.22299846 * x));
@@ -1222,7 +1289,7 @@ double  calculate_salinity_us(int raw_value)
 {
     double  x;
 
-    x = (double)raw_value;
+    x = (double)(raw_value & 0xFF);  // extraer byte bajo (LSB) — verificado datos reales
     return ((3.7502257285455e-7 * pow(x, 3.0))
             + (0.0501146383216609 * pow(x, 2.0))
             + (13.1533305274848 * x));
@@ -1231,8 +1298,9 @@ double  calculate_salinity_us(int raw_value)
 
 ### Verificación con datos reales (instalación Calders)
 ```
-Cooler 2: r_40054=4886 → PPM≈391 ✅  |  r_40055=63534 → uS≈711 ✅
-Cooler 3: r_40054=4886 → PPM≈513 ✅  |  r_40055=65082 → uS≈932 ✅
+Cooler 2: r_40055 (offset 54) = 63534 → LSB=46 → PPM=391.39 ✅ | uS=711.13 ✅
+Cooler 3: r_40055 (offset 54) = 65082 → LSB=58 → PPM≈513 ✅ | uS≈932 ✅
+NOTA: Ambas fórmulas usan el MISMO registro r_40055. El campo r_40054 NO es salinidad.
 ```
 
 ---
@@ -1263,7 +1331,7 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     state->inlet_valve_open  = (regs[50] >> 4) & 0x01;
     state->actual_fan_speed  = (regs[51] >> 8) & 0x0F;
     state->most_recent_fault = (regs[51] >> 12) & 0x0F;
-    state->water_present     = regs[55] > 0 ? 1 : 0;
+    state->water_present     = decode_water_present_zone(regs[53], zone_id);  // r_40054, nibbles por zona
     state->salinity_ppm      = calculate_salinity_ppm(regs[54]);
     state->salinity_us       = calculate_salinity_us(regs[55]);
 }
