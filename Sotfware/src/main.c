@@ -5,13 +5,13 @@ int ft_check_database(t_smartgreen *smartgreen)
     if (db_init(smartgreen) == -1)
         return (-1);
     
-    if (db_save_config(smartgreen, "num_coolers", 50) == -1)
+    if (db_save_config(smartgreen, "num_coolers", 1) == -1)
         return (-1);
     
-    if (db_save_config(smartgreen, "num_sensors", 5) == -1)
+    if (db_save_config(smartgreen, "num_sensors", 1) == -1)
         return (-1);
 
-    if (db_save_config(smartgreen, "num_zones", 5) == -1)
+    if (db_save_config(smartgreen, "num_zones", 1) == -1)
         return (-1);
 
     ft_init_struct(smartgreen);
@@ -44,6 +44,13 @@ int main(void)
         free(smartgreen);
         return (1);
     }
+
+    printf("PPM(0): %.2f (esperado: 0)\n", calculate_salinity_ppm(0));
+    printf("PPM(1): %.2f (esperao: ~7.25)\n", calculate_salinity_ppm(1));
+    printf("uS(0):  %.2f (esperaod: 0)\n", calculate_salinity_us(0));
+    printf("uS(1):  %.2f (esperado: ~13.20)\n", calculate_salinity_us(1));
+    printf("PPM(4886): %.2f (esperado: ~391)\n", calculate_salinity_ppm(4886));
+    printf("uS(63534): %.2f (esperado: ~711)\n", calculate_salinity_us(63534));
 
     if (smartgreen->db)
         sqlite3_close(smartgreen->db);

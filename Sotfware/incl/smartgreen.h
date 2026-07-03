@@ -194,8 +194,8 @@ int     calculate_register_0(t_smartgreen *smartgreen);
 int     calculate_register_50(int imd, int pump_on, int fan_speed);
 int     calculate_register_51(int solenoid_on, int drain_closed);
 int     calculate_register_52(int fan_speed);
-double  calculate_salinity_ppm(int raw);
-double  calculate_salinity_us(int raw);
+double  calculate_salinity_ppm(int raw_value);
+double  calculate_salinity_us(int raw_value);
 
 /*  DATABASE    */
 int     db_init(t_smartgreen *smartgreen);
