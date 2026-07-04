@@ -16,6 +16,7 @@
 # include <stdbool.h>
 # include <limits.h>
 # include <fcntl.h>
+# include <errno.h>
 
 /*  PATHS   */
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
@@ -44,6 +45,9 @@
 # define MODBUS_SENSOR_ADDR     299
 # define MODBUS_CMD_ADDR        400
 # define MODBUS_CMD_VALUE       300
+# define MODBUS_MAX_UNIT_ID     247    // límite protocolo Modbus RTU
+# define MODBUS_MAX_COOLERS     32     // límite práctico RS485 en un bus
+# define MODBUS_MIN_UNIT_ID     1      // dirección mínima válida (0=broadcast)
 
 /*  LIMITS  */
 # define SENSOR_NO_SIGNAL       -200
@@ -186,6 +190,7 @@ void    ft_init_struct(t_smartgreen *smartgreen);
 void    ft_init_config(t_smartgreen *smartgreen);
 
 /*  MODBUS  */
+int     ft_modbus(t_smartgreen *smartgreen);
 int     ft_modbus_init(t_smartgreen *smartgreen);
 int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id);
 int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id);

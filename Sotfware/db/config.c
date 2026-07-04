@@ -6,7 +6,7 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "num_sensors",               2);
     db_save_config(smartgreen, "num_zones",                 2);
     db_save_config(smartgreen, "water_manager",             0);       // 0=ms, 1=tm, 2=nc, 3=nw
-    db_save_config(smartgreen, "salinity_trigger",          4275);    // 0=4275 uS, 4=2305 uS
+    db_save_config(smartgreen, "salinity_trigger",          SALINITY_TRIGGER);    // 0=4275 uS, 4=2305 uS
     db_save_config(smartgreen, "water_seal_opening_speed",  3);       // valor × 16=0-15
     db_save_config(smartgreen, "prewet_selector",           1);       // 0=no, 1=yes (256=yes)
     db_save_config(smartgreen, "auto_restart",              0);       // 0=standby, 1=restart (512=restart)
@@ -165,6 +165,11 @@ void    ft_init_struct(t_smartgreen *smartgreen)
     smartgreen->num_coolers = db_read_config(smartgreen, "num_coolers");
     if (smartgreen->num_coolers < 0)
         smartgreen->num_coolers = 0;
+    if (smartgreen->num_coolers > MODBUS_MAX_COOLERS)
+    {
+        fprintf(stderr, "ERROR: num_coolers (%d) exceeds the maximum allowed (%d)\n", smartgreen->num_coolers, MODBUS_MAX_COOLERS);
+        smartgreen->num_coolers = MODBUS_MAX_COOLERS;
+    }
     
     smartgreen->num_sensors = db_read_config(smartgreen, "num_sensors");
     if (smartgreen->num_sensors < 0)

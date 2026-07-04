@@ -52,7 +52,7 @@ int     calculate_register_0(t_smartgreen *smartgreen)
     int tu = db_read_config(smartgreen, "temperature_unit");
     int td = db_read_config(smartgreen, "tank_drain_delay");
 
-    int v_st = (st == 4275) ? 0 : 4;
+    int v_st = (st == SALINITY_TRIGGER) ? 0 : 4;
     int v_ws = ws * 16;
     int v_ps = ps ? 256 : 0;
     int v_ar = ar ? 512 : 0;

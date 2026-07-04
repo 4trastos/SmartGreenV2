@@ -1,5 +1,12 @@
 #include "../incl/smartgreen.h"
 
+int ft_modbus(t_smartgreen *smartgreen)
+{
+    if (ft_modbus_init(smartgreen) == -1)
+        return (-1);
+    return (0);
+}
+
 int ft_check_database(t_smartgreen *smartgreen)
 {
     if (db_init(smartgreen) == -1)
@@ -29,15 +36,15 @@ int main(void)
     
     if (ft_check_database(smartgreen) == -1)
     {
-        free(smartgreen->coolers);
-        free(smartgreen->sensors);
-        free(smartgreen->zones);
-        free(smartgreen->zone_params);
-        free(smartgreen);
+        ft_free_structs(smartgreen);
         return (1);
     }
 
-    printf("R_0: %d (esperado: 12592)\n", calculate_register_0(smartgreen));
+    if (ft_modbus(smartgreen) == -1)
+    {
+        ft_free_structs(smartgreen);
+        return (1);
+    }
     if (smartgreen->db)
         sqlite3_close(smartgreen->db);
     
