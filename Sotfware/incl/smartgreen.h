@@ -23,7 +23,7 @@
                                 "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 # define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, last_read, last_mod) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-# define SQL_SAVE_CONFIG        "INSERT OR REPLACE INTO config (key, value) VALUES(?, ?)"
+# define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
 # define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
                                 "salinity_us, drain_open, solenoid_on, on_off, fault_code) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_ZONE_PARAMS   "INSERT OR REPLACE INTO zone_params (zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, prewet_in_progress, last_prewet, last_drain, last_pump_time) "\
@@ -180,9 +180,10 @@ typedef struct s_smartgreen
 /*  FUNCTIONS   */
 int     main(void);
 int     ft_check_database(t_smartgreen *smartgreen);
+int     ft_init_data(t_smartgreen *smartgreen);
 void    ft_free_structs(t_smartgreen *smartgreen);
 void    ft_init_struct(t_smartgreen *smartgreen);
-int     ft_init_data(t_smartgreen *smartgreen);
+void    ft_init_config(t_smartgreen *smartgreen);
 
 /*  MODBUS  */
 int     ft_modbus_init(t_smartgreen *smartgreen);

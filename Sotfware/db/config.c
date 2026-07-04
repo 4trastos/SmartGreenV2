@@ -1,5 +1,26 @@
 #include "../incl/smartgreen.h"
 
+void    ft_init_config(t_smartgreen *smartgreen)
+{
+    db_save_config(smartgreen, "num_coolers",               5);
+    db_save_config(smartgreen, "num_sensors",               2);
+    db_save_config(smartgreen, "num_zones",                 2);
+    db_save_config(smartgreen, "water_manager",             0);       // 0=ms, 1=tm, 2=nc, 3=nw
+    db_save_config(smartgreen, "salinity_trigger",          4275);    // 0=4275 uS, 4=2305 uS
+    db_save_config(smartgreen, "water_seal_opening_speed",  3);       // valor × 16=0-15
+    db_save_config(smartgreen, "prewet_selector",           1);       // 0=no, 1=yes (256=yes)
+    db_save_config(smartgreen, "auto_restart",              0);       // 0=standby, 1=restart (512=restart)
+    db_save_config(smartgreen, "temperature_unit",          0);       // 0=C, 1=F (1024=F)
+    db_save_config(smartgreen, "tank_drain_delay",          3);       // 0=instant,1=3Hrs(4096=3Hrs),2=12Hrs(8192=12Hrs),3=3Days(12288=3Days)
+    db_save_config(smartgreen, "refresh_interval",          900);
+    db_save_config(smartgreen, "refresh_coolers",           30);
+    db_save_config(smartgreen, "history_interval",          300);
+    db_save_config(smartgreen, "salinity_drain_delay",      120);
+    db_save_config(smartgreen, "prewet_delay_pump",         120);
+    db_save_config(smartgreen, "prewet_delay_solenoid",     9);
+    db_save_config(smartgreen, "modbus_retries",            1);
+}
+
 int ft_init_data(t_smartgreen *smartgreen)
 {
     int i;

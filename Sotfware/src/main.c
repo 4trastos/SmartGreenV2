@@ -5,15 +5,7 @@ int ft_check_database(t_smartgreen *smartgreen)
     if (db_init(smartgreen) == -1)
         return (-1);
     
-    if (db_save_config(smartgreen, "num_coolers", 1) == -1)
-        return (-1);
-    
-    if (db_save_config(smartgreen, "num_sensors", 1) == -1)
-        return (-1);
-
-    if (db_save_config(smartgreen, "num_zones", 1) == -1)
-        return (-1);
-
+    ft_init_config(smartgreen);
     ft_init_struct(smartgreen);
 
     if (ft_init_data(smartgreen) == -1)
@@ -45,6 +37,7 @@ int main(void)
         return (1);
     }
 
+    printf("R_0: %d (esperado: 12592)\n", calculate_register_0(smartgreen));
     if (smartgreen->db)
         sqlite3_close(smartgreen->db);
     

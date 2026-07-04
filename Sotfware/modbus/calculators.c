@@ -16,12 +16,6 @@ double  calculate_salinity_us(int raw_value)
     return ((3.7502257285455e-7 * pow(x, 3.0)) + (0.0501146383216609 * pow(x, 2.0)) + (13.1533305274848 * x));
 }
 
-int     calculate_register_0(t_smartgreen *smartgreen)
-{
-    (void)smartgreen;
-    return(0);
-}
-
 int     calculate_register_50(int drain_valve, int pump_on, int fan_speed)
 {
     int calculate;
@@ -46,4 +40,24 @@ int     calculate_register_52(int fan_speed)
         return (calculate);
     calculate = (fan_speed * 4096) + 256;
     return (calculate);
+}
+
+int     calculate_register_0(t_smartgreen *smartgreen)
+{
+    int wm = db_read_config(smartgreen, "water_manager");
+    int st = db_read_config(smartgreen, "salinity_trigger");
+    int ws = db_read_config(smartgreen, "water_seal_opening_speed");
+    int ps = db_read_config(smartgreen, "prewet_selector");
+    int ar = db_read_config(smartgreen, "auto_restart");
+    int tu = db_read_config(smartgreen, "temperature_unit");
+    int td = db_read_config(smartgreen, "tank_drain_delay");
+
+    int v_st = (st == 4275) ? 0 : 4;
+    int v_ws = ws * 16;
+    int v_ps = ps ? 256 : 0;
+    int v_ar = ar ? 512 : 0;
+    int v_tu = tu ? 1024 : 0;
+    int v_td = td * 4096;
+
+    return(wm + v_st + v_ws + v_ps + v_ar + v_tu + v_td);
 }

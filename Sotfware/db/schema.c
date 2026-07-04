@@ -42,7 +42,7 @@ const char *SCHEMA_SQL =
     "    is_extractor        INTEGER DEFAULT 0,\n"
     "    error_count         INTEGER DEFAULT 0,\n"
     "    drain_valve_open    INTEGER DEFAULT 0,\n"
-    "    drain_valve_confirm INTEGER DAFAULT 0,\n"
+    "    drain_valve_confirm INTEGER DEFAULT 0,\n"
     "    cool_mode_on        INTEGER DEFAULT 0,\n"
     "    fan_on              INTEGER DEFAULT 0,\n"
     "    fault_present       INTEGER DEFAULT 0,\n"
