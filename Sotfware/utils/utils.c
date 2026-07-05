@@ -5,6 +5,12 @@ time_t  get_timestamp(void)
     return (time(NULL));
 }
 
+void    ft_free_modbus(t_smartgreen *smartgreen)
+{
+    modbus_close(smartgreen->modbus_ctx);
+    modbus_free(smartgreen->modbus_ctx);
+}
+
 void    ft_free_structs(t_smartgreen *smartgreen)
 {
     free(smartgreen->coolers);

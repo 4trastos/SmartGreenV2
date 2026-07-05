@@ -71,6 +71,7 @@ const char *SCHEMA_SQL =
     "    flags       INTEGER DEFAULT 0,\n"
     "    valid       INTEGER DEFAULT 0,\n"
     "    offset_val  INTEGER DEFAULT 0,\n"
+    "    error_count INTEGER DEFAULT 0,\n"
     "    last_read   INTEGER DEFAULT 0,\n"
     "    last_mod    INTEGER DEFAULT 0\n"
     ");\n"

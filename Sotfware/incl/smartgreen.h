@@ -17,13 +17,14 @@
 # include <limits.h>
 # include <fcntl.h>
 # include <errno.h>
+# include <signal.h>
 
 /*  PATHS   */
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
 # define SQL_INSERT_COOLER      "INSERT OR REPLACE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, drain_valve_confirm, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, fan_speed_confirmed, most_recent_fault, " \
                                 "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-# define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, last_read, last_mod) " \
-                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+# define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, error_count; last_read, last_mod) " \
+                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
 # define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
                                 "salinity_us, drain_open, solenoid_on, on_off, fault_code) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -54,12 +55,14 @@
 # define MAX_SENSOR_TEMP        500
 # define MAX_SENSOR_HUM         100
 # define MAX_COOLER_ERRORS      10
+# define MAX_SENSOR_ERRORS      10
 # define SALINITY_TRIGGER       4275
 
 /*  TIMINGS (Seconds)   */
 # define SCHEDULER_READ_MIN     900
 # define SCHEDULER_WRITE_MIN    10
 # define SCHEDULER_WRITE_MAX    30
+# define SCHEDULER_SEQUENCE     15      // Mirar el horario cada 15 segundos
 # define HISTORY_INTERVAL       300
 # define DB_MAX_RETRIES         10
 # define DB_RETRY_US            50000
@@ -164,6 +167,7 @@ typedef struct  s_sensor_state
     int             flags;
     int             valid;
     int             offset_val;
+    int             error_count;
     time_t          last_read;
     time_t          last_mod;
 }   t_sensor_state;
@@ -181,13 +185,20 @@ typedef struct s_smartgreen
     t_zones         *zones;
 }   t_smartgreen;
 
+extern volatile sig_atomic_t g_sigint_received;
+extern volatile sig_atomic_t g_sigterm_received;
+
 /*  FUNCTIONS   */
 int     main(void);
 int     ft_check_database(t_smartgreen *smartgreen);
 int     ft_init_data(t_smartgreen *smartgreen);
 void    ft_free_structs(t_smartgreen *smartgreen);
+void    ft_free_modbus(t_smartgreen *smartgreen);
 void    ft_init_struct(t_smartgreen *smartgreen);
 void    ft_init_config(t_smartgreen *smartgreen);
+void    sigint_handler(int sig);
+void    sigterm_handler(int sig);
+void    init_signal();
 
 /*  MODBUS  */
 int     ft_modbus(t_smartgreen *smartgreen);
@@ -195,7 +206,6 @@ int     ft_modbus_init(t_smartgreen *smartgreen);
 int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id);
 int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id);
 int     ft_modbus_write_cooler(t_smartgreen *smartgreen, int unit_id, int addr, int value);
-void    ft_modbus_close(t_smartgreen *smartgreen);
 
 /*  REGISTERS   */
 void    decode_cooler_state(uint16_t *regs, t_cooler_state *state);

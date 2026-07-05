@@ -81,6 +81,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->sensors[i].flags = 0;
             smartgreen->sensors[i].valid = 0;
             smartgreen->sensors[i].offset_val = 0;
+            smartgreen->sensors[i].error_count = 0;
             smartgreen->sensors[i].last_read = get_timestamp();
             smartgreen->sensors[i].last_mod = get_timestamp();
         
