@@ -1,6 +1,6 @@
 #include "../incl/smartgreen.h"
 
-int     cooler_water_management(t_smartgreen *smartgreen) // Drenaje
+int     cooler_water_management(t_smartgreen *smartgreen) // Control automático de salinidad y Drenaje
 {
     int interval = db_read_config(smartgreen, "salinity_drain_interval");
     int drain_time = db_read_config(smartgreen, "salinity_drain_delay");
