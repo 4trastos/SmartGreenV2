@@ -60,14 +60,8 @@ int main(void)
         return (1);
     }
 
-    if (ft_modbus(smartgreen) == -1)
-    {
-        ft_free_modbus(smartgreen);
-        ft_free_structs(smartgreen);
-        return (1);
-    }
-
-    scheduler_run(smartgreen);
+    ft_modbus(smartgreen);              // intenta conectar, pero aunque falle seguimos
+    scheduler_run(smartgreen);          // el scheduler corre siempre
 
     if (smartgreen->db)
         sqlite3_close(smartgreen->db);

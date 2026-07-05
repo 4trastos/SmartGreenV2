@@ -15,7 +15,8 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "refresh_interval",          900);
     db_save_config(smartgreen, "refresh_coolers",           30);
     db_save_config(smartgreen, "history_interval",          300);
-    db_save_config(smartgreen, "salinity_drain_delay",      120);
+    db_save_config(smartgreen, "salinity_drain_delay",      120);     // tiempo total
+    db_save_config(smartgreen, "salinity_drain_interval",   30);
     db_save_config(smartgreen, "prewet_delay_pump",         120);
     db_save_config(smartgreen, "prewet_delay_solenoid",     9);
     db_save_config(smartgreen, "modbus_retries",            1);

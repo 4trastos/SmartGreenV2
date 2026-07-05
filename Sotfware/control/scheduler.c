@@ -27,10 +27,15 @@ void    scheduler_run(t_smartgreen *smartgreen)
 
         if (now - last_read >= read_interval)
         {
-            for (int i = 0; i < smartgreen->num_coolers; i++)
-                ft_modbus_read_cooler(smartgreen, smartgreen->coolers[i].unit_id);
-            for (int i = 0; i < smartgreen->num_sensors; i++)
-                ft_modbus_read_sensor(smartgreen, smartgreen->sensors[i].sensor_id);
+            if (!smartgreen->modbus_ctx)
+                ft_modbus_init(smartgreen);                                         // intentar reconectar
+            if (smartgreen->modbus_ctx)
+            {
+                for (int i = 0; i < smartgreen->num_coolers; i++)
+                    ft_modbus_read_cooler(smartgreen, smartgreen->coolers[i].unit_id);
+                for (int i = 0; i < smartgreen->num_sensors; i++)
+                    ft_modbus_read_sensor(smartgreen, smartgreen->sensors[i].sensor_id);
+            }
             last_read = now;
         } 
 
