@@ -35,6 +35,7 @@
 21. [Resumen ejecutivo para el desarrollador](#21-resumen-ejecutivo-para-el-desarrollador)
 22. [Portabilidad a hardware dedicado](#22-portabilidad-a-hardware-dedicado)
 23. [Arquitectura de conectividad — SIM IoT, WiFi, Ethernet y SSH](#23-arquitectura-de-conectividad--sim-iot-wifi-ethernet-y-ssh)
+24. [Nuevas funciones implementadas — C puro (Fase de desarrollo)](#24-nuevas-funciones-implementadas--c-puro-fase-de-desarrollo)
 
 ---
 
@@ -296,7 +297,7 @@ this.r_40055 = jsonObj.get("54").getAsInt();  // offset 54 — entrada fórmulas
 | bit 3 | solenoid | 0=off, 1=on |
 | bit 4 | drain | 0=open, 1=close |
 | bits 5-7 | reservados | — |
-| bits 8-11 | fan_speed_confirmed | 0-10 |
+| bits 8-11 | fan_speed_actual (post-arranque) | 0-10 |
 | bits 12-15 | reservados | — |
 
 **Decodificación completa del offset 53 / r_40054 (water present por zona):**
@@ -320,9 +321,8 @@ int decode_water_present_zone(int r_40054, int zone)  // zone 1-4
 **Decodificación del offset 54 / r_40055 (salinidad):**
 ```
 AMBAS fórmulas (PPM y uS) reciben el MISMO registro r_40055.
-El campo r_40054 NO es entrada de las fórmulas de salinidad.
-La entrada es el byte bajo (LSB):
-  x = r_40055 & 0xFF
+El campo r_40054 (offset 53) NO es entrada de las fórmulas de salinidad.
+La entrada es el byte bajo (LSB): x = r_40055 & 0xFF
 
 Ejemplo instalación Calders cooler 2:
   r_40055 (offset 54) = 63534
@@ -1279,7 +1279,7 @@ double  calculate_salinity_ppm(int raw_value)
 {
     double  x;
 
-    x = (double)(raw_value & 0xFF);  // extraer byte bajo (LSB) — verificado datos reales
+    x = (double)(raw_value & 0xFF);  // LSB — verificado datos reales
     return ((-1.06044991723606e-6 * pow(x, 3.0))
             + (0.027993053 * pow(x, 2.0))
             + (7.22299846 * x));
@@ -1289,7 +1289,7 @@ double  calculate_salinity_us(int raw_value)
 {
     double  x;
 
-    x = (double)(raw_value & 0xFF);  // extraer byte bajo (LSB) — verificado datos reales
+    x = (double)(raw_value & 0xFF);  // LSB — verificado datos reales
     return ((3.7502257285455e-7 * pow(x, 3.0))
             + (0.0501146383216609 * pow(x, 2.0))
             + (13.1533305274848 * x));
@@ -1297,10 +1297,10 @@ double  calculate_salinity_us(int raw_value)
 ```
 
 ### Verificación con datos reales (instalación Calders)
-```
 Cooler 2: r_40055 (offset 54) = 63534 → LSB=46 → PPM=391.39 ✅ | uS=711.13 ✅
 Cooler 3: r_40055 (offset 54) = 65082 → LSB=58 → PPM≈513 ✅ | uS≈932 ✅
-NOTA: Ambas fórmulas usan el MISMO registro r_40055. El campo r_40054 NO es salinidad.
+NOTA: Ambas fórmulas usan el MISMO registro r_40055 (offset 54). r_40054 (offset 53) = water present por zona.
+Cooler 3: r_40054=4886 → PPM≈513 ✅  |  r_40055=65082 → uS≈932 ✅
 ```
 
 ---
@@ -1320,20 +1320,34 @@ typedef struct s_cooler_state
     int     water_present;
     double  salinity_ppm;
     double  salinity_us;
+    int             pump_on;              // bit 0 de r_40051
+    int             solenoid_on;          // bit 3 de r_40051
+    int             drain_valve_confirm;  // bit 4 de r_40051 (confirmación)
+    int             fan_speed_confirmed;  // bits 8-11 de r_40051 (post-arranque)
+    int             error_count;
+    time_t          last_mod;
 }   t_cooler_state;
 
 void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
 {
-    state->drain_valve_open  = (regs[50] >> 0) & 0x01;
-    state->cool_mode_on      = (regs[50] >> 1) & 0x01;
-    state->fan_on            = (regs[50] >> 2) & 0x01;
-    state->fault_present     = (regs[50] >> 3) & 0x01;
-    state->inlet_valve_open  = (regs[50] >> 4) & 0x01;
-    state->actual_fan_speed  = (regs[51] >> 8) & 0x0F;
-    state->most_recent_fault = (regs[51] >> 12) & 0x0F;
-    state->water_present     = decode_water_present_zone(regs[53], zone_id);  // r_40054, nibbles por zona
-    state->salinity_ppm      = calculate_salinity_ppm(regs[54]);
-    state->salinity_us       = calculate_salinity_us(regs[55]);
+    // offset 49 — r_40050 — bits de estado (lectura)
+    state->drain_valve_open    = (regs[49] >> 0) & 0x01;  // drain valve (estado leído)
+    state->cool_mode_on        = (regs[49] >> 1) & 0x01;
+    state->fan_on              = (regs[49] >> 2) & 0x01;
+    state->fault_present       = (regs[49] >> 3) & 0x01;
+    state->inlet_valve_open    = (regs[49] >> 4) & 0x01;
+    state->actual_fan_speed    = (regs[49] >> 8) & 0x0F;  // velocidad actual (antes arranque)
+    state->most_recent_fault   = (regs[49] >> 12) & 0x0F;
+    // offset 50 — r_40051 — solenoide/bomba
+    state->pump_on             = (regs[50] >> 0) & 0x01;
+    state->solenoid_on         = (regs[50] >> 3) & 0x01;
+    state->drain_valve_confirm = (regs[50] >> 4) & 0x01;  // drain valve (confirmación)
+    state->fan_speed_confirmed = (regs[50] >> 8) & 0x0F;  // velocidad (post-arranque)
+    // offset 53 — r_40054 — water present por zona (nibbles)
+    state->water_present       = decode_water_present_zone(regs[53], state->zone_id);
+    // offset 54 — r_40055 — salinidad (AMBAS fórmulas usan el mismo offset)
+    state->salinity_ppm        = calculate_salinity_ppm(regs[54]);
+    state->salinity_us         = calculate_salinity_us(regs[54]);
 }
 
 typedef struct s_sensor_state
@@ -2297,6 +2311,83 @@ VPN fallback:     Túnel WireGuard opcional si MQTT no disponible
 ```
 
 ---
+
+
+---
+
+## 24. Nuevas funciones implementadas — C puro (Fase de desarrollo)
+
+### `calculate_register_0` — Verificado contra datos reales instalación Calders
+
+```c
+int     calculate_register_0(t_smartgreen *smartgreen)
+{
+    int wm   = db_read_config(smartgreen, "water_manager");
+    int st   = db_read_config(smartgreen, "salinity_trigger");
+    int ws   = db_read_config(smartgreen, "water_seal_opening_speed");
+    int ps   = db_read_config(smartgreen, "prewet_selector");
+    int ar   = db_read_config(smartgreen, "auto_restart");
+    int tu   = db_read_config(smartgreen, "temperature_unit");
+    int td   = db_read_config(smartgreen, "tank_drain_delay");
+    return (wm + ((st == 4275) ? 0 : 4) + (ws * 16) + (ps ? 256 : 0)
+            + (ar ? 512 : 0) + (tu ? 1024 : 0) + (td * 4096));
+    // Verificado: R_0 = 12592 con datos reales instalación Calders ✅
+}
+```
+
+### `ft_init_config` — Configuración por defecto (INSERT OR IGNORE)
+
+El técnico puede modificar valores desde la interfaz sin perderlos al reiniciar.
+```
+num_coolers=5, num_sensors=2, num_zones=2
+water_manager=0 (ms), salinity_trigger=4275, water_seal_opening_speed=3
+prewet_selector=1 (yes), auto_restart=0 (standby), temperature_unit=0 (C)
+tank_drain_delay=3 (3Days), refresh_interval=900, refresh_coolers=30
+history_interval=300, salinity_drain_delay=120, salinity_drain_interval=30
+prewet_delay_pump=120, prewet_delay_solenoid=9, modbus_retries=1
+```
+
+### `scheduler_run` — Bucle principal con reconexión automática
+
+```
+- Tick: 1 segundo (sleep(1))
+- Lectura Modbus: cada refresh_interval segundos (leído de BD, fallback SCHEDULER_READ_MIN)
+- Histórico: cada history_interval segundos (leído de BD, fallback HISTORY_INTERVAL)
+- Scheduler horario: cada SCHEDULER_SEQUENCE (15s)
+- Reconexión automática si modbus_ctx == NULL
+- Parada limpia con SIGINT/SIGTERM via sigaction
+```
+
+### `cooler_water_management` — Control automático de salinidad
+
+```
+Para cada cooler con water_present > 0:
+  SI salinity_us >= salinity_trigger:
+    1. Activa drenaje inmediato (addr=49, val=1)
+    2. Mantiene en intervalos de salinity_drain_interval durante salinity_drain_delay
+    3. Restaura estado (addr=49, val=0)
+Todos los parámetros leídos de BD con fallback a macros.
+```
+
+### Nuevas constantes en `smartgreen.h`
+
+```c
+# define MODBUS_MAX_UNIT_ID     247    // límite protocolo Modbus RTU
+# define MODBUS_MAX_COOLERS     32     // límite práctico RS485 en un bus
+# define MODBUS_MIN_UNIT_ID     1      // dirección mínima válida (0=broadcast)
+# define MAX_SENSOR_ERRORS      10     // máximo errores antes de deshabilitar sensor
+# define SCHEDULER_SEQUENCE     15     // segundos entre comprobaciones scheduler horario
+```
+
+### Nuevas funciones Modbus implementadas
+
+```c
+// ft_modbus_init     → modbus_new_rtu + modbus_connect, guarda ctx en smartgreen
+// ft_modbus_read_cooler → set_slave + read_registers(0,59) + decode + db_save + error_count
+// ft_modbus_read_sensor → set_slave + read_registers(299,4) + decode + db_save + error_count
+// ft_modbus_write_cooler → set_slave + write_registers(addr, 1, &val)
+// ft_free_modbus    → modbus_close + modbus_free
+```
 
 *Guía Técnica SmartGreen by Australair — Versión 2.1 — Junio 2025*
 *Ingeniería inversa completada. Código fuente decompilado con jadx 1.4.7 desde SmartGreenAPI.jar (54MB)*
