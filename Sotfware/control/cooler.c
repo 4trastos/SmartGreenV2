@@ -29,7 +29,7 @@ int     cooler_water_management(t_smartgreen *smartgreen) // Drenaje
     return (0);
 }
 
-int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)    // el ciclo de pre-mojado. 
+int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)    // ciclo completo de pre-mojado (16 pasos)
 {
 
 }
