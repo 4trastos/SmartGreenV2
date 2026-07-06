@@ -19,6 +19,9 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "salinity_drain_interval",   30);
     db_save_config(smartgreen, "prewet_delay_pump",         120);
     db_save_config(smartgreen, "prewet_delay_solenoid",     9);
+    db_save_config(smartgreen, "prewet_delay_water",        30);
+    db_save_config(smartgreen, "prewet_max_wait",           90);
+    db_save_config(smartgreen, "prewet_check_interval",     30);
     db_save_config(smartgreen, "modbus_retries",            1);
 }
 

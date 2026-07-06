@@ -43,3 +43,63 @@ char    *ft_strcpy(char *dst, char *src, int max_len)
     dst[i] = '\0';
     return (dst);
 }
+
+int     ft_find_zone(t_smartgreen *smartgreen, int id)
+{
+    int found = 0;
+
+    while (found < smartgreen->num_zones)
+    {
+        if (smartgreen->zone_params[found].zone_id == id)
+            break;
+        found++;
+    }
+
+    if (found == smartgreen->num_zones)
+    {
+        printf("Error: Zone_params not found\n");
+        return (-1);
+    }
+
+    return (found);
+}
+
+int     ft_find_cooler(t_smartgreen *smargreen, int id)
+{
+    int found = 0;
+
+    while (found < smargreen->num_coolers)
+    {
+        if (smargreen->coolers[found].unit_id == id)
+            break;
+        found++;
+    }
+
+    if (found == smargreen->num_coolers)
+    {
+        printf("Error: Cooler not found\n");
+        return (-1);
+    }
+    
+    return (found);
+}
+
+int     ft_find_sensor(t_smartgreen *smargreen, int id)
+{
+    int found = 0;
+
+    while (found < smargreen->num_sensors)
+    {
+        if (smargreen->sensors[found].sensor_id == id)
+            break;
+        found++;
+    }
+
+    if (found == smargreen->num_sensors)
+    {
+        printf("Error: Sensor not found\n");
+        return (-1);
+    }
+    
+    return (found);
+}

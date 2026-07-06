@@ -26,24 +26,13 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
 {
     uint16_t    tab_reg[MODBUS_COOLER_REGS];
     int         rc;
-    int         i = 0;
-
-    while (i < smartgreen->num_coolers)
-    {
-        if (smartgreen->coolers[i].unit_id == unit_id)
-            break;
-        i++;
-    }
-
-    if (i == smartgreen->num_coolers)
-    {
-        printf("Error: Cooler not found\n");
+    int         unit_idx = ft_find_cooler(smartgreen, unit_id);
+    if (unit_idx == -1)
         return (-1);
-    }    
     
-    if (smartgreen->coolers[i].error_count > MAX_COOLER_ERRORS)
+    if (smartgreen->coolers[unit_idx].error_count > MAX_COOLER_ERRORS)
     {
-        fprintf(stderr, "Error: Cooler ( %d ) disabled (error_count=%d)\n", unit_id, smartgreen->coolers[i].error_count);
+        fprintf(stderr, "Error: Cooler ( %d ) disabled (error_count=%d)\n", unit_id, smartgreen->coolers[unit_idx].error_count);
         return (-1);
     }
 
@@ -56,15 +45,15 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     if (rc == -1)
     {
         fprintf(stderr, "Error Modbus Read Register (Cooler): ( %s )\n", modbus_strerror(errno));
-        smartgreen->coolers[i].error_count++;
+        smartgreen->coolers[unit_idx].error_count++;
         db_save_error(smartgreen, modbus_strerror(errno));
         return (-1);
     }
     
-    decode_cooler_state(tab_reg, &smartgreen->coolers[i]);
-    smartgreen->coolers[i].error_count = 0;
-    smartgreen->coolers[i].last_read = get_timestamp();
-    db_save_cooler(smartgreen, &smartgreen->coolers[i]);
+    decode_cooler_state(tab_reg, &smartgreen->coolers[unit_idx]);
+    smartgreen->coolers[unit_idx].error_count = 0;
+    smartgreen->coolers[unit_idx].last_read = get_timestamp();
+    db_save_cooler(smartgreen, &smartgreen->coolers[unit_idx]);
     return (0);
 }
 
@@ -72,24 +61,13 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
 {
     uint16_t    tab_reg[MODBUS_SENSOR_REGS];
     int         rc;
-    int         i = 0;
-
-    while (i < smartgreen->num_sensors)
-    {
-        if (smartgreen->sensors[i].sensor_id == unit_id)
-            break;
-        i++;
-    }
-    
-    if (i == smartgreen->num_sensors)
-    {
-        printf("Error: Sensor not found\n");
+    int         unit_idx = ft_find_sensor(smartgreen, unit_id);
+    if (unit_idx == -1)
         return (-1);
-    }
 
-    if (smartgreen->sensors[i].error_count > MAX_SENSOR_ERRORS)
+    if (smartgreen->sensors[unit_idx].error_count > MAX_SENSOR_ERRORS)
     {
-        fprintf(stderr, "Error: Sensor ( %d ) disabled (error_count=%d)\n", unit_id, smartgreen->sensors[i].error_count);
+        fprintf(stderr, "Error: Sensor ( %d ) disabled (error_count=%d)\n", unit_id, smartgreen->sensors[unit_idx].error_count);
         return (-1);
     }
     if (modbus_set_slave(smartgreen->modbus_ctx, unit_id) == -1)
@@ -102,15 +80,15 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
     if (rc == -1)
     {
         fprintf(stderr, "Error Modbus Read Register (Sensor): ( %s )\n", modbus_strerror(errno));
-        smartgreen->sensors[i].error_count++;
+        smartgreen->sensors[unit_idx].error_count++;
         db_save_error(smartgreen, modbus_strerror(errno));
         return (-1);
     }
 
-    decode_sensor_state(tab_reg, &smartgreen->sensors[i]);
-    smartgreen->sensors[i].error_count = 0;
-    smartgreen->sensors[i].last_read = get_timestamp();
-    db_save_sensor(smartgreen, &smartgreen->sensors[i]);
+    decode_sensor_state(tab_reg, &smartgreen->sensors[unit_idx]);
+    smartgreen->sensors[unit_idx].error_count = 0;
+    smartgreen->sensors[unit_idx].last_read = get_timestamp();
+    db_save_sensor(smartgreen, &smartgreen->sensors[unit_idx]);
     return (0);
 }
 
