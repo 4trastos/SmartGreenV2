@@ -39,7 +39,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             return (-1);
         while (i < smartgreen->num_coolers)
         {
-            smartgreen->coolers[i].unit_id = i + 1;
+            smartgreen->coolers[i].unit_id = MODBUS_FIRST_COOLER + 1;
             smartgreen->coolers[i].zone_id = 1;
             smartgreen->coolers[i].is_extractor = 0;
             smartgreen->coolers[i].error_count = 0;
@@ -77,7 +77,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             return (-1);
         while (i < smartgreen->num_sensors)
         {
-            smartgreen->sensors[i].sensor_id = i + 1;
+            smartgreen->sensors[i].sensor_id = MODBUS_FIRST_SENSOR + 1;
             smartgreen->sensors[i].zone_id = 1;
             ft_strcpy(smartgreen->sensors[i].type, "INT", sizeof(smartgreen->sensors->type));
             ft_strcpy(smartgreen->sensors[i].name, "TEST SENSOR", sizeof(smartgreen->sensors->name));

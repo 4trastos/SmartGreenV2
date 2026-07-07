@@ -50,6 +50,8 @@
 # define MODBUS_MAX_UNIT_ID     247    // límite protocolo Modbus RTU
 # define MODBUS_MAX_COOLERS     32     // límite práctico RS485 en un bus
 # define MODBUS_MIN_UNIT_ID     1      // dirección mínima válida (0=broadcast)
+# define MODBUS_FIRST_SENSOR    177
+# define MODBUS_FIRST_COOLER    2
 
 /*  LIMITS  */
 # define SENSOR_NO_SIGNAL       -200

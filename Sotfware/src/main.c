@@ -95,3 +95,11 @@ sleep(1 segundo)
 GOTO LOOP
 
 */
+
+/*
+
+sudo pkill -f SmartGreenAPI
+sleep 3
+ps aux | grep -i java | grep -v grep
+
+*/

@@ -5,6 +5,18 @@ time_t  get_timestamp(void)
     return (time(NULL));
 }
 
+void    log_error(const char *message)
+{
+    time_t  now = get_timestamp();
+    fprintf(stderr, "[ERROR] [%ld] %s\n", now, message);
+}
+
+void    log_info(const char *message)
+{
+    time_t  now = get_timestamp();
+    fprintf(stdout, "[INFO] [%ld] %s\n", now, message);
+}
+
 void    ft_free_modbus(t_smartgreen *smartgreen)
 {
     modbus_close(smartgreen->modbus_ctx);

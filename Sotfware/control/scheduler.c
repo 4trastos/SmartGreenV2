@@ -48,6 +48,9 @@ int     scheduler_is_active_today(t_scheduler_entry *scheduler, int day)
 
 void    scheduler_run(t_smartgreen *smartgreen)
 {
+    setenv("TZ", "Europe/Madrid", 1);
+    tzset();
+    
     struct tm   *tm_info;
     time_t      last_read = get_timestamp();
     time_t      last_history = get_timestamp();
