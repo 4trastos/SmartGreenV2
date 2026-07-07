@@ -245,6 +245,8 @@ void    scheduler_run(t_smartgreen *smartgreen);
 int     cooler_water_management(t_smartgreen *smartgreen);
 int     cooler_prewet(t_smartgreen *smartgreen, int zone_id);
 int     sensor_validate(t_sensor_state *sensor);
+int     scheduler_is_active_today(t_scheduler_entry *scheduler, int day);
+int     scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
 
 /*  UTILS   */
 void    log_error(const char *message);

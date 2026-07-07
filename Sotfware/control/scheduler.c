@@ -1,20 +1,64 @@
 #include "../incl/smartgreen.h"
 
+int     scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min)
+{
+    int sched_hour;
+    int sched_min;
+
+    if (sscanf(scheduler->hour, "%d:%d", &sched_hour, &sched_min) != 2)
+        return (0);
+    if (sched_hour == hour && sched_min == min)
+        return (1);
+    return (0);
+}
+
+int     scheduler_is_active_today(t_scheduler_entry *scheduler, int day)
+{
+    int active_today = 0;
+
+    switch (day)
+    {
+        case 1:
+            active_today = scheduler->mon;
+            break;
+        case 2:
+            active_today = scheduler->tue;
+            break;
+        case 3:
+            active_today = scheduler->wed;
+            break;
+        case 4:
+            active_today = scheduler->thu;
+            break;
+        case 5:
+            active_today = scheduler->fri;
+            break;
+        case 6:
+            active_today = scheduler->sat;
+            break;
+        case 7:
+            active_today = scheduler->sun;
+            break;
+        default:
+            break;
+    }
+
+    return (active_today);
+}
+
 void    scheduler_run(t_smartgreen *smartgreen)
 {
-    time_t  last_read;
-    time_t  last_history;
-    time_t  last_scheduler;
-    time_t  now;
-    int     read_interval;
-    int     history_interval;
-
-    last_read = get_timestamp();
-    last_history = get_timestamp();
-    last_scheduler = get_timestamp();
-
-    read_interval = db_read_config(smartgreen, "refresh_interval");
-    history_interval = db_read_config(smartgreen, "history_interval");
+    struct tm   *tm_info;
+    time_t      last_read = get_timestamp();
+    time_t      last_history = get_timestamp();
+    time_t      last_scheduler = get_timestamp();
+    time_t      now;
+    int         read_interval = db_read_config(smartgreen, "refresh_interval");
+    int         history_interval = db_read_config(smartgreen, "history_interval");
+    int         current_day;
+    int         current_hour;
+    int         current_min;
+    int         zone_idx;
 
     if (read_interval < 0)
         read_interval = SCHEDULER_READ_MIN;
@@ -50,7 +94,23 @@ void    scheduler_run(t_smartgreen *smartgreen)
 
         if (now - last_scheduler >= SCHEDULER_SEQUENCE)      // Mirar el horario cada 15 segundos
         {
-            // comprobar si toca ON/OFF programado
+            tm_info = localtime(&now);
+
+            current_day = (tm_info->tm_wday == 0) ? 7 : tm_info->tm_wday;
+            current_hour = tm_info->tm_hour;
+            current_min = tm_info->tm_min;
+
+            db_read_scheduler(smartgreen);
+            for (int i = 0; i < smartgreen->num_schedulers; i++)
+            {
+                if (!scheduler_is_active_today(&smartgreen->scheduler[i], current_day))
+                    continue;
+                if (!scheduler_is_active_now(&smartgreen->scheduler[i], current_hour, current_min))
+                    continue;
+                zone_idx = ft_find_zone(smartgreen, smartgreen->scheduler[i].zone_id);
+                if (zone_idx != -1)
+                    ft_strcpy(smartgreen->zone_params[zone_idx].on_off, smartgreen->scheduler[i].action, sizeof(smartgreen->zone_params->on_off));
+            }
             last_scheduler = now;
         }
         sleep(1);
