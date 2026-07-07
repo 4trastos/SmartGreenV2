@@ -57,3 +57,48 @@ void    scheduler_run(t_smartgreen *smartgreen)
     }
     
 }
+
+int     db_read_scheduler(t_smartgreen *smartgreen)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = "SELECT id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun FROM scheduler WHERE active = 1;";
+    int             rc;
+    int             idx = 0;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "The scheduler database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return (-1);
+    }
+
+    if (smartgreen->scheduler)
+        free(smartgreen->scheduler);
+    smartgreen->scheduler = malloc(sizeof(t_scheduler_entry) * MAX_SCHEDULERS);
+    if (!smartgreen->scheduler)
+    {
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW && idx < MAX_SCHEDULERS)
+    {
+        smartgreen->scheduler[idx].id = sqlite3_column_int(stmt, 0);
+        ft_strcpy(smartgreen->scheduler[idx].name, (char *)sqlite3_column_text(stmt, 1), sizeof(smartgreen->scheduler->name));
+        smartgreen->scheduler[idx].zone_id = sqlite3_column_int(stmt, 2);
+        smartgreen->scheduler[idx].active = sqlite3_column_int64(stmt, 3);
+        ft_strcpy(smartgreen->scheduler[idx].action, (char *)sqlite3_column_text(stmt, 4), sizeof(smartgreen->scheduler->action));
+        ft_strcpy(smartgreen->scheduler[idx].hour, (char *)sqlite3_column_text(stmt, 5), sizeof(smartgreen->scheduler->hour));
+        smartgreen->scheduler[idx].mon = sqlite3_column_int64(stmt, 6);
+        smartgreen->scheduler[idx].tue = sqlite3_column_int64(stmt, 7);
+        smartgreen->scheduler[idx].wed = sqlite3_column_int64(stmt, 8);
+        smartgreen->scheduler[idx].thu = sqlite3_column_int64(stmt, 9);
+        smartgreen->scheduler[idx].fri = sqlite3_column_int64(stmt, 10);
+        smartgreen->scheduler[idx].sat = sqlite3_column_int64(stmt, 11);
+        smartgreen->scheduler[idx].sun = sqlite3_column_int64(stmt, 12);
+        idx++;
+    }
+    smartgreen->num_schedulers = idx;
+    sqlite3_finalize(stmt);
+    return (0);
+}

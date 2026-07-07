@@ -1,5 +1,45 @@
 #include "../incl/smartgreen.h"
 
+int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = SQL_SAVE_SCHEDULER;
+    int             rc;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "The scheduler database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return (-1);
+    }
+
+    sqlite3_bind_text(stmt, 2, scheduler->name, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 3, scheduler->zone_id);
+    sqlite3_bind_int(stmt, 4, scheduler->active);
+    sqlite3_bind_text(stmt, 5, scheduler->action, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 6, scheduler->hour, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 7, scheduler->mon);
+    sqlite3_bind_int(stmt, 8, scheduler->tue);
+    sqlite3_bind_int(stmt, 9, scheduler->wed);
+    sqlite3_bind_int(stmt, 10, scheduler->thu);
+    sqlite3_bind_int(stmt, 11, scheduler->fri);
+    sqlite3_bind_int(stmt, 12, scheduler->sat);
+    sqlite3_bind_int(stmt, 13, scheduler->sun);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_DONE)
+        printf("Scheduler inserted correctly\n");
+    else
+    {
+        printf("Error scheduler inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
+
+    sqlite3_finalize(stmt);
+    return (0);
+}
+
 int     db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor)
 {
     sqlite3_stmt    *stmt = NULL;

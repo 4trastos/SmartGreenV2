@@ -17,6 +17,7 @@ void    ft_free_structs(t_smartgreen *smartgreen)
     free(smartgreen->sensors);
     free(smartgreen->zones);
     free(smartgreen->zone_params);
+    free(smartgreen->scheduler);
     free(smartgreen);
 }
 

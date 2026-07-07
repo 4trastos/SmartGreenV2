@@ -34,6 +34,7 @@
 # define SQL_SAVE_FAULT_LOG     "INSERT INTO fault_log (id, unit_id, fault_code, fault_present, time_created, time_cleared) VALUES(?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_ZONES         "INSERT OR REPLACE INTO zones (id, name, enabled) VALUES(?, ?, ?)"
 # define SQL_SAVE_SENSOR_ZONE   "INSERT OR REPLACE INTO sensor_zone (sensor_id, zone_id) VALUES(?, ?)"
+# define SQL_SAVE_SCHEDULER     "INSERT OR REPLACE INTO scheduler (id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 /*  MODBUS CONST   */
 # define MODBUS_PORT            "/dev/ttyUSB0"
@@ -57,6 +58,7 @@
 # define MAX_COOLER_ERRORS      10
 # define MAX_SENSOR_ERRORS      10
 # define SALINITY_TRIGGER       4275
+# define MAX_SCHEDULERS         50
 
 /*  TIMINGS (Seconds)   */
 # define SCHEDULER_READ_MIN     900
@@ -83,106 +85,108 @@ typedef enum    e_thread_status
 
 typedef struct  s_thread_ctrl
 {
-    pthread_t       tid;
-    pthread_mutex_t mutex;
-    t_thread_status status;
-    int             unit_id;                    // qué cooler controla este hilo
+    pthread_t           tid;
+    pthread_mutex_t     mutex;
+    t_thread_status     status;
+    int                 unit_id;                    // qué cooler controla este hilo
 }   t_thread_ctrl;
 
 typedef struct s_scheduler_entry
 {
-    int             id;
-    char            name[64];
-    int             zone_id;
-    int             active;
-    char            action[8];
-    char            hour[8];
-    int             mon;
-    int             tue;
-    int             wed;
-    int             thu;
-    int             fri;
-    int             sat;
-    int             sun;
-}t_scheduler_entry;
+    int                 id;
+    char                name[64];
+    int                 zone_id;
+    int                 active;
+    char                action[8];
+    char                hour[8];
+    int                 mon;
+    int                 tue;
+    int                 wed;
+    int                 thu;
+    int                 fri;
+    int                 sat;
+    int                 sun;
+}   t_scheduler_entry;
 
 typedef struct s_zones
 {
-    int             id;
-    char            name[64];
-    int             enabled;
+    int                 id;
+    char                name[64];
+    int                 enabled;
 }   t_zones;
 
 typedef struct s_zone_params
 {
-    int             zone_id;
-    int             fan_speed_cmd;
-    float           target_temp;
-    float           humidity_min;
-    float           humidity_max;
-    int             pump_on;
-    char            cool_fan_mode[8];
-    char            drain_valve[8];
-    char            solenoid[8];
-    char            on_off[4];
-    char            inmediate_drain[8];
-    char            prewet_in_progress[8];
-    int             last_prewet;
-    int             last_drain;
-    int             last_pump_time;
+    int                 zone_id;
+    int                 fan_speed_cmd;
+    float               target_temp;
+    float               humidity_min;
+    float               humidity_max;
+    int                 pump_on;
+    char                cool_fan_mode[8];
+    char                drain_valve[8];
+    char                solenoid[8];
+    char                on_off[4];
+    char                inmediate_drain[8];
+    char                prewet_in_progress[8];
+    int                 last_prewet;
+    int                 last_drain;
+    int                 last_pump_time;
 }   t_zone_params;
 
 typedef struct  s_cooler_state
 {
-    int             unit_id;                    // dirección Modbus (2-6)
-    int             zone_id;
-    int             is_extractor;
-    int             error_count;
-    int             drain_valve_open;           // drain valve open/close" (estado leído)
-    int             drain_valve_confirm;        // drain valve open/close" (comando/confirmación)
-    int             cool_mode_on;
-    int             fan_on;
-    int             fault_present;
-    int             inlet_valve_open;
-    int             actual_fan_speed;
-    int             fan_speed_confirmed;
-    int             most_recent_fault;
-    int             water_present;
-    int             pump_on;
-    int             solenoid_on;
-    double          salinity_ppm;
-    double          salinity_us;
-    time_t          last_read;
-    time_t          last_mod;
+    int                 unit_id;                    // dirección Modbus (2-6)
+    int                 zone_id;
+    int                 is_extractor;
+    int                 error_count;
+    int                 drain_valve_open;           // drain valve open/close" (estado leído)
+    int                 drain_valve_confirm;        // drain valve open/close" (comando/confirmación)
+    int                 cool_mode_on;
+    int                 fan_on;
+    int                 fault_present;
+    int                 inlet_valve_open;
+    int                 actual_fan_speed;
+    int                 fan_speed_confirmed;
+    int                 most_recent_fault;
+    int                 water_present;
+    int                 pump_on;
+    int                 solenoid_on;
+    double              salinity_ppm;
+    double              salinity_us;
+    time_t              last_read;
+    time_t              last_mod;
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
 {
-    int             sensor_id;                // dirección Modbus (177-178)
-    int             zone_id;
-    char            type[4];                  // "INT" o "EXT"
-    char            name[64];                 
-    float           temperature;
-    float           humidity;
-    int             flags;
-    int             valid;
-    int             offset_val;
-    int             error_count;
-    time_t          last_read;
-    time_t          last_mod;
+    int                 sensor_id;                // dirección Modbus (177-178)
+    int                 zone_id;
+    char                type[4];                  // "INT" o "EXT"
+    char                name[64];                 
+    float               temperature;
+    float               humidity;
+    int                 flags;
+    int                 valid;
+    int                 offset_val;
+    int                 error_count;
+    time_t              last_read;
+    time_t              last_mod;
 }   t_sensor_state;
 
 typedef struct s_smartgreen
 {
-    int             num_coolers;
-    int             num_sensors;
-    int             num_zones;
-    modbus_t        *modbus_ctx;
-    sqlite3         *db;
-    t_cooler_state  *coolers;
-    t_sensor_state  *sensors;
-    t_zone_params   *zone_params;
-    t_zones         *zones;
+    int                 num_coolers;
+    int                 num_sensors;
+    int                 num_zones;
+    int                 num_schedulers;
+    modbus_t            *modbus_ctx;
+    sqlite3             *db;
+    t_cooler_state      *coolers;
+    t_sensor_state      *sensors;
+    t_zone_params       *zone_params;
+    t_zones             *zones;
+    t_scheduler_entry   *scheduler;
 }   t_smartgreen;
 
 extern volatile sig_atomic_t g_sigint_received;
@@ -224,6 +228,7 @@ double  calculate_salinity_us(int raw_value);
 /*  DATABASE    */
 int     db_init(t_smartgreen *smartgreen);
 int     db_read_config(t_smartgreen *smartgreen, const char *key);
+int     db_read_scheduler(t_smartgreen *smartgreen);
 int     db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler);
 int     db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor);
 int     db_save_zone_params(t_smartgreen *smartgreen, t_zone_params *zone_params);
@@ -233,6 +238,7 @@ int     db_save_fault(t_smartgreen *smartgreen, int unit_id, int fault_code);
 int     db_save_config(t_smartgreen *smartgreen, const char *key, int value);
 int     db_save_zones(t_smartgreen *smartgreen, t_zones *zones);
 int     db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor);
+int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler);
 
 /*  CONTROL */
 void    scheduler_run(t_smartgreen *smartgreen);

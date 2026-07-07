@@ -23,6 +23,7 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "prewet_max_wait",           90);
     db_save_config(smartgreen, "prewet_check_interval",     30);
     db_save_config(smartgreen, "modbus_retries",            1);
+    db_save_config(smartgreen, "num_schedulers",            1);     // 0 por defecto, el técnico añade los que quiera
 }
 
 int ft_init_data(t_smartgreen *smartgreen)
@@ -138,6 +139,37 @@ int ft_init_data(t_smartgreen *smartgreen)
             i++;
         }
     }
+
+    smartgreen->scheduler = NULL;
+    if (smartgreen->num_schedulers > 0)
+    {
+        i = 0;
+        smartgreen->scheduler = malloc(sizeof(t_scheduler_entry) * smartgreen->num_schedulers);
+        if (!smartgreen->scheduler)
+            return (-1);
+        while (i < smartgreen->num_schedulers)
+        {
+            smartgreen->scheduler[i].id = i + 1;
+            ft_strcpy(smartgreen->scheduler[i].name, "SCHEDULER", sizeof(smartgreen->scheduler->name));
+            smartgreen->scheduler[i].zone_id = i + 1;
+            smartgreen->scheduler[i].active = 1;
+            ft_strcpy(smartgreen->scheduler[i].action, "ON", sizeof(smartgreen->scheduler->action));
+            ft_strcpy(smartgreen->scheduler[i].hour, "AM", sizeof(smartgreen->scheduler->hour));
+            smartgreen->scheduler[i].mon = 0;
+            smartgreen->scheduler[i].tue = 0;
+            smartgreen->scheduler[i].wed = 0;
+            smartgreen->scheduler[i].thu = 0;
+            smartgreen->scheduler[i].fri = 0;
+            smartgreen->scheduler[i].sat = 0;
+            smartgreen->scheduler[i].sun = 0;
+
+            if (db_save_scheduler(smartgreen, &smartgreen->scheduler[i]) == -1)
+                return (-1);
+            i++;
+        }
+        
+    }
+
     return (0);
 }
 
@@ -183,4 +215,8 @@ void    ft_init_struct(t_smartgreen *smartgreen)
     smartgreen->num_zones = db_read_config(smartgreen, "num_zones");
     if (smartgreen->num_zones < 0)
         smartgreen->num_zones = 0;
+    
+    smartgreen->num_schedulers = db_read_config(smartgreen, "num_schedulers");
+    if (smartgreen->num_schedulers < 0)
+        smartgreen->num_schedulers = 0;
 }
