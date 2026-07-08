@@ -5,6 +5,7 @@ int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_SAVE_SCHEDULER;
     int             rc;
+    int             attemps = 0;
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
@@ -26,18 +27,28 @@ int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler
     sqlite3_bind_int(stmt, 12, scheduler->sat);
     sqlite3_bind_int(stmt, 13, scheduler->sun);
 
-    rc = sqlite3_step(stmt);
-    if (rc == SQLITE_DONE)
-        printf("Scheduler inserted correctly\n");
-    else
+    while (attemps < DB_MAX_RETRIES)
     {
-        printf("Error scheduler inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            printf("Scheduler inserted correctly\n");
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "Error scheduler: %s\n", sqlite3_errmsg(smartgreen->db));
         sqlite3_finalize(stmt);
         return (-1);
     }
-
+    printf("Error scheduler inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
     sqlite3_finalize(stmt);
-    return (0);
+    return (-1);
 }
 
 int     db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor)
@@ -45,6 +56,7 @@ int     db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor)
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_SAVE_SENSOR_ZONE;
     int             rc;
+    int             attemps = 0;
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
@@ -56,18 +68,28 @@ int     db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor)
     sqlite3_bind_int(stmt, 1, sensor->sensor_id);
     sqlite3_bind_int(stmt, 2, sensor->zone_id);
 
-    rc = sqlite3_step(stmt);
-    if (rc == SQLITE_DONE)
-        printf("Sensor_zone inserted correctly\n");
-    else
+    while (attemps < DB_MAX_RETRIES)
     {
-        printf("Error sensor_zone inserting %s\n", sqlite3_errmsg(smartgreen->db));
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            printf("sensor_zone inserted correctly\n");
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "Error sensor_zone: %s\n", sqlite3_errmsg(smartgreen->db));
         sqlite3_finalize(stmt);
         return (-1);
     }
-
+    printf("Error sensor_zone inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
     sqlite3_finalize(stmt);
-    return (0);
+    return (-1);
 }
 
 int     db_save_zones(t_smartgreen *smartgreen, t_zones *zones)
@@ -75,6 +97,7 @@ int     db_save_zones(t_smartgreen *smartgreen, t_zones *zones)
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_SAVE_ZONES;
     int             rc;
+    int             attemps = 0;
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
@@ -87,18 +110,28 @@ int     db_save_zones(t_smartgreen *smartgreen, t_zones *zones)
     sqlite3_bind_text(stmt, 2, zones->name, -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 3, zones->enabled);
 
-    rc = sqlite3_step(stmt);
-    if (rc == SQLITE_DONE)
-        printf("Zones inserted correctly\n");
-    else
+    while (attemps < DB_MAX_RETRIES)
     {
-        printf("Error zones inserting %s\n", sqlite3_errmsg(smartgreen->db));
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            printf("zones inserted correctly\n");
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "Error zones: %s\n", sqlite3_errmsg(smartgreen->db));
         sqlite3_finalize(stmt);
-        return(-1);
+        return (-1);
     }
-
+    printf("Error zones inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
     sqlite3_finalize(stmt);
-    return(0);
+    return (-1);
 }
 
 int db_save_history(t_smartgreen *smartgreen, const char *device_type, t_cooler_state *cooler, t_sensor_state *sensor)
@@ -106,6 +139,7 @@ int db_save_history(t_smartgreen *smartgreen, const char *device_type, t_cooler_
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_SAVE_HISTOTY;
     int             rc;
+    int             attemps = 0;
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
@@ -134,18 +168,28 @@ int db_save_history(t_smartgreen *smartgreen, const char *device_type, t_cooler_
     sqlite3_bind_int(stmt, 19, cooler ? cooler->cool_mode_on : 0);
     sqlite3_bind_int(stmt, 20, cooler ? cooler->fault_present : 0);
 
-    rc = sqlite3_step(stmt);
-    if (rc == SQLITE_DONE)
-        printf("History inserted correctly\n");
-    else
+    while (attemps < DB_MAX_RETRIES)
     {
-        printf("Error history inserting %s\n", sqlite3_errmsg(smartgreen->db));
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            printf("history inserted correctly\n");
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "Error history: %s\n", sqlite3_errmsg(smartgreen->db));
         sqlite3_finalize(stmt);
         return (-1);
     }
-
+    printf("Error history inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
     sqlite3_finalize(stmt);
-    return (0);
+    return (-1);
 }
 
 int     db_save_zone_params(t_smartgreen *smartgreen, t_zone_params *zone_params)
@@ -153,6 +197,7 @@ int     db_save_zone_params(t_smartgreen *smartgreen, t_zone_params *zone_params
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_SAVE_ZONE_PARAMS;
     int             rc;
+    int             attemps = 0;
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
@@ -177,17 +222,28 @@ int     db_save_zone_params(t_smartgreen *smartgreen, t_zone_params *zone_params
     sqlite3_bind_int(stmt, 14, zone_params->last_drain);
     sqlite3_bind_int(stmt, 15, zone_params->last_pump_time);
 
-    rc = sqlite3_step(stmt);
-    if (rc == SQLITE_DONE)
-        printf("Zone params inserted correctly\n");
-    else
+    while (attemps < DB_MAX_RETRIES)
     {
-        printf("Error zone params inserting %s\n", sqlite3_errmsg(smartgreen->db));
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            printf("zone inserted correctly\n");
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "Error zone: %s\n", sqlite3_errmsg(smartgreen->db));
         sqlite3_finalize(stmt);
         return (-1);
     }
+    printf("Error zone inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
     sqlite3_finalize(stmt);
-    return(0);
+    return (-1);
 }
 
 int db_save_config(t_smartgreen *smartgreen, const char *key, int value)
@@ -195,6 +251,7 @@ int db_save_config(t_smartgreen *smartgreen, const char *key, int value)
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_SAVE_CONFIG;
     int             rc;
+    int             attemps = 0;
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
@@ -206,18 +263,28 @@ int db_save_config(t_smartgreen *smartgreen, const char *key, int value)
     sqlite3_bind_text(stmt, 1, key, -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 2, value);
 
-    rc = sqlite3_step(stmt);
-    if (rc == SQLITE_DONE)
-        printf("Config inserted correctly\n");
-    else
+    while (attemps < DB_MAX_RETRIES)
     {
-        printf("Error config inserting %s\n", sqlite3_errmsg(smartgreen->db));
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            printf("config inserted correctly\n");
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "Error config: %s\n", sqlite3_errmsg(smartgreen->db));
         sqlite3_finalize(stmt);
         return (-1);
     }
-
+    printf("Error config inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
     sqlite3_finalize(stmt);
-    return (0);
+    return (-1);
 }
 
 int db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
@@ -225,6 +292,7 @@ int db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_INSERT_SENSOR;
     int             rc;
+    int             attemps = 0;
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
@@ -245,19 +313,31 @@ int db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
     sqlite3_bind_int(stmt, 10, sensor->error_count);
     sqlite3_bind_int(stmt, 11, sensor->last_read);
     sqlite3_bind_int(stmt, 12, sensor->last_mod);
+    sqlite3_bind_int(stmt, 13, sensor->alarm_signal);
+    sqlite3_bind_int(stmt, 14, sensor->alarm_temp);
 
-    rc = sqlite3_step(stmt);
-    if (rc == SQLITE_DONE)
-        printf("Sensor inserted correctly\n");
-    else
+    while (attemps < DB_MAX_RETRIES)
     {
-        printf("Error Sensor inserting: %s\n", sqlite3_errmsg(smartgreen->db));
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            printf("sensor_state inserted correctly\n");
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "Error sensor_state: %s\n", sqlite3_errmsg(smartgreen->db));
         sqlite3_finalize(stmt);
         return (-1);
     }
-
-    sqlite3_finalize((stmt));
-    return (0);
+    printf("Error sensor_state inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
+    sqlite3_finalize(stmt);
+    return (-1);
 }
 
 int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
@@ -265,6 +345,7 @@ int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_INSERT_COOLER;
     int             rc;
+    int             attemps = 0;
     
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);          // Pepare the consultation
     if (rc != SQLITE_OK)
@@ -288,29 +369,45 @@ int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
     sqlite3_bind_int(stmt, 13, cooler->most_recent_fault);
     sqlite3_bind_int(stmt, 14, cooler->water_present);
     sqlite3_bind_int(stmt, 15, cooler->pump_on);
-    sqlite3_bind_int(stmt, 16, cooler->pump_on);
+    sqlite3_bind_int(stmt, 16, cooler->solenoid_on);
     sqlite3_bind_double(stmt, 17, cooler->salinity_ppm);
     sqlite3_bind_double(stmt, 18, cooler->salinity_us);
     sqlite3_bind_int(stmt, 19, cooler->last_read);
     sqlite3_bind_int(stmt, 20, cooler->last_mod);
+    sqlite3_bind_int(stmt, 21, cooler->alarm_fault);
+    sqlite3_bind_int(stmt, 22, cooler->alarm_salinity);
+    sqlite3_bind_int(stmt, 23, cooler->alarm_water);
+    sqlite3_bind_int(stmt, 24, cooler->alarm_comms);
 
-    rc = sqlite3_step(stmt);                                                        // Run and clean
-    if (rc == SQLITE_DONE)
-        printf("Cooler inserted correctly\n");
-    else
+    while (attemps < DB_MAX_RETRIES)
     {
-        printf("Error Cooler inserting: %s\n", sqlite3_errmsg(smartgreen->db));
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            printf("cooler_state inserted correctly\n");
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "Error cooler_state: %s\n", sqlite3_errmsg(smartgreen->db));
         sqlite3_finalize(stmt);
         return (-1);
     }
+    printf("Error cooler_state inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
     sqlite3_finalize(stmt);
-    return (0);
+    return (-1);
 }
 
 int db_init(t_smartgreen *smartgreen)
 {
     char    *err_msg = NULL;
     int     db;
+    int     attempts = 0;
 
     db = sqlite3_open(DB_PATH, &smartgreen->db);
     if (db != SQLITE_OK)
@@ -320,14 +417,20 @@ int db_init(t_smartgreen *smartgreen)
     }
     printf("Successful database connection.\n");
 
-    db = sqlite3_exec(smartgreen->db, SCHEMA_SQL, NULL, NULL, &err_msg);
-    if (db != SQLITE_OK)
+    while (attempts < DB_MAX_RETRIES)
     {
-        fprintf(stderr, "The database could not be created: ( %s )\n", err_msg);
-        sqlite3_free(err_msg);
-        sqlite3_close(smartgreen->db);
-        return (-1);
+        db = sqlite3_exec(smartgreen->db, SCHEMA_SQL, NULL, NULL, &err_msg);
+        if (db == SQLITE_OK)
+        {
+            printf("Tables created/verified correctly\n");
+            return (0);
+        }
+        attempts++;
+        if (attempts < DB_MAX_RETRIES)
+            usleep(DB_RETRY_DELAY);
     }
-    printf("Tables created/verified correctly\n");
-    return (0);
+    fprintf(stderr, "The database could not be created: ( %s )\n", err_msg);
+    sqlite3_free(err_msg);
+    sqlite3_close(smartgreen->db);
+    return (-1);
 }

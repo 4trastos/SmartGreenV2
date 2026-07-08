@@ -21,48 +21,66 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
     for (int i = 0; i < smartgreen->num_coolers; i++)
     {
         // 🔴 Fallo en el Cooler
-        if (smartgreen->coolers[i].fault_present)
+        if (smartgreen->coolers[i].fault_present && !smartgreen->coolers[i].alarm_fault)
         {
-            snprintf(msg, sizeof(msg), "🔴 CRITICO: Fault cooler unit_id=%d code=%d", 
-                        smartgreen->coolers[i].unit_id, smartgreen->coolers[i].most_recent_fault);
+            snprintf(msg, sizeof(msg), "🔴 CRITICO: Fault cooler unit_id=%d code=%d", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].most_recent_fault);
             db_save_error(smartgreen, msg);
+            smartgreen->coolers[i].alarm_fault = 1;
         }
+        else if (!smartgreen->coolers[i].fault_present)
+            smartgreen->coolers[i].alarm_fault = 0;
+        
         // 🔴 Sin comunicación
-        if (smartgreen->coolers[i].error_count >= MAX_COOLER_ERRORS)
+        if (smartgreen->coolers[i].error_count >= MAX_COOLER_ERRORS && !smartgreen->coolers[i].alarm_comms)
         {
-            snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d sin comunicacion (errors=%d)", 
-                        smartgreen->coolers[i].unit_id, smartgreen->coolers[i].error_count);
+            snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d sin comunicacion (errors=%d)", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].error_count);
             db_save_error(smartgreen, msg);
+            smartgreen->coolers[i].alarm_comms = 1;
         }
+        else if (smartgreen->coolers[i].error_count < MAX_COOLER_ERRORS)
+            smartgreen->coolers[i].alarm_comms = 0;
+        
         // 🟡 salinidad alta
-        if (smartgreen->coolers[i].water_present && smartgreen->coolers[i].salinity_us >= db_read_config(smartgreen, "salinity_trigger"))
+        if (smartgreen->coolers[i].water_present && smartgreen->coolers[i].salinity_us >= db_read_config(smartgreen, "salinity_trigger") && !smartgreen->coolers[i].alarm_salinity)
         {
-            snprintf(msg, sizeof(msg), "🟡 AVISO: Salinidad alta cooler unit_id=%d (%.1f uS)", 
-                        smartgreen->coolers[i].unit_id, smartgreen->coolers[i].salinity_us);
+            snprintf(msg, sizeof(msg), "🟡 AVISO: Salinidad alta cooler unit_id=%d (%.1f uS)", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].salinity_us);
             db_save_error(smartgreen, msg);
+            smartgreen->coolers[i].alarm_salinity = 1;
         }
+        else if (smartgreen->coolers[i].water_present && smartgreen->coolers[i].salinity_us < db_read_config(smartgreen, "salinity_trigger"))
+            smartgreen->coolers[i].alarm_salinity = 0;
+        
         // 🟡 sin agua
-        if (!smartgreen->coolers[i].water_present)
+        if (!smartgreen->coolers[i].water_present && !smartgreen->coolers[i].alarm_water)
         {
             snprintf(msg, sizeof(msg), "🟡 AVISO: Sin agua cooler unit_id=%d", smartgreen->coolers[i].unit_id);
             db_save_error(smartgreen,msg);
+            smartgreen->coolers[i].alarm_water = 1;
         }
+        else if (smartgreen->coolers[i].water_present)
+            smartgreen->coolers[i].alarm_water = 0;
     }
 
     for (int i = 0; i < smartgreen->num_sensors; i++)
     {
         // 🔴 sensor sin señal
-        if (!smartgreen->sensors[i].valid)
+        if (!smartgreen->sensors[i].valid && !smartgreen->sensors[i].alarm_signal)
         {
             snprintf(msg, sizeof(msg), "🔴 CRITICO: Sensor sin señal sensor_id=%d", smartgreen->sensors[i].sensor_id);
             db_save_error(smartgreen, msg);
+            smartgreen->sensors[i].alarm_signal = 1;
         }
+        else if (smartgreen->sensors[i].valid)
+            smartgreen->sensors[i].alarm_signal = 0;
+
         // 🟡 temperatura fuera de rango
-        if (smartgreen->sensors[i].valid && (smartgreen->sensors[i].temperature < 0.0f || smartgreen->sensors[i].temperature > 50.0f))
+        if (smartgreen->sensors[i].valid && (smartgreen->sensors[i].temperature < 0.0f || smartgreen->sensors[i].temperature > 50.0f) && !smartgreen->sensors[i].alarm_temp)
         {
-            snprintf(msg, sizeof(msg), "🟡 AVISO: Temperatura fuera de rango sensor_id=%d (%.1f C)", 
-                        smartgreen->sensors[i].sensor_id, smartgreen->sensors[i].temperature);
+            snprintf(msg, sizeof(msg), "🟡 AVISO: Temperatura fuera de rango sensor_id=%d (%.1f C)", smartgreen->sensors[i].sensor_id, smartgreen->sensors[i].temperature);
             db_save_error(smartgreen,msg);
+            smartgreen->sensors[i].alarm_temp = 1;
         }
+        else if (smartgreen->sensors[i].valid && (smartgreen->sensors[i].temperature > 0.0f && smartgreen->sensors[i].temperature < 50.0f))
+            smartgreen->sensors[i].alarm_temp = 0;
     }
 }

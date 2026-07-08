@@ -59,6 +59,10 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].salinity_us = 0.00;
             smartgreen->coolers[i].last_read = get_timestamp();
             smartgreen->coolers[i].last_mod = get_timestamp();
+            smartgreen->coolers[i].alarm_fault = 0;
+            smartgreen->coolers[i].alarm_salinity = 0;
+            smartgreen->coolers[i].alarm_water = 0;
+            smartgreen->coolers[i].alarm_comms = 0;
 
             if (db_save_cooler(smartgreen, &smartgreen->coolers[i]) == -1)
                 return (-1);
@@ -89,6 +93,8 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->sensors[i].error_count = 0;
             smartgreen->sensors[i].last_read = get_timestamp();
             smartgreen->sensors[i].last_mod = get_timestamp();
+            smartgreen->sensors[i].alarm_signal = 0;
+            smartgreen->sensors[i].alarm_temp = 0;
         
             if (db_save_sensor(smartgreen, &smartgreen->sensors[i]) == -1)
                 return (-1);

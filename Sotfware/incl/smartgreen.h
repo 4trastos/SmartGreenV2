@@ -22,9 +22,9 @@
 /*  PATHS   */
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
 # define SQL_INSERT_COOLER      "INSERT OR REPLACE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, drain_valve_confirm, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, fan_speed_confirmed, most_recent_fault, " \
-                                "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-# define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, error_count, last_read, last_mod) " \
-                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                                "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod, alarm_fault, alarm_salinity, alarm_water, alarm_comms) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+# define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp) " \
+                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
 # define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
                                 "salinity_us, drain_open, solenoid_on, on_off, fault_code) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -69,7 +69,7 @@
 # define SCHEDULER_SEQUENCE     15      // Mirar el horario cada 15 segundos
 # define HISTORY_INTERVAL       300
 # define DB_MAX_RETRIES         10
-# define DB_RETRY_US            50000
+# define DB_RETRY_DELAY         500000  // microsegundos (500ms)
 
 
 extern const char *SCHEMA_SQL;
@@ -165,13 +165,17 @@ typedef struct  s_cooler_state
     double              salinity_us;
     time_t              last_read;
     time_t              last_mod;
+    int                 alarm_fault;                    // 1=alarma activa, 0=resuelta
+    int                 alarm_salinity;                 // 1=alarma activa, 0=resuelta
+    int                 alarm_water;                    // 1=alarma activa, 0=resuelta
+    int                 alarm_comms;                    // 1=alarma activa, 0=resuelta
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
 {
-    int                 sensor_id;                // dirección Modbus (177-178)
+    int                 sensor_id;                      // dirección Modbus (177-178)
     int                 zone_id;
-    char                type[4];                  // "INT" o "EXT"
+    char                type[4];                        // "INT" o "EXT"
     char                name[64];                 
     float               temperature;
     float               humidity;
@@ -181,6 +185,8 @@ typedef struct  s_sensor_state
     int                 error_count;
     time_t              last_read;
     time_t              last_mod;
+    int                 alarm_signal;                   // 1=alarma activa, 0=resuelta
+    int                 alarm_temp;                     // 1=alarma activa, 0=resuelta
 }   t_sensor_state;
 
 typedef struct s_smartgreen
