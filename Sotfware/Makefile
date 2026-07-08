@@ -9,7 +9,7 @@ CC = gcc
 
 CFLAGS = -Wall -Wextra -Werror -g3
 INCLUDES = -Iincl -I/usr/include/modbus
-LDFLAGS = -lmodbus -lsqlite3 -lm -lpthread
+LDFLAGS = -lmodbus -lsqlite3 -lm -lpthread -lmicrohttpd
 
 RM = rm -f
 DB_DIR = /var/lib/smartgreen

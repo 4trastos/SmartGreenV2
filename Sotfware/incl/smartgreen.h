@@ -18,6 +18,7 @@
 # include <fcntl.h>
 # include <errno.h>
 # include <signal.h>
+# include <microhttpd.h>
 
 /*  PATHS   */
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
@@ -202,10 +203,14 @@ typedef struct s_smartgreen
     t_zone_params       *zone_params;
     t_zones             *zones;
     t_scheduler_entry   *scheduler;
+    t_thread_ctrl       api_thread;
+    pthread_mutex_t     data_mutex;
+    struct MHD_Daemon   *api_daemon;
 }   t_smartgreen;
 
 extern volatile sig_atomic_t g_sigint_received;
 extern volatile sig_atomic_t g_sigterm_received;
+extern volatile sig_atomic_t g_alarm_modbus;
 
 /*  FUNCTIONS   */
 int     main(void);
@@ -272,5 +277,10 @@ time_t  get_timestamp(void);
 /*  AUXILIARS   */
 int     ft_strlen(char *str);
 char    *ft_strcpy(char *dst, char *src, int max_len);
+
+/*  API */
+void    api_start(t_smartgreen *smartgreen);
+void    api_stop(t_smartgreen *smartgreen);
+int     api_request_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls);
 
 #endif

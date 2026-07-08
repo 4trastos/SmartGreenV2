@@ -2,6 +2,7 @@
 
 volatile sig_atomic_t g_sigint_received = 0;
 volatile sig_atomic_t g_sigterm_received = 0;
+volatile sig_atomic_t g_alarm_modbus = 0;
 
 int ft_modbus(t_smartgreen *smartgreen)
 {
@@ -46,6 +47,7 @@ int main(void)
     if (!smartgreen)
         return (1);
     memset(smartgreen, 0, sizeof(t_smartgreen));
+    pthread_mutex_init(&smartgreen->data_mutex, NULL);
 
     init_signal();
     
@@ -56,11 +58,14 @@ int main(void)
     }
 
     ft_modbus(smartgreen);              // intenta conectar, pero aunque falle seguimos
+    api_start(smartgreen);              // arrancar API antes del scheduler
     scheduler_run(smartgreen);          // el scheduler corre siempre
+    api_stop(smartgreen);               // parar API al salir
 
     if (smartgreen->db)
         sqlite3_close(smartgreen->db);
     
+    pthread_mutex_destroy(&smartgreen->data_mutex);
     ft_free_modbus(smartgreen);
     ft_free_structs(smartgreen);
     return (0);

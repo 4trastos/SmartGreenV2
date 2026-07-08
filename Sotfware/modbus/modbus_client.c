@@ -46,7 +46,7 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     {
         fprintf(stderr, "Error Modbus Read Register (Cooler): ( %s )\n", modbus_strerror(errno));
         smartgreen->coolers[unit_idx].error_count++;
-        db_save_error(smartgreen, modbus_strerror(errno));
+        // db_save_error(smartgreen, modbus_strerror(errno));
         return (-1);
     }
     
@@ -81,7 +81,7 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
     {
         fprintf(stderr, "Error Modbus Read Register (Sensor): ( %s )\n", modbus_strerror(errno));
         smartgreen->sensors[unit_idx].error_count++;
-        db_save_error(smartgreen, modbus_strerror(errno));
+        // db_save_error(smartgreen, modbus_strerror(errno));
         return (-1);
     }
 

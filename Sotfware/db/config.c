@@ -2,9 +2,9 @@
 
 void    ft_init_config(t_smartgreen *smartgreen)
 {
-    db_save_config(smartgreen, "num_coolers",               5);
-    db_save_config(smartgreen, "num_sensors",               2);
-    db_save_config(smartgreen, "num_zones",                 2);
+    db_save_config(smartgreen, "num_coolers",               1);
+    db_save_config(smartgreen, "num_sensors",               1);
+    db_save_config(smartgreen, "num_zones",                 1);
     db_save_config(smartgreen, "water_manager",             0);       // 0=ms, 1=tm, 2=nc, 3=nw
     db_save_config(smartgreen, "salinity_trigger",          SALINITY_TRIGGER);    // 0=4275 uS, 4=2305 uS
     db_save_config(smartgreen, "water_seal_opening_speed",  3);       // valor × 16=0-15
@@ -12,7 +12,7 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "auto_restart",              0);       // 0=standby, 1=restart (512=restart)
     db_save_config(smartgreen, "temperature_unit",          0);       // 0=C, 1=F (1024=F)
     db_save_config(smartgreen, "tank_drain_delay",          3);       // 0=instant,1=3Hrs(4096=3Hrs),2=12Hrs(8192=12Hrs),3=3Days(12288=3Days)
-    db_save_config(smartgreen, "refresh_interval",          900);
+    db_save_config(smartgreen, "refresh_interval",          5);
     db_save_config(smartgreen, "refresh_coolers",           30);
     db_save_config(smartgreen, "history_interval",          300);
     db_save_config(smartgreen, "salinity_drain_delay",      120);     // tiempo total
@@ -39,7 +39,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             return (-1);
         while (i < smartgreen->num_coolers)
         {
-            smartgreen->coolers[i].unit_id = MODBUS_FIRST_COOLER + 1;
+            smartgreen->coolers[i].unit_id = MODBUS_FIRST_COOLER + i;
             smartgreen->coolers[i].zone_id = 1;
             smartgreen->coolers[i].is_extractor = 0;
             smartgreen->coolers[i].error_count = 0;
@@ -81,7 +81,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             return (-1);
         while (i < smartgreen->num_sensors)
         {
-            smartgreen->sensors[i].sensor_id = MODBUS_FIRST_SENSOR + 1;
+            smartgreen->sensors[i].sensor_id = MODBUS_FIRST_SENSOR + i;
             smartgreen->sensors[i].zone_id = 1;
             ft_strcpy(smartgreen->sensors[i].type, "INT", sizeof(smartgreen->sensors->type));
             ft_strcpy(smartgreen->sensors[i].name, "TEST SENSOR", sizeof(smartgreen->sensors->name));
