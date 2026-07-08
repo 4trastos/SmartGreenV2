@@ -35,11 +35,6 @@ int ft_check_database(t_smartgreen *smartgreen)
 
     if (ft_init_data(smartgreen) == -1)
         return (-1);
-
-    if (db_save_error(smartgreen, "FUNCIONA") == -1)
-        return (-1);
-    if (db_save_fault(smartgreen, 2, 400) == -1)
-        return (-1);
     return (0);
 }
 
@@ -72,34 +67,39 @@ int main(void)
 }
 
 
-
-/*
-
-1. Inicializar configuración (leer config de BD o fichero)
-2. Abrir conexión Modbus RTU (/dev/ttyUSB0)
-3. Abrir conexión SQLite (crear tablas si no existen)
-4. Leer estado inicial de coolers y sensores (primera lectura Modbus)
-5. Inicializar zonas y parámetros desde BD
-6. Arrancar API REST (hilo separado)
-7. Arrancar daemon de conectividad (hilo separado)
-8. Entrar en bucle principal (scheduler — tick cada 1 segundo)
-
-LOOP:
-
-¿Toca leer Modbus?     → leer coolers y sensores
-¿Hay comandos pendientes? → escribir a coolers
-¿Toca guardar histórico?  → escribir en SQLite
-¿Toca ejecutar scheduler? → ON/OFF programado
-¿Hay alarmas?             → notificar
-sleep(1 segundo)
-GOTO LOOP
-
-*/
-
 /*
 
 sudo pkill -f SmartGreenAPI
 sleep 3
 ps aux | grep -i java | grep -v grep
+
+*/
+
+
+
+/*
+
+## Funcionalidades futuras (post-MVP)
+
+**Mantenimiento y ciclo de vida:**
+```
+⬜ Revisión periódica anual — hibernación y puesta en marcha del cooler
+⬜ Control de garantía — fecha de instalación, fin de garantía, alertas
+⬜ Contador de horas de funcionamiento — por cooler
+⬜ Historial de mantenimientos realizados
+⬜ Alertas de mantenimiento preventivo (filtros, limpieza, etc.)
+```
+
+**Funcionalidades que se me ocurren:**
+```
+⬜ Modo vacaciones — apagado programado por fechas
+⬜ Free cooling — usar aire exterior cuando temperatura < setpoint
+⬜ Consumo energético estimado — por zona y por instalación
+⬜ Informe mensual automático — PDF con resumen de funcionamiento
+⬜ Multi-idioma — español, inglés, catalán
+⬜ Gestión de recambios — stock de piezas de repuesto
+⬜ QR por cooler — escanear para ver historial del dispositivo
+⬜ Modo test — verificar cada actuador individualmente
+```
 
 */

@@ -76,7 +76,14 @@ extern const char *SCHEMA_SQL;
 
 /*  STRUCTS */
 
-typedef enum    e_thread_status
+typedef enum e_alarm_level
+{
+    ALARM_GREEN = 0,                // Todo OK
+    ALARM_YELLOW = 1,               // Aviso
+    ALARM_RED = 2,                  // Crítico
+}   t_alarm_level;
+
+typedef enum e_thread_status
 {
     THREAD_IDLE,
     THREAD_RUNNING,
@@ -249,6 +256,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id);
 int     sensor_validate(t_sensor_state *sensor);
 int     scheduler_is_active_today(t_scheduler_entry *scheduler, int day);
 int     scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
+void    ft_check_alarms(t_smartgreen *smartgreen);
 
 /*  UTILS   */
 void    log_error(const char *message);
