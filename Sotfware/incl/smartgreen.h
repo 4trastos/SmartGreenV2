@@ -279,8 +279,12 @@ int     ft_strlen(char *str);
 char    *ft_strcpy(char *dst, char *src, int max_len);
 
 /*  API */
-void    api_start(t_smartgreen *smartgreen);
-void    api_stop(t_smartgreen *smartgreen);
-int     api_request_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls);
+int                 api_start(t_smartgreen *smartgreen);
+int                 api_stop(t_smartgreen *smartgreen);
+enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls);
+enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_get_sensors(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_get_zones(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_send_response(struct MHD_Connection *connection, int status_code, const char *response);
 
 #endif
