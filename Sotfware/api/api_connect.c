@@ -1,5 +1,74 @@
 #include "../incl/smartgreen.h"
 
+enum MHD_Result     api_get_status(t_smartgreen *smartgreen, struct MHD_Connection *connection)
+{
+    t_alarm_level   alarm_level = ALARM_GREEN;
+    char            responsed[4096];
+    const char      *alarm_text = "🟢 OK";
+    
+    pthread_mutex_lock(&smartgreen->data_mutex);
+
+    if (!smartgreen->modbus_ctx)
+    {
+        alarm_level = ALARM_RED;
+        alarm_text = "🔴 CRITICO";
+    }
+
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+    {
+        if (smartgreen->coolers[i].fault_present || smartgreen->coolers[i].alarm_comms)
+        {
+            if (alarm_level < ALARM_RED)
+            {
+                alarm_level = ALARM_RED;
+                alarm_text = "🔴 CRITICO";
+                break;
+            }
+        }
+        if (smartgreen->coolers[i].alarm_salinity || smartgreen->coolers[i].alarm_water)
+        {
+            if (alarm_level < ALARM_RED)
+            {
+                alarm_level = ALARM_YELLOW;
+                alarm_text = "🟡 AVISO";
+            }
+        }
+    }
+    for (int i = 0; i < smartgreen->num_sensors; i++)
+    {
+        if (smartgreen->sensors[i].alarm_signal || smartgreen->sensors[i].alarm_temp)
+        {
+            if (alarm_level < ALARM_RED)
+            {
+                alarm_level = ALARM_YELLOW;
+                alarm_text = "🟡 AVISO";
+            }
+        }
+    }
+    
+    snprintf(responsed, sizeof(responsed),
+        "{"
+        "\"status\":\"ok\","
+        "\"alarm_level\":%d,"
+        "\"alarm_text\":\"%s\","
+        "\"num_coolers\":%d,"
+        "\"num_sensors\":%d,"
+        "\"num_zones\":%d,"
+        "\"modbus_connected\":%d"
+        "}",
+        alarm_level,
+        alarm_text,
+        smartgreen->num_coolers,
+        smartgreen->num_sensors,
+        smartgreen->num_zones,
+        smartgreen->modbus_ctx != NULL ? 1 : 0
+    );
+    
+
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    return(api_send_response(connection, MHD_HTTP_OK, responsed));
+}
+
 enum MHD_Result     api_get_coolers(t_smartgreen *smartagreen, struct MHD_Connection *connection)
 {
     char    responsed[4096];
