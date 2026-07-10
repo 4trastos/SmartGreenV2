@@ -53,6 +53,8 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     decode_cooler_state(tab_reg, &smartgreen->coolers[unit_idx]);
     smartgreen->coolers[unit_idx].error_count = 0;
     smartgreen->coolers[unit_idx].last_read = get_timestamp();
+    if (smartgreen->coolers[unit_idx].fan_on)
+        smartgreen->coolers[unit_idx].hours_running += smartgreen->read_interval;
     db_save_cooler(smartgreen, &smartgreen->coolers[unit_idx]);
     return (0);
 }

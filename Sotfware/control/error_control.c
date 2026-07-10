@@ -14,6 +14,8 @@ void    log_info(const char *message)
 
 void    ft_check_alarms(t_smartgreen *smartgreen)
 {
+    time_t  warranty_end;
+    time_t  now = get_timestamp();
     char    msg[256];
 
     // Alarma Modbus
@@ -80,6 +82,23 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
         {
             smartgreen->coolers[i].alarm_water = 0;
         }
+
+        // 🔴 Garantía vencida
+        if (now > warranty_end && !smartgreen->coolers[i].alarm_warranty)
+        {
+            snprintf(msg, sizeof(msg), "🔴 CRITICO: Garantía vencida unit_id=%d", smartgreen->coolers[i].unit_id);
+            db_save_error(smartgreen, msg);
+            smartgreen->coolers[i].alarm_warranty = 1;
+        }
+        // 🟡 Garantía próxima a vencer
+        else if (warranty_end - now < 30 * 24 * 3600 && !smartgreen->coolers[i].alarm_warranty)
+        {
+            snprintf(msg, sizeof(msg), "🟡 AVISO: Garantía vence en menos de 30 días unit_id=%d", smartgreen->coolers[i].unit_id);
+            db_save_error(smartgreen, msg);
+            smartgreen->coolers[i].alarm_warranty = 1;
+        }
+        else if (now <= warranty_end)
+            smartgreen->coolers[i].alarm_warranty = 0;
     }
 
     // Sensores

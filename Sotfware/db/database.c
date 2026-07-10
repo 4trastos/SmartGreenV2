@@ -1,5 +1,50 @@
 #include "../incl/smartgreen.h"
 
+int     db_save_maintenance_log(t_smartgreen *smartgreen, t_maintenance_log *maintenance)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = SQL_SAVE_MAINTENANCE;
+    int             rc;
+    int             attemps = 0;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "The maintenance_log database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return(-1);
+    }
+
+    sqlite3_bind_int(stmt, 2, maintenance->unit_id);
+    sqlite3_bind_int(stmt, 3, maintenance->timestamp);
+    sqlite3_bind_text(stmt, 4, maintenance->type, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, maintenance->description, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt,6, maintenance->technician, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 7, maintenance->next_service);
+
+    while (attemps < DB_MAX_RETRIES)
+    {
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            printf("maintenance_log insertde correctly\n");
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "Error maintenance_log: %s\n", sqlite3_errmsg(smartgreen->db));
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
+    printf("Error: maintenance_log inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
+    sqlite3_finalize(stmt);
+    return (-1);
+}
+
 int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler)
 {
     sqlite3_stmt    *stmt = NULL;
@@ -378,6 +423,13 @@ int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
     sqlite3_bind_int(stmt, 22, cooler->alarm_salinity);
     sqlite3_bind_int(stmt, 23, cooler->alarm_water);
     sqlite3_bind_int(stmt, 24, cooler->alarm_comms);
+    sqlite3_bind_int(stmt, 25, cooler->alarm_warranty);
+    sqlite3_bind_int(stmt, 26, cooler->alarm_maint_opening);
+    sqlite3_bind_int(stmt, 27, cooler->alarm_maint_closing);
+    sqlite3_bind_int(stmt, 28, cooler->alarm_maint_legionella);
+    sqlite3_bind_int(stmt, 29, cooler->hours_running);
+    sqlite3_bind_int(stmt, 30, cooler->install_date);
+    sqlite3_bind_int(stmt, 31, cooler->warranty_months);
 
     while (attemps < DB_MAX_RETRIES)
     {

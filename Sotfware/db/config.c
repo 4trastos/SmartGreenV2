@@ -5,17 +5,17 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "num_coolers",               1);
     db_save_config(smartgreen, "num_sensors",               1);
     db_save_config(smartgreen, "num_zones",                 1);
-    db_save_config(smartgreen, "water_manager",             0);       // 0=ms, 1=tm, 2=nc, 3=nw
-    db_save_config(smartgreen, "salinity_trigger",          SALINITY_TRIGGER);    // 0=4275 uS, 4=2305 uS
-    db_save_config(smartgreen, "water_seal_opening_speed",  3);       // valor × 16=0-15
-    db_save_config(smartgreen, "prewet_selector",           1);       // 0=no, 1=yes (256=yes)
-    db_save_config(smartgreen, "auto_restart",              0);       // 0=standby, 1=restart (512=restart)
-    db_save_config(smartgreen, "temperature_unit",          0);       // 0=C, 1=F (1024=F)
-    db_save_config(smartgreen, "tank_drain_delay",          3);       // 0=instant,1=3Hrs(4096=3Hrs),2=12Hrs(8192=12Hrs),3=3Days(12288=3Days)
+    db_save_config(smartgreen, "water_manager",             0);                     // 0=ms, 1=tm, 2=nc, 3=nw
+    db_save_config(smartgreen, "salinity_trigger",          SALINITY_TRIGGER);      // 0=4275 uS, 4=2305 uS
+    db_save_config(smartgreen, "water_seal_opening_speed",  3);                     // valor × 16=0-15
+    db_save_config(smartgreen, "prewet_selector",           1);                     // 0=no, 1=yes (256=yes)
+    db_save_config(smartgreen, "auto_restart",              0);                     // 0=standby, 1=restart (512=restart)
+    db_save_config(smartgreen, "temperature_unit",          0);                     // 0=C, 1=F (1024=F)
+    db_save_config(smartgreen, "tank_drain_delay",          3);                     // 0=instant,1=3Hrs(4096=3Hrs),2=12Hrs(8192=12Hrs),3=3Days(12288=3Days)
     db_save_config(smartgreen, "refresh_interval",          5);
     db_save_config(smartgreen, "refresh_coolers",           30);
     db_save_config(smartgreen, "history_interval",          300);
-    db_save_config(smartgreen, "salinity_drain_delay",      120);     // tiempo total
+    db_save_config(smartgreen, "salinity_drain_delay",      120);                   // tiempo total
     db_save_config(smartgreen, "salinity_drain_interval",   30);
     db_save_config(smartgreen, "prewet_delay_pump",         120);
     db_save_config(smartgreen, "prewet_delay_solenoid",     9);
@@ -23,7 +23,15 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "prewet_max_wait",           90);
     db_save_config(smartgreen, "prewet_check_interval",     30);
     db_save_config(smartgreen, "modbus_retries",            1);
-    db_save_config(smartgreen, "num_schedulers",            1);     // 0 por defecto, el técnico añade los que quiera
+    db_save_config(smartgreen, "num_schedulers",            1);                     // 0 por defecto, el técnico añade los que quiera
+    db_save_config(smartgreen, "hours_running",             0);                     // segundos totales fan_on=1
+    db_save_config(smartgreen, "install_date",              get_timestamp());       // timestamp instalación
+    db_save_config(smartgreen, "warranty_months",           24);                    // meses de garantía
+    db_save_config(smartgreen, "maint_plan",                0);                     // 0=solo cierre, 1=apertura+cierre
+    db_save_config(smartgreen, "maint_legionella",          0);                     // 0=no, 1=si
+    db_save_config(smartgreen, "maint_opening_date",        0);                     // timestamp apertura prevista
+    db_save_config(smartgreen, "maint_closing_date",        0);                     // timestamp cierre previsto
+    db_save_config(smartgreen, "maint_legionella_date",     0);                     // timestamp legionela prevista
 }
 
 int ft_init_data(t_smartgreen *smartgreen)
@@ -63,6 +71,13 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].alarm_salinity = 0;
             smartgreen->coolers[i].alarm_water = 0;
             smartgreen->coolers[i].alarm_comms = 0;
+            smartgreen->coolers[i].alarm_warranty = 0;
+            smartgreen->coolers[i].alarm_maint_opening = 0;
+            smartgreen->coolers[i].alarm_maint_closing = 0;
+            smartgreen->coolers[i].alarm_maint_legionella = 0;
+            smartgreen->coolers[i].hours_running = 0;
+            smartgreen->coolers[i].install_date = get_timestamp();
+            smartgreen->coolers[i].warranty_months = 24;
 
             if (db_save_cooler(smartgreen, &smartgreen->coolers[i]) == -1)
                 return (-1);
@@ -175,7 +190,6 @@ int ft_init_data(t_smartgreen *smartgreen)
         }
         
     }
-
     return (0);
 }
 

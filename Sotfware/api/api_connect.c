@@ -105,7 +105,9 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartagreen, struct MHD_Connec
             "\"alarm_fault\":%d,"
             "\"alarm_salinity\":%d,"
             "\"alarm_water\":%d,"
-            "\"alarm_comms\":%d"
+            "\"alarm_comms\":%d,"
+            "\"alarm_warranty\":%d,"
+            "\"hours_running\":%.1f"
             "}",
             i > 0 ? "," : "",
             smartagreen->coolers[i].unit_id,
@@ -131,7 +133,9 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartagreen, struct MHD_Connec
             smartagreen->coolers[i].alarm_fault,
             smartagreen->coolers[i].alarm_salinity,
             smartagreen->coolers[i].alarm_water,
-            smartagreen->coolers[i].alarm_comms
+            smartagreen->coolers[i].alarm_comms,
+            smartagreen->coolers[i].alarm_warranty,
+            smartagreen->coolers[i].hours_running / 3600.0
         );
     }
     offset += snprintf(responsed + offset, sizeof(responsed), "]");

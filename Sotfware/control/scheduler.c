@@ -67,6 +67,8 @@ void    scheduler_run(t_smartgreen *smartgreen)
         read_interval = SCHEDULER_READ_MIN;
     if (history_interval < 0)
         history_interval = HISTORY_INTERVAL;
+    
+    smartgreen->read_interval = read_interval;
 
     while (!g_sigint_received && !g_sigterm_received)
     {
