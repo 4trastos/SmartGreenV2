@@ -288,6 +288,7 @@ int     db_save_history(t_smartgreen *smartgreen, const char *device_type, t_coo
 int     db_save_error(t_smartgreen *smartgreen, const char *message);
 int     db_save_fault(t_smartgreen *smartgreen, int unit_id, int fault_code);
 int     db_save_config(t_smartgreen *smartgreen, const char *key, int value);
+int     db_update_config(t_smartgreen *smartgreen, const char *key, int value);
 int     db_save_zones(t_smartgreen *smartgreen, t_zones *zones);
 int     db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor);
 int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler);
@@ -327,7 +328,7 @@ enum MHD_Result     api_send_response(struct MHD_Connection *connection, int sta
 enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
-enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
+enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
 enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
 

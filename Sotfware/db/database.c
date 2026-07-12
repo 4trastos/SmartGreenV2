@@ -1,5 +1,46 @@
 #include "../incl/smartgreen.h"
 
+int     db_update_config(t_smartgreen *smartgreen, const char *key, int value)
+{
+    sqlite3_stmt    *stmt;
+    const char      *sql = "UPDATE config SET value = ?, last_mod = strftime('%s','now') WHERE key = ?";
+    int             rc;
+    int             attemps = 0;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "The config database could not be prepare: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return(-1);
+    }
+
+    sqlite3_bind_int(stmt, 1, value);
+    sqlite3_bind_text(stmt, 2, key, -1, SQLITE_TRANSIENT);
+
+    while (attemps < DB_MAX_RETRIES)
+    {
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            printf("config inserted correctly\n");
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "Error config: %s\n", sqlite3_errmsg(smartgreen->db));
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
+    printf("Error config inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
+    sqlite3_finalize(stmt);
+    return (-1);
+}
+
 int     db_save_maintenance_log(t_smartgreen *smartgreen, t_maintenance_log *maintenance)
 {
     sqlite3_stmt    *stmt = NULL;

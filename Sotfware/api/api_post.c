@@ -1,12 +1,29 @@
 #include "../incl/smartgreen.h"
 
-// enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size)
-// {
-//     if (!body || body_size == 0)
-//         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
+enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
+{
+    char    key[64] = {0};
+    int     value = 0;
+
+    if (!body || body_size == 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
     
-//     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
-// }
+    sscanf(body, "{\"key\":\"%63[^\"]\",\"value\":%d}", key, &value);
+    if (key[0] == '\0')
+        return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"key required\"}"));
+    if (value == 0)
+        return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"value required\"}"));
+    
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    if (db_update_config(smartgreen, key, value) == -1)
+    {
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+        return(api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+    }
+    
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
 
 enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size)
 {

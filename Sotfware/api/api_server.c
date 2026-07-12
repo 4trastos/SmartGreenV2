@@ -75,7 +75,15 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (ret);
         }
 
-        // POST /api/config
+        ctx = *con_cls;
+        if (strcmp(url, "/api/config") == 0)
+        {
+            ret = api_post_config(smartgreen, connection, ctx->body, ctx->len);
+            free(ctx);
+            *con_cls = NULL;
+            return(ret);
+        }
+
         // POST /api/scheduler
         // POST /api/login
         free(ctx);
