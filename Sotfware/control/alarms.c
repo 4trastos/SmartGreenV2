@@ -2,7 +2,6 @@
 
 void    ft_check_alarms(t_smartgreen *smartgreen)
 {
-    t_maintenance_log   last_main;
     time_t              warranty_end;
     time_t              now = get_timestamp();
     char                msg[256];
@@ -14,13 +13,13 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
         g_alarm_modbus = 1;
     }
     else if (smartgreen->modbus_ctx && g_alarm_modbus)
-    {
         g_alarm_modbus = 0;
-    }
 
     // Coolers
     for (int i = 0; i < smartgreen->num_coolers; i++)
     {
+        warranty_end = smartgreen->coolers[i].install_date + (smartgreen->coolers[i].warranty_months * 30 * 24 * 3600);
+        
         // 🔴 Fallo en el Cooler
         if (smartgreen->coolers[i].fault_present && !smartgreen->coolers[i].alarm_fault)
         {

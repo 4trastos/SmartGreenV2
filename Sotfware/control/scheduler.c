@@ -86,6 +86,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
                     ft_modbus_read_sensor(smartgreen, smartgreen->sensors[i].sensor_id);
             }
             ft_check_alarms(smartgreen);
+            ft_maintenance_alarms(smartgreen);
             last_read = now;
         } 
 

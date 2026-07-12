@@ -302,6 +302,7 @@ int     sensor_validate(t_sensor_state *sensor);
 int     scheduler_is_active_today(t_scheduler_entry *scheduler, int day);
 int     scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
 void    ft_check_alarms(t_smartgreen *smartgreen);
+void    ft_maintenance_alarms(t_smartgreen *smartgreen);
 
 /*  UTILS   */
 void    log_error(const char *message);
@@ -321,8 +322,10 @@ enum MHD_Result     api_get_sensors(t_smartgreen *smartgreen, struct MHD_Connect
 enum MHD_Result     api_get_zones(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_get_status(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_get_alarms(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_get_maintenance(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_send_response(struct MHD_Connection *connection, int status_code, const char *response);
 enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
+enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
 
 #endif

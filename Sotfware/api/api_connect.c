@@ -71,15 +71,30 @@ enum MHD_Result     api_get_status(t_smartgreen *smartgreen, struct MHD_Connecti
 
 enum MHD_Result     api_get_coolers(t_smartgreen *smartagreen, struct MHD_Connection *connection)
 {
-    char    responsed[4096];
-    int     offset = 0;
-    //char    cooler_json[512];
+    t_maintenance_log   last_maint;
+    char                responsed[4096];
+    int                 offset = 0;
+    int                 last_closing = 0;
+    int                 last_opening = 0;
+    int                 last_legionella = 0;
+    //char              cooler_json[512];
 
     pthread_mutex_lock(&smartagreen->data_mutex);
 
     offset += snprintf(responsed + offset, sizeof(responsed), "[");
     for (int i = 0; i < smartagreen->num_coolers; i++)
     {
+        last_closing = 0;
+        last_opening = 0;
+        last_legionella = 0;
+        
+        if (db_get_last_maintenance(smartagreen, smartagreen->coolers[i].unit_id, MAINT_CLOSING, &last_maint) == 0)
+            last_closing = last_maint.timestamp;
+        if (db_get_last_maintenance(smartagreen, smartagreen->coolers[i].unit_id, MAINT_OPENING, &last_maint) == 0)
+            last_opening = last_maint.timestamp;
+        if (db_get_last_maintenance(smartagreen, smartagreen->coolers[i].unit_id, MAINT_LEGIONELLA, &last_maint) == 0)
+            last_legionella = last_maint.timestamp;
+    
         offset += snprintf(responsed + offset, sizeof(responsed),
             "%s{"
             "\"unit_id\":%d,"
@@ -107,7 +122,13 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartagreen, struct MHD_Connec
             "\"alarm_water\":%d,"
             "\"alarm_comms\":%d,"
             "\"alarm_warranty\":%d,"
-            "\"hours_running\":%.1f"
+            "\"hours_running\":%.1f,"
+            "\"alarm_maint_closing\":%d,"
+            "\"alarm_maint_opening\":%d,"
+            "\"alarm_maint_legionella\":%d,"
+            "\"last_closing\":%d,"
+            "\"last_opening\":%d,"
+            "\"last_legionella\":%d"
             "}",
             i > 0 ? "," : "",
             smartagreen->coolers[i].unit_id,
@@ -135,7 +156,13 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartagreen, struct MHD_Connec
             smartagreen->coolers[i].alarm_water,
             smartagreen->coolers[i].alarm_comms,
             smartagreen->coolers[i].alarm_warranty,
-            smartagreen->coolers[i].hours_running / 3600.0
+            smartagreen->coolers[i].hours_running / 3600.0,
+            smartagreen->coolers[i].alarm_maint_closing,
+            smartagreen->coolers[i].alarm_maint_opening,
+            smartagreen->coolers[i].alarm_maint_legionella,
+            last_closing,
+            last_opening,
+            last_legionella
         );
     }
     offset += snprintf(responsed + offset, sizeof(responsed), "]");
