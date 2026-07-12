@@ -1,5 +1,13 @@
 #include "../incl/smartgreen.h"
 
+// enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size)
+// {
+//     if (!body || body_size == 0)
+//         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
+    
+//     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+// }
+
 enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size)
 {
     t_maintenance_log   maint;

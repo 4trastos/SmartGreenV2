@@ -22,6 +22,8 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (api_get_status(smartgreen, connection));
         if (strcmp(url, "/api/alarms") == 0)
             return (api_get_alarms(smartgreen, connection));
+        if (strcmp(url, "/api/history") == 0)
+            return (api_get_history(smartgreen, connection));
     }
     if (strcmp(method, "POST") == 0)
     {
@@ -72,9 +74,9 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             *con_cls = NULL;
             return (ret);
         }
-        
-        // POST /api/scheduler
+
         // POST /api/config
+        // POST /api/scheduler
         // POST /api/login
         free(ctx);
     }

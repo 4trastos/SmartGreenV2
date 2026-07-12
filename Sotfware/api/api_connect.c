@@ -1,5 +1,86 @@
 #include "../incl/smartgreen.h"
 
+enum MHD_Result     api_get_history(t_smartgreen *smartgreen, struct MHD_Connection *connection)
+{
+    sqlite3_stmt    *stmt = NULL;
+    char            sql_dynamic[1024];
+    char            responsed[16384];
+    char            row[512];
+    int             offset = 0;
+    int             rc = 0;
+    int             first = 1;
+    int             bind_idx = 1;
+    
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    
+    const char      *zone = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "zone_id");
+    const char      *limit = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "limit");
+    const char      *from = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "from");
+    const char      *to = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "to");
+
+    snprintf(sql_dynamic, sizeof(sql_dynamic), 
+        "SELECT id, timestamp, unit_id, zone_id, device_type, "
+        "fan_speed_cmd, target_temp, water_present, "
+        "salinity_ppm, salinity_us, fault_code "
+        "FROM history WHERE 1=1 %s %s %s "
+        "ORDER BY timestamp DESC LIMIT %d;",
+        zone  ? "AND zone_id = ?"       : "",
+        from  ? "AND timestamp >= ?"    : "",
+        to    ? "AND timestamp <= ?"    : "",
+        limit ? atoi(limit) : 100
+    );
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql_dynamic, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+        return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+    }
+
+    if (zone) sqlite3_bind_int(stmt, bind_idx++, atoi(zone));
+    if (from) sqlite3_bind_int(stmt, bind_idx++, atoi(from));
+    if (to) sqlite3_bind_int(stmt, bind_idx++, atoi(to));
+
+    offset += snprintf(responsed + offset, sizeof(responsed), "[");
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        snprintf(row, sizeof(row),
+            "%s{"
+            "\"id\":%d,"
+            "\"timestamp\":%ld,"
+            "\"unit_id\":%d,"
+            "\"zone_id\":%d,"
+            "\"device_type\":\"%s\","
+            "\"fan_speed_cmd\":%d,"
+            "\"target_temp\":%.1f,"
+            "\"water_present\":%d,"
+            "\"salinity_ppm\":%.2f,"
+            "\"salinity_us\":%.2f,"
+            "\"fault_code\":%d"
+            "}",
+            first ? "" : ",",
+            sqlite3_column_int(stmt, 0),
+            (long)sqlite3_column_int(stmt, 1),
+            sqlite3_column_int(stmt, 2),
+            sqlite3_column_int(stmt, 3),
+            sqlite3_column_text(stmt, 4),
+            sqlite3_column_int(stmt, 5),
+            sqlite3_column_double(stmt, 6),
+            sqlite3_column_int(stmt, 7),
+            sqlite3_column_double(stmt, 8),
+            sqlite3_column_double(stmt, 9),
+            sqlite3_column_int(stmt, 10)
+        );
+        offset += snprintf(responsed + offset, sizeof(responsed), "%s", row);
+        first = 0;
+    }
+    offset += snprintf(responsed + offset, sizeof(responsed), "]");
+    sqlite3_finalize(stmt);
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    return (api_send_response(connection, MHD_HTTP_OK, responsed));
+}
+
+
 enum MHD_Result     api_get_status(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {
     t_alarm_level   alarm_level = ALARM_GREEN;
@@ -87,7 +168,7 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartagreen, struct MHD_Connec
         last_closing = 0;
         last_opening = 0;
         last_legionella = 0;
-        
+
         if (db_get_last_maintenance(smartagreen, smartagreen->coolers[i].unit_id, MAINT_CLOSING, &last_maint) == 0)
             last_closing = last_maint.timestamp;
         if (db_get_last_maintenance(smartagreen, smartagreen->coolers[i].unit_id, MAINT_OPENING, &last_maint) == 0)
