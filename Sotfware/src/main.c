@@ -32,6 +32,7 @@ int ft_check_database(t_smartgreen *smartgreen)
         return (-1);
     
     ft_init_config(smartgreen);
+    ft_init_users(smartgreen);
     ft_init_struct(smartgreen);
 
     if (ft_init_data(smartgreen) == -1)

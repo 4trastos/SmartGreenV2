@@ -37,6 +37,7 @@
 # define SQL_SAVE_SENSOR_ZONE   "INSERT OR REPLACE INTO sensor_zone (sensor_id, zone_id) VALUES(?, ?)"
 # define SQL_SAVE_SCHEDULER     "INSERT OR REPLACE INTO scheduler (id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_MAINTENANCE   "INSERT OR REPLACE INTO maintenance_log (id, unit_id, timestamp, type, description, technician, next_service) VALUES(?, ?, ?, ?, ?, ?, ?)"
+# define SQL_INIT_USER          "INSERT OR IGNORE INTO users (id, username, password, role, active) VALUES (?, ?, ?, ?, ?)"
 
 /*  MODBUS CONST   */
 # define MODBUS_PORT            "/dev/ttyUSB0"
@@ -255,6 +256,7 @@ void    ft_free_structs(t_smartgreen *smartgreen);
 void    ft_free_modbus(t_smartgreen *smartgreen);
 void    ft_init_struct(t_smartgreen *smartgreen);
 void    ft_init_config(t_smartgreen *smartgreen);
+void    ft_init_users(t_smartgreen *smartgreen);
 void    sigint_handler(int sig);
 void    sigterm_handler(int sig);
 void    init_signal();
@@ -294,6 +296,7 @@ int     db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor);
 int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler);
 int     db_save_maintenance_log(t_smartgreen *smartgreen, t_maintenance_log *maintenance);
 int     db_get_last_maintenance(t_smartgreen *smartgreen, int unit_id, const char *type, t_maintenance_log *out);
+int     db_save_users(t_smartgreen *smartgreen);
 
 /*  CONTROL */
 void    scheduler_run(t_smartgreen *smartgreen);
