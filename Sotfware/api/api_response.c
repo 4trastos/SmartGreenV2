@@ -53,3 +53,38 @@ enum MHD_Result     api_get_alarms(t_smartgreen *smartgreen, struct MHD_Connecti
     sqlite3_finalize(stmt);
     return (api_send_response(connection, MHD_HTTP_OK, responsed));
 }
+
+enum MHD_Result     api_get_config(t_smartgreen *smartgreen, struct MHD_Connection *connection)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = "SELECT key, value FROM config ORDER BY key ASC";
+    char            responsed[4096];
+    char            row[512];
+    int             offset = 0;
+    int             rc;
+    int             first = 1;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+        return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+    
+    offset += snprintf(responsed + offset, sizeof(responsed), "[");
+
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        snprintf(row, sizeof(row),
+            "%s{"
+            "\"key\":\"%s\","
+            "\"value\":%s"
+            "}",
+            first ? "" : ",",
+            sqlite3_column_text(stmt, 0),
+            sqlite3_column_text(stmt, 1) 
+        );
+        offset += snprintf(responsed + offset, sizeof(responsed) - offset, "%s", row);
+        first = 0;
+    }
+    offset += snprintf(responsed + offset, sizeof(responsed), "]");
+    sqlite3_finalize(stmt);
+    return (api_send_response(connection, MHD_HTTP_OK, responsed));
+}

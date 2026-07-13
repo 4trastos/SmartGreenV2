@@ -324,12 +324,13 @@ enum MHD_Result     api_get_zones(t_smartgreen *smartgreen, struct MHD_Connectio
 enum MHD_Result     api_get_status(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_get_alarms(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_get_history(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_get_config(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_send_response(struct MHD_Connection *connection, int status_code, const char *response);
 enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
 enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
-enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
+enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
 
 #endif

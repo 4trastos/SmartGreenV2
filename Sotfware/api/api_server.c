@@ -24,6 +24,8 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (api_get_alarms(smartgreen, connection));
         if (strcmp(url, "/api/history") == 0)
             return (api_get_history(smartgreen, connection));
+        if (strcmp(url, "/api/config") == 0)
+            return (api_get_config(smartgreen, connection));
     }
     if (strcmp(method, "POST") == 0)
     {
@@ -84,8 +86,18 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return(ret);
         }
 
-        // POST /api/scheduler
+        ctx = *con_cls;
+        if (strcmp(url, "/api/scheduler") == 0)
+        {
+            ret = api_post_scheduler(smartgreen, connection, ctx->body, ctx->len);
+            free(ctx);
+            *con_cls = NULL;
+            return (ret);
+        }
+        
         // POST /api/login
+        // WebSocket
+        // Frontend React
         free(ctx);
     }
 
