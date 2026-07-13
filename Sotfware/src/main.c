@@ -61,13 +61,26 @@ int main(void)
     ft_modbus(smartgreen);              // intenta conectar, pero aunque falle seguimos
     if (api_start(smartgreen) == -1)
     {
+        sqlite3_close(smartgreen->db);
         ft_free_modbus(smartgreen);
         ft_free_structs(smartgreen);
         return(1);
     }
+
+    if (ft_ws_init(smartgreen) == -1)
+    {
+        sqlite3_close(smartgreen->db);
+        ft_free_modbus(smartgreen);
+        ft_free_structs(smartgreen);
+        return(1);
+    }
+    
     scheduler_run(smartgreen);          // el scheduler corre siempre
+    ft_ws_stop(smartgreen);
+
     if (api_stop(smartgreen) == -1)
     {
+        sqlite3_close(smartgreen->db);
         ft_free_modbus(smartgreen);
         ft_free_structs(smartgreen);
         return (1);

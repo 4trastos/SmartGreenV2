@@ -77,14 +77,16 @@ void    scheduler_run(t_smartgreen *smartgreen)
         if (now - last_read >= read_interval)
         {
             if (!smartgreen->modbus_ctx)
-                ft_modbus_init(smartgreen);                                         // intentar reconectar
+                ft_modbus_init(smartgreen);                        // intentar reconectar
             if (smartgreen->modbus_ctx)
             {
                 for (int i = 0; i < smartgreen->num_coolers; i++)
                     ft_modbus_read_cooler(smartgreen, smartgreen->coolers[i].unit_id);
                 for (int i = 0; i < smartgreen->num_sensors; i++)
                     ft_modbus_read_sensor(smartgreen, smartgreen->sensors[i].sensor_id);
+                // ft_ws_broadcast_status(smartgreen);             // Enviar estado actualizado por WebSocket
             }
+            ft_ws_broadcast_status(smartgreen);
             ft_check_alarms(smartgreen);
             ft_maintenance_alarms(smartgreen);
             last_read = now;
@@ -99,7 +101,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
             last_history = now;
         }
 
-        if (now - last_scheduler >= SCHEDULER_SEQUENCE)      // Mirar el horario cada 15 segundos
+        if (now - last_scheduler >= SCHEDULER_SEQUENCE)         // Mirar el horario cada 15 segundos
         {
             tm_info = localtime(&now);
 
@@ -120,6 +122,10 @@ void    scheduler_run(t_smartgreen *smartgreen)
             }
             last_scheduler = now;
         }
+
+        if (smartgreen->ws_context)
+            lws_service(smartgreen->ws_context, 0);             // 0 = no blocking
+
         sleep(1);
     }
     

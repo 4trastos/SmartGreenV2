@@ -95,7 +95,15 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (ret);
         }
         
-        // POST /api/login
+        ctx = *con_cls;
+        if (strcmp(url, "/api/login") == 0)
+        {
+            ret = api_post_login(smartgreen, connection, ctx->body, ctx->len);
+            free(ctx);
+            *con_cls = NULL;
+            return(ret);
+        }
+
         // WebSocket
         // Frontend React
         free(ctx);

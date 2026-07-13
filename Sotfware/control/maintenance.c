@@ -30,7 +30,7 @@ int     db_get_last_maintenance(t_smartgreen *smartgreen, int unit_id, const cha
         sqlite3_finalize(stmt);
         return (0);
     }
-    printf("Error: last_maintenance inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
+    //printf("Error: last_maintenance inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
     sqlite3_finalize(stmt);
     return (-1);
 }

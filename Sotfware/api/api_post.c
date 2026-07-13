@@ -1,5 +1,50 @@
 #include "../incl/smartgreen.h"
 
+enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = "SELECT id, role FROM users WHERE username = ? AND password = ? AND active = 1";
+    int             rc;
+    char    username[64] = {0};
+    char    password[64] = {0};
+    char    token[128];
+    char    role[32];
+    char    response[256];
+
+    if (!body || body_size == 0)
+        return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
+    
+    sscanf(body, "{\"username\":\"%63[^\"]\",\"password\":\"%63[^\"]\"}", username, password);
+    if (username[0] == '\0')
+        return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"username required\"}"));
+    if (password[0] == '\0')
+        return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"password requiered\"}"));
+    
+    pthread_mutex_lock(&smartgreen->data_mutex);
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+        return(api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+    
+    sqlite3_bind_text(stmt, 1, username, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, password, -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        ft_strcpy(role, (char *)sqlite3_column_text(stmt, 1), sizeof(role));
+        snprintf(token, sizeof(token), "sg_%s_%ld", username, get_timestamp());
+        snprintf(response, sizeof(response), "{\"ok\":true,\"token\":\"%s\",\"role\":\"%s\"}", token, role);
+
+        sqlite3_finalize(stmt);
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+        return(api_send_response(connection, MHD_HTTP_OK, response));
+    }
+
+    sqlite3_finalize(stmt);
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    return(api_send_response(connection, MHD_HTTP_OK, "{\"error\":\"Invalid credentials\"}"));
+}
+
 enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
 {
     t_scheduler_entry   schedul;

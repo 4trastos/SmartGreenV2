@@ -19,6 +19,7 @@
 # include <errno.h>
 # include <signal.h>
 # include <microhttpd.h>
+# include <libwebsockets.h>
 
 /*  PATHS   */
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
@@ -64,6 +65,7 @@
 # define MAX_SENSOR_ERRORS      10
 # define SALINITY_TRIGGER       4275
 # define MAX_SCHEDULERS         50
+# define MAX_WS_CLIENTS         10
 
 /*  TIMINGS (Seconds)   */
 # define SCHEDULER_READ_MIN     900
@@ -239,6 +241,9 @@ typedef struct s_smartgreen
     t_thread_ctrl       api_thread;
     pthread_mutex_t     data_mutex;
     struct MHD_Daemon   *api_daemon;
+    struct lws_context  *ws_context;
+    struct lws          *ws_clients[MAX_WS_CLIENTS];
+    int                 ws_num_clients;
 }   t_smartgreen;
 
 extern volatile sig_atomic_t g_sigint_received;
@@ -334,6 +339,13 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
 enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
 enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
-enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
+enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
+
+/*  WEBSOCKET   */
+int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
+int                 ft_ws_init(t_smartgreen *smartgreen);
+void                ft_ws_stop(t_smartgreen *smartgreen);
+void                ft_ws_broadcast(t_smartgreen *smartgreen, const char *message);
+void                ft_ws_broadcast_status(t_smartgreen *smartgreen);
 
 #endif
