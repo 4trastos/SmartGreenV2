@@ -1,5 +1,37 @@
 # include "../incl/smartgreen.h"
 
+enum MHD_Result     api_serve_file(struct MHD_Connection *connection, const char *filepath, const char *mime)
+{
+    struct MHD_Response *resp;
+    enum MHD_Result ret;
+    FILE    *file;
+    char    fullpath[512];
+    char    *buffer;
+    long    size;
+
+    snprintf(fullpath, sizeof(fullpath), "/home/pi/smartgreen_new/Frontend/dist%s", filepath);
+    file = fopen(fullpath, "rb");
+    if (!file)
+        return(api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Not found\"}"));
+    
+    fseek(file, 0, SEEK_END);
+    size = ftell(file);
+    rewind(file);
+    buffer = malloc(size);
+    if (!buffer)
+        return(api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+    fread(buffer, 1, size, file);
+    fclose(file);
+    
+    resp = MHD_create_response_from_buffer(size, buffer, MHD_RESPMEM_MUST_FREE);
+    MHD_add_response_header(resp, "Content-Type", mime);
+    MHD_add_response_header(resp, "Access-Control-Allow-Origin", "*");
+    ret = MHD_queue_response(connection, MHD_HTTP_OK, resp);
+    MHD_destroy_response(resp);
+
+    return(ret);
+}
+
 enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls)
 {
     enum MHD_Result ret;
@@ -26,6 +58,15 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (api_get_history(smartgreen, connection));
         if (strcmp(url, "/api/config") == 0)
             return (api_get_config(smartgreen, connection));
+        // Servir frontend estático
+        if (strcmp(url, "/") == 0 || strcmp(url, "/index.html") == 0)
+            return api_serve_file(connection, "/index.html", "text/html");
+        if (strstr(url, ".js"))
+            return api_serve_file(connection, url, "application/javascript");
+        if (strstr(url, ".css"))
+            return api_serve_file(connection, url, "text/css");
+        if (strstr(url, ".png") || strstr(url, ".jpg") || strstr(url, ".svg"))
+            return api_serve_file(connection, url, "image/png");
     }
     if (strcmp(method, "POST") == 0)
     {
@@ -104,8 +145,15 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return(ret);
         }
 
-        // WebSocket
-        // Frontend React
+        ctx = *con_cls;
+        if (strcmp(url, "/api/reboot") == 0)
+        {
+            ret = api_post_reboot(smartgreen, connection, ctx->body, ctx->len);
+            free(ctx);
+            *con_cls = NULL;
+            return ret;
+        }
+
         free(ctx);
     }
 

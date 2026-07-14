@@ -61,3 +61,17 @@ int     calculate_register_0(t_smartgreen *smartgreen)
 
     return(wm + v_st + v_ws + v_ps + v_ar + v_tu + v_td);
 }
+
+int     ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
+{
+    int r50;
+    int r52;
+
+    r50 = calculate_register_50(0, on, on ? 3 : 0);
+    r52 = calculate_register_52(on ? 3 : 0);
+    if (ft_modbus_write_cooler(smartgreen, unit_id, 49, r50) == -1)
+        return (-1);
+    if (ft_modbus_write_cooler(smartgreen, unit_id, 51, r52) == -1)
+        return (-1);
+    return (0);
+}

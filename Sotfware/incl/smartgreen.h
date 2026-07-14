@@ -281,6 +281,7 @@ int     calculate_register_0(t_smartgreen *smartgreen);
 int     calculate_register_50(int drain_valve, int pump_on, int fan_speed);
 int     calculate_register_51(int solenoid_on, int drain_closed);
 int     calculate_register_52(int fan_speed);
+int     ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on);
 double  calculate_salinity_ppm(int raw_value);
 double  calculate_salinity_us(int raw_value);
 
@@ -340,6 +341,8 @@ enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Co
 enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
+enum MHD_Result     api_serve_file(struct MHD_Connection *connection, const char *filepath, const char *mime);
+enum MHD_Result     api_post_reboot(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 
 /*  WEBSOCKET   */
 int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);

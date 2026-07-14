@@ -32,8 +32,11 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     
     if (smartgreen->coolers[unit_idx].error_count > MAX_COOLER_ERRORS)
     {
-        fprintf(stderr, "Error: Cooler ( %d ) disabled (error_count=%d)\n", unit_id, smartgreen->coolers[unit_idx].error_count);
-        return (-1);
+        smartgreen->coolers[unit_idx].error_count++;
+        if (smartgreen->coolers[unit_idx].error_count % 10 != 0)
+            return (-1);
+        fprintf(stderr, "Intentando recuperar Cooler ( %d )...\n", unit_id);
+        smartgreen->coolers[unit_idx].error_count = MAX_COOLER_ERRORS;
     }
 
     if (modbus_set_slave(smartgreen->modbus_ctx, unit_id) == -1)
@@ -69,8 +72,11 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
 
     if (smartgreen->sensors[unit_idx].error_count > MAX_SENSOR_ERRORS)
     {
-        fprintf(stderr, "Error: Sensor ( %d ) disabled (error_count=%d)\n", unit_id, smartgreen->sensors[unit_idx].error_count);
-        return (-1);
+        smartgreen->sensors[unit_idx].error_count++;
+        if (smartgreen->sensors[unit_idx].error_count % 10 != 0)
+            return (-1);
+        fprintf(stderr, "Intentando recuperar Sensor ( %d )...\n", unit_id);
+        smartgreen->sensors[unit_idx].error_count = MAX_SENSOR_ERRORS;
     }
     if (modbus_set_slave(smartgreen->modbus_ctx, unit_id) == -1)
     {

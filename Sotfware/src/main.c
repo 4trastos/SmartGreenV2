@@ -132,19 +132,3 @@ ps aux | grep -i java | grep -v grep
 ```
 
 */
-
-/*
-
-dpkg -l | grep websockets
-ii  libwebsockets-dev:armhf              4.0.20-2+deb11u1                 armhf        lightweight C websockets library - development files
-ii  libwebsockets16:armhf                4.0.20-2+deb11u1                 armhf        lightweight C websockets library
-pi@raspberrypi:~/smartgreen_new/Sotfware $ pkg-config --modversion libwebsockets
-4.0.20
-pi@raspberrypi:~/smartgreen_new/Sotfware $ pkg-config --cflags --libs libwebsockets
--lwebsockets
-pi@raspberrypi:~/smartgreen_new/Sotfware $ exit
-logout
-Connection to 192.168.2.135 closed.
-
-
-*/
