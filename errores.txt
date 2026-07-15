@@ -44,253 +44,49 @@ Connected (press CTRL+C to quit)
   curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
 
 
+curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
+# Esperamos: fan_on=0, pump_on=0, solenoid_on=0, cool_mode_on=0
 
-  pi@raspberrypi:~$ sqlite3 /var/lib/smartgreen/smartgreen.db \
+
+curl -X POST http://192.168.2.135:8080/api/zones/1/onoff \
+  -H "Content-Type: application/json" \
+  -d '{"action":"ON"}'
+
+  sleep 10
+curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
+# Esperamos: fan_on=1, pump_on=1, solenoid_on=1, cool_mode_on=1
+
+
+# En el terminal de la Pi verás:
+# DEBUG regs[49]=0x...
+# DEBUG regs[50]=0x...
+# DEBUG regs[53]=0x...
+
+curl -X POST http://192.168.2.135:8080/api/zones/1/onoff \
+  -H "Content-Type: application/json" \
+  -d '{"action":"OFF"}'
+sleep 10
+curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
+# Esperamos: fan_on=0, pump_on=0, solenoid_on=0
+
+
+# Con agua conectada:
+curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
+# Esperamos: water_present > 0
+# Sin agua:
+# Esperamos: water_present = 0
+# En standby con agua:
+# Esperamos: water_present = 0 (falso negativo conocido)
+
+
+sqlite3 /var/lib/smartgreen/smartgreen.db \
   "SELECT unit_id, fan_on, pump_on, solenoid_on, water_present, cool_mode_on FROM cooler_state;"
-2|0|0|0|1|0
-pi@raspberrypi:~$ curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0    98k      0 --:--:-- --:--:-- --:--:--   98k
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 0,
-        "cool_mode_on": 0,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 0,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 1,
-        "pump_on": 0,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781360,
-        "last_mod": 1781781130,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-pi@raspberrypi:~$ sqlite3 /var/lib/smartgreen/smartgreen.db   "SELECT unit_id, fan_on, pump_on, solenoid_on, water_present, cool_mode_on FROM cooler_state;"
-2|0|0|0|4|1
-pi@raspberrypi:~$ curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0  35705      0 --:--:-- --:--:-- --:--:-- 37937
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 0,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 1,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 4,
-        "pump_on": 0,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781394,
-        "last_mod": 1781781130,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-pi@raspberrypi:~$ curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0  43357      0 --:--:-- --:--:-- --:--:-- 46692
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 0,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 1,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 4,
-        "pump_on": 0,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781398,
-        "last_mod": 1781781130,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-pi@raspberrypi:~$ curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0   2307      0 --:--:-- --:--:-- --:--:--  2307
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 0,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 1,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 6,
-        "pump_on": 0,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781414,
-        "last_mod": 1781781130,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-pi@raspberrypi:~$ curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0   296k      0 --:--:-- --:--:-- --:--:--  296k
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 0,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 1,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 6,
-        "pump_on": 0,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781414,
-        "last_mod": 1781781130,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-pi@raspberrypi:~$ sqlite3 /var/lib/smartgreen/smartgreen.db   "SELECT unit_id, fan_on, pump_on, solenoid_on, water_present, cool_mode_on FROM cooler_state;"
-2|0|0|0|6|1
-pi@raspberrypi:~$ sqlite3 /var/lib/smartgreen/smartgreen.db   "SELECT unit_id, fan_on, pump_on, solenoid_on, water_present, cool_mode_on FROM cooler_state;"
-2|0|0|0|6|1
-pi@raspberrypi:~$ curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0  86714      0 --:--:-- --:--:-- --:--:--   98k
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 0,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 1,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 6,
-        "pump_on": 0,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781426,
-        "last_mod": 1781781130,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
+
+
+  curl -X POST http://192.168.2.135:8080/api/zones/1/drain \
+  -H "Content-Type: application/json" \
+  -d '{"action":"ON"}'
+sleep 5
+curl -X POST http://192.168.2.135:8080/api/zones/1/drain \
+  -H "Content-Type: application/json" \
+  -d '{"action":"OFF"}'
