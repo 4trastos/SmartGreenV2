@@ -44,7 +44,8 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             "\"hours_running\":%.1f,"
             "\"alarm_maint_closing\":%d,\"alarm_maint_opening\":%d,"
             "\"alarm_maint_legionella\":%d,"
-            "\"last_closing\":%d,\"last_opening\":%d,\"last_legionella\":%d"
+            "\"last_closing\":%d,\"last_opening\":%d,\"last_legionella\":%d,"
+            "\"disabled\":%d"
             "}",
             i > 0 ? "," : "",
             smartgreen->coolers[i].unit_id,
@@ -76,7 +77,8 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             smartgreen->coolers[i].alarm_maint_closing,
             smartgreen->coolers[i].alarm_maint_opening,
             smartgreen->coolers[i].alarm_maint_legionella,
-            last_closing, last_opening, last_legionella
+            last_closing, last_opening, last_legionella,
+            smartgreen->coolers[i].disabled
         );
     }
     offset += snprintf(buffer + offset, sizeof(buffer) - offset, "],");
@@ -89,6 +91,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             "%s{\"sensor_id\":%d,\"zone_id\":%d,\"type\":\"%s\","
             "\"temperature\":%.2f,\"humidity\":%.2f,"
             "\"valid\":%d,\"error_count\":%d,"
+            "\"disabled\":%d,"
             "\"alarm_signal\":%d,\"alarm_temp\":%d}",
             i > 0 ? "," : "",
             smartgreen->sensors[i].sensor_id,
@@ -98,6 +101,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             smartgreen->sensors[i].humidity,
             smartgreen->sensors[i].valid,
             smartgreen->sensors[i].error_count,
+            smartgreen->sensors[i].disabled,
             smartgreen->sensors[i].alarm_signal,
             smartgreen->sensors[i].alarm_temp
         );

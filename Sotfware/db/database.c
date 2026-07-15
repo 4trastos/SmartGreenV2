@@ -401,6 +401,7 @@ int db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
     sqlite3_bind_int(stmt, 12, sensor->last_mod);
     sqlite3_bind_int(stmt, 13, sensor->alarm_signal);
     sqlite3_bind_int(stmt, 14, sensor->alarm_temp);
+    sqlite3_bind_int(stmt, 15, sensor->disabled);
 
     while (attemps < DB_MAX_RETRIES)
     {
@@ -471,6 +472,7 @@ int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
     sqlite3_bind_int(stmt, 29, cooler->hours_running);
     sqlite3_bind_int(stmt, 30, cooler->install_date);
     sqlite3_bind_int(stmt, 31, cooler->warranty_months);
+    sqlite3_bind_int(stmt, 32, cooler->disabled);
 
     while (attemps < DB_MAX_RETRIES)
     {

@@ -6,6 +6,8 @@ import Maintenance from './pages/Maintenance'
 import Settings from './pages/Settings'
 import { useSmartGreen } from './hooks/useSmartGreen'
 
+const API_URL = 'http://localhost:8080/api'
+
 const NAV = [
   { id: 'dashboard', label: 'Vista General',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> },
@@ -18,6 +20,40 @@ const NAV = [
   { id: 'settings', label: 'Configuración',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
 ]
+
+function RebootModal({ onClose }) {
+  const [rebooting, setRebooting] = useState(false)
+  const doReboot = async () => {
+    setRebooting(true)
+    await fetch(`${API_URL}/reboot`, { method: 'POST' }).catch(() => {})
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}
+        className="w-[360px] rounded-3xl border border-red-500/30 p-6 bg-[#060c12] shadow-2xl bg-gradient-to-br from-red-900/20 to-transparent">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8 text-red-400">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <p className="text-white text-xl font-black mb-2">¿Reiniciar el sistema?</p>
+          <p className="text-white/40 text-sm">SmartGreen se reiniciará y la pantalla quedará apagada unos segundos.</p>
+        </div>
+        {rebooting ? (
+          <div className="text-center py-4">
+            <p className="text-red-400 font-bold">Reiniciando...</p>
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold cursor-pointer hover:bg-white/10">Cancelar</button>
+            <button onClick={doReboot} className="flex-1 py-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 font-bold cursor-pointer hover:bg-red-500/30">Reiniciar</button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function Clock() {
   const [time, setTime] = useState(new Date())
@@ -35,6 +71,7 @@ function Clock() {
 
 export default function App() {
   const [page, setPage] = useState('dashboard')
+  const [showReboot, setShowReboot] = useState(false)
   const { data, connected } = useSmartGreen()
 
   const alarmCount = data.coolers.filter(c =>
@@ -48,7 +85,6 @@ export default function App() {
     <div className="flex h-screen w-screen bg-[#060c12] overflow-hidden text-white"
       style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
 
-      {/* Ambient glow */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[20%] w-[500px] h-[500px] bg-[#004d89]/8 rounded-full blur-[100px]" />
         <div className="absolute bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-[#088fc3]/5 rounded-full blur-[80px]" />
@@ -61,18 +97,11 @@ export default function App() {
             const isActive = page === item.id
             const hasAlert = item.id === 'alarms' && alarmCount > 0
             return (
-              <button key={item.id}
-                onClick={() => setPage(item.id)}
-                title={item.label}
+              <button key={item.id} onClick={() => setPage(item.id)} title={item.label}
                 className={`relative group w-full h-11 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer
-                  ${isActive
-                    ? 'bg-[#088fc3]/20 text-white shadow-[inset_0_0_0_1px_rgba(8,143,195,0.3)]'
-                    : 'text-white/40 hover:text-white hover:bg-white/6'
-                  }`}>
+                  ${isActive ? 'bg-[#088fc3]/20 text-white shadow-[inset_0_0_0_1px_rgba(8,143,195,0.3)]' : 'text-white/40 hover:text-white hover:bg-white/6'}`}>
                 {item.icon}
-                {hasAlert && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_6px_#ef4444]" />
-                )}
+                {hasAlert && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_6px_#ef4444]" />}
                 <span className="absolute left-14 bg-[#0d1a26] text-white text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/10 shadow-xl z-50">
                   {item.label}
                 </span>
@@ -81,7 +110,20 @@ export default function App() {
           })}
         </div>
 
-        {/* Connection dot bottom */}
+        {/* Separador + botón reboot */}
+        <div className="w-full px-2 mb-3">
+          <div className="border-t border-white/8 mb-3" />
+          <button onClick={() => setShowReboot(true)} title="Reiniciar sistema"
+            className="relative group w-full h-11 rounded-xl flex items-center justify-center cursor-pointer text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5">
+              <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
+            </svg>
+            <span className="absolute left-14 bg-[#0d1a26] text-white text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/10 shadow-xl z-50">
+              Reiniciar sistema
+            </span>
+          </button>
+        </div>
+
         <div className="mb-1">
           <div className={`w-2 h-2 rounded-full mx-auto transition-all ${connected ? 'bg-[#088fc3] shadow-[0_0_8px_#088fc3]' : 'bg-red-500 shadow-[0_0_8px_#ef4444]'}`} />
         </div>
@@ -89,23 +131,16 @@ export default function App() {
 
       {/* MAIN */}
       <main className="flex-1 flex flex-col min-w-0 relative z-10">
-        {/* Top bar */}
         <header className="relative flex items-center justify-between px-5 py-2.5 border-b border-white/5 bg-[#07111a]/70 backdrop-blur-xl shrink-0 h-14">
-          {/* LEFT — página actual */}
-	<div className="flex items-center gap-3">
-	  <span className="text-white/40 text-xs tracking-widest uppercase font-medium">
-	  {NAV.find(n => n.id === page)?.label}
-	  </span>
-	</div>
-
-	{/* CENTER — Logo */}
-	<div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-	  <span className="text-white font-bold text-base">SmartGreen</span>
-	  <img src="/logo_australair.png" alt="Australair"
-	  className="h-5 brightness-0 invert opacity-80" />
-	</div>
-
-          {/* RIGHT */}
+          <div className="flex items-center gap-3">
+            <span className="text-white/40 text-xs tracking-widest uppercase font-medium">
+              {NAV.find(n => n.id === page)?.label}
+            </span>
+          </div>
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <span className="text-white font-bold text-base">SmartGreen</span>
+            <img src="/logo_australair.png" alt="Australair" className="h-5 brightness-0 invert opacity-80" />
+          </div>
           <div className="flex items-center gap-3">
             {alarmCount > 0 && (
               <button onClick={() => setPage('alarms')}
@@ -116,20 +151,18 @@ export default function App() {
             )}
             <Clock />
             <div className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border
-              ${connected
-                ? 'text-[#088fc3] border-[#088fc3]/30 bg-[#088fc3]/10'
-                : 'text-red-400 border-red-500/30 bg-red-500/10'}`}>
+              ${connected ? 'text-[#088fc3] border-[#088fc3]/30 bg-[#088fc3]/10' : 'text-red-400 border-red-500/30 bg-red-500/10'}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-[#088fc3]' : 'bg-red-400'}`} />
               {connected ? 'En línea' : 'Sin conexión'}
             </div>
           </div>
         </header>
-
-        {/* Page */}
         <div className="flex-1 overflow-hidden">
           <PageComponent data={data} connected={connected} />
         </div>
       </main>
+
+      {showReboot && <RebootModal onClose={() => setShowReboot(false)} />}
     </div>
   )
 }

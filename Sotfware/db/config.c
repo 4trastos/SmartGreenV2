@@ -78,6 +78,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].hours_running = 0;
             smartgreen->coolers[i].install_date = get_timestamp();
             smartgreen->coolers[i].warranty_months = 24;
+            smartgreen->coolers[i].disabled = 0;
 
             if (db_save_cooler(smartgreen, &smartgreen->coolers[i]) == -1)
                 return (-1);
@@ -110,6 +111,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->sensors[i].last_mod = get_timestamp();
             smartgreen->sensors[i].alarm_signal = 0;
             smartgreen->sensors[i].alarm_temp = 0;
+            smartgreen->sensors[i].disabled = 0;
         
             if (db_save_sensor(smartgreen, &smartgreen->sensors[i]) == -1)
                 return (-1);
