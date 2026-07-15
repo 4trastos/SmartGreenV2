@@ -49,6 +49,7 @@ int main(void)
         return (1);
     memset(smartgreen, 0, sizeof(t_smartgreen));
     pthread_mutex_init(&smartgreen->data_mutex, NULL);
+    pthread_mutex_init(&smartgreen->modbus_mutex, NULL);
 
     init_signal();
     
@@ -90,6 +91,7 @@ int main(void)
         sqlite3_close(smartgreen->db);
     
     pthread_mutex_destroy(&smartgreen->data_mutex);
+    pthread_mutex_destroy(&smartgreen->modbus_mutex);
     ft_free_modbus(smartgreen);
     ft_free_structs(smartgreen);
     return (0);

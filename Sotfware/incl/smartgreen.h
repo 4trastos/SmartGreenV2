@@ -242,6 +242,7 @@ typedef struct s_smartgreen
     t_scheduler_entry   *scheduler;
     t_thread_ctrl       api_thread;
     pthread_mutex_t     data_mutex;
+    pthread_mutex_t     modbus_mutex; 
     struct MHD_Daemon   *api_daemon;
     struct lws_context  *ws_context;
     struct lws          *ws_clients[MAX_WS_CLIENTS];

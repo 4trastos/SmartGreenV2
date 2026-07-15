@@ -7,8 +7,11 @@ time_t  get_timestamp(void)
 
 void    ft_free_modbus(t_smartgreen *smartgreen)
 {
+    if (!smartgreen->modbus_ctx)
+        return;
     modbus_close(smartgreen->modbus_ctx);
     modbus_free(smartgreen->modbus_ctx);
+    smartgreen->modbus_ctx = NULL;
 }
 
 void    ft_free_structs(t_smartgreen *smartgreen)
