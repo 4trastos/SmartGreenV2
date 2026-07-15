@@ -34,386 +34,232 @@ Connected (press CTRL+C to quit)
 
 
 
-    mirar:
+ pi@raspberrypi:~/smartgreen_new/Sotfware$ sudo ./smartgreen 
+Successful database connection.
+Tables created/verified correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+config inserted correctly
+Users initialized correctly
+cooler_state inserted correctly
+history inserted correctly
+sensor_state inserted correctly
+sensor_zone inserted correctly
+history inserted correctly
+zone inserted correctly
+zones inserted correctly
+Scheduler inserted correctly
+Modbus connected correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+Error Modbus Read Register (Sensor): ( Connection timed out )
+API REST Arrancada en http://localhost:8080
+[2026/06/18 13:15:23:5476] N:  Vhost 'default' using non-TLS mode
+WebSocket arrancado en ws://localhost:8081
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+Error Modbus Read Register (Sensor): ( Connection timed out )
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+Error Modbus Read Register (Sensor): ( Connection timed out )
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+Error Modbus Read Register (Sensor): ( Connection timed out )
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+Error Modbus Read Register (Sensor): ( Connection timed out )
+Error Modbus Read Register (Cooler): ( Connection timed out )
+Error Modbus Read Register (Sensor): ( Connection timed out )
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+Error Modbus Read Register (Sensor): ( Connection timed out )
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+Error Modbus Read Register (Sensor): ( Connection timed out )
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+Error Modbus Read Register (Sensor): ( Connection timed out )
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+Error Modbus Read Register (Sensor): ( Connection timed out )
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+Error Modbus Read Register (Sensor): ( Connection timed out )
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+WebSocket: cliente conectado
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+DEBUG regs[49]=0x0000 (0)
+DEBUG regs[50]=0x0000 (0)
+DEBUG regs[53]=0x1001 (4097)
+DEBUG regs[54]=0xFF0C (65292)
+cooler_state inserted correctly
+error_log inserted correctly
+Error Modbus Write Register: ( Connection timed out )
+Error Modbus Write Register: ( Connection timed out )
+Error Modbus Read Register (Cooler): ( Resource temporarily unavailable )
+error_log inserted correctly
+Error Modbus Read Register (Cooler): ( Response not from requested slave )
+error_log inserted correctly
+WebSocket: cliente conectado
+Error Modbus Write Register: ( Connection timed out )
+Error Modbus Read Register (Cooler): ( Invalid CRC )
+error_log inserted correctly
+Error Modbus Read Register (Cooler): ( Invalid CRC )
+error_log inserted correctly
+Error Modbus Read Register (Cooler): ( Invalid CRC )
+error_log inserted correctly
+Error Modbus Read Register (Cooler): ( Invalid CRC )
+error_log inserted correctly
+WebSocket: cliente conectado
+^CWebSocket: cliente desconectado
+WebSocket: cliente desconectado
+WebSocket: cliente desconectado
+WebSocket stopped
 
-    sqlite3 /var/lib/smartgreen/smartgreen.db \
-  "SELECT unit_id, fan_on, pump_on, solenoid_on, water_present, cool_mode_on FROM cooler_state;"
-
-
-
-  curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-
-
-curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-# Esperamos: fan_on=0, pump_on=0, solenoid_on=0, cool_mode_on=0
-
-
-curl -X POST http://192.168.2.135:8080/api/zones/1/onoff \
-  -H "Content-Type: application/json" \
-  -d '{"action":"ON"}'
-
-  sleep 10
-curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-# Esperamos: fan_on=1, pump_on=1, solenoid_on=1, cool_mode_on=1
-
-
-# En el terminal de la Pi verás:
-# DEBUG regs[49]=0x...
-# DEBUG regs[50]=0x...
-# DEBUG regs[53]=0x...
-
-curl -X POST http://192.168.2.135:8080/api/zones/1/onoff \
-  -H "Content-Type: application/json" \
-  -d '{"action":"OFF"}'
-sleep 10
-curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-# Esperamos: fan_on=0, pump_on=0, solenoid_on=0
-
-
-# Con agua conectada:
-curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-# Esperamos: water_present > 0
-# Sin agua:
-# Esperamos: water_present = 0
-# En standby con agua:
-# Esperamos: water_present = 0 (falso negativo conocido)
-
-
-sqlite3 /var/lib/smartgreen/smartgreen.db \
-  "SELECT unit_id, fan_on, pump_on, solenoid_on, water_present, cool_mode_on FROM cooler_state;"
-
-
-  curl -X POST http://192.168.2.135:8080/api/zones/1/drain \
-  -H "Content-Type: application/json" \
-  -d '{"action":"ON"}'
-sleep 5
-curl -X POST http://192.168.2.135:8080/api/zones/1/drain \
-  -H "Content-Type: application/json" \
-  -d '{"action":"OFF"}'
-
-
-  1. bomba on
-  2. SOLENOIDE off
-
-
-  pi@raspberrypi:~$ curl -X POST http://192.168.2.135:8080/api/zones/1/onoff \
-  -H "Content-Type: application/json" \
-  -d '{"action":"ON"}'
-
-  sleep 10
-curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-{"ok":true}  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0  86714      0 --:--:-- --:--:-- --:--:--   98k
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 1,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 1,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 6,
-        "pump_on": 1,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781429,
-        "last_mod": 1781781131,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-pi@raspberrypi:~$ curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0  67444      0 --:--:-- --:--:-- --:--:-- 75875
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 1,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 1,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 6,
-        "pump_on": 1,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781455,
-        "last_mod": 1781781131,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-pi@raspberrypi:~$ sqlite3 /var/lib/smartgreen/smartgreen.db \
-  "SELECT unit_id, fan_on, pump_on, solenoid_on, water_present, cool_mode_on FROM cooler_state;"
-
-
-  curl -X POST http://192.168.2.135:8080/api/zones/1/drain \
-  -H "Content-Type: application/json" \
-  -d '{"action":"ON"}'
-sleep 5
-curl -X POST http://192.168.2.135:8080/api/zones/1/drain \
-  -H "Content-Type: application/json" \
-  -d '{"action":"OFF"}'
-2|0|1|0|6|1
-{"error":"Unknown action"}{"error":"Unknown action"}
-
-
-Aun funcionando el cooler aparce el cartel sin conexion con el sistema: verificando conexion con smartgreen y modbus sin conexion. Pero se puede manejar el cooler. 
-
-
-pi@raspberrypi:~$ curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0  67444      0 --:--:-- --:--:-- --:--:-- 75875
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 0,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 1,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 6,
-        "pump_on": 0,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781696,
-        "last_mod": 1781781621,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-
-
-con el cooler apagado:
-
-curl -X POST http://192.168.2.135:8080/api/zones/1/drain   -H "Content-Type: application/json"   -d '{"action":"OFF"}'
-{"error":"Unknown action"}
-
-con el cooler encendido
-
-curl -X POST http://192.168.2.135:8080/api/zones/1/drain   -H "Content-Type: application/json"   -d '{"action":"OFF"}'
-{"error":"Unknown action"}
-
-
-en el temrinal no vemos nada:
-
-curl -X POST http://192.168.2.135:8080/api/zones/1/onoff \
-  -H "Content-Type: application/json" \
-  -d '{"action":"ON"}'
-
-  sleep 10
-curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-# Esperamos: fan_on=1, pump_on=1, solenoid_on=1, cool_mode_on=1
-
-
-# En el terminal de la Pi verás:
-# DEBUG regs[49]=0x...
-# DEBUG regs[50]=0x...
-# DEBUG regs[53]=0x...
-
-esta apagada la maquina:
-
-
-curl -X POST http://192.168.2.135:8080/api/zones/1/onoff \
-  -H "Content-Type: application/json" \
-  -d '{"action":"ON"}'
-
-  sleep 10
-curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-{"ok":true}  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0   148k      0 --:--:-- --:--:-- --:--:--  148k
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 1,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 1,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 6,
-        "pump_on": 1,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781264,
-        "last_mod": 1781781131,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-
-
-encendemos:
-
-curl -X POST http://192.168.2.135:8080/api/zones/1/onoff \
-  -H "Content-Type: application/json" \
-  -d '{"action":"ON"}'
-
-  sleep 10
-
-
-AQUI SE PARA LA MAQUINA Y DESPUES:
-
-
-curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
-{"ok":true}
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0   1983      0 --:--:-- --:--:-- --:--:--  1983
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 1,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 0,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 6,
-        "pump_on": 1,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781419,
-        "last_mod": 1781781131,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-
-QUITAMOS LA BOMBA DEL MODBUS:
-
-
- % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   607  100   607    0     0   1636      0 --:--:-- --:--:-- --:--:--  1640
-[
-    {
-        "unit_id": 2,
-        "zone_id": 1,
-        "is_extractor": 0,
-        "drain_valve_open": 0,
-        "drain_valve_confirm": 1,
-        "cool_mode_on": 1,
-        "fan_on": 0,
-        "fault_present": 0,
-        "inlet_valve_open": 1,
-        "actual_fan_speed": 0,
-        "fan_speed_confirmed": 0,
-        "most_recent_fault": 0,
-        "water_present": 6,
-        "pump_on": 1,
-        "solenoid_on": 0,
-        "salinity_ppm": 90.71,
-        "salinity_us": 165.06,
-        "error_count": 0,
-        "last_read": 1781781654,
-        "last_mod": 1781781131,
-        "alarm_fault": 0,
-        "alarm_salinity": 0,
-        "alarm_water": 0,
-        "alarm_comms": 0,
-        "alarm_warranty": 0,
-        "hours_running": 0.0,
-        "alarm_maint_closing": 0,
-        "alarm_maint_opening": 0,
-        "alarm_maint_legionella": 0,
-        "last_closing": 0,
-        "last_opening": 0,
-        "last_legionella": 0
-    }
-]
-
-
-NO DA error DE BOMBA :(
