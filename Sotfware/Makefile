@@ -7,7 +7,7 @@ CC = gcc
 # Cross-Compilation ARM 64-bits (Descomentar para producción)
 #CC = aarch64-linux-gnu-gcc
 
-CFLAGS = -Wall -Wextra -Werror -g3 #-Wpadded
+CFLAGS = -Wall -Wextra -Werror -g3 -Wpadded
 INCLUDES = -Iincl -I/usr/include/modbus
 LDFLAGS = -lmodbus -lsqlite3 -lm -lpthread -lmicrohttpd -lwebsockets
 

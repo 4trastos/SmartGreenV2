@@ -205,6 +205,20 @@ typedef struct  s_cooler_state
     int                 install_date;                   // timestamp instalación
     int                 warranty_months;                // meses de garantía
     int                 disabled;                       // 0=activo, 1=deshabilitado temporalmente
+    int                 ramp_rate;                      // regs[24] — ramp rate actual
+    int                 cold_starts;                    // regs[27] — número de cold starts
+    int                 fan_starts;                     // regs[28] — número de fan starts
+    int                 fan_hours;                      // regs[29] — horas ventilador (del propio cooler)
+    int                 tank_drains;                    // regs[32] — número de drenajes
+    int                 avg_tank_fill;                  // regs[43] — tiempo medio llenado tanque
+    int                 fan_speed_z1;                   // regs[19] — fan speed setpoint zona 1
+    int                 fan_speed_z2;                   // regs[20] — fan speed setpoint zona 2
+    int                 fan_speed_z3;                   // regs[21] — fan speed setpoint zona 3
+    int                 fan_speed_z4;                   // regs[22] — fan speed setpoint zona 4
+    int                 fan_speed_z5;                   // regs[23] — fan speed setpoint zona 5
+    int                 extended_status;                // regs[52] — estado extendido bitmap
+    int                 modbus_addr;                    // regs[8]  — dirección Modbus actual
+    int                 r0_config;                      // regs[0]  — configuración global actual
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
@@ -219,11 +233,11 @@ typedef struct  s_sensor_state
     int                 valid;
     int                 offset_val;
     int                 error_count;
+    int                 disabled;                       // 0=activo, 1=deshabilitado temporalmente
     time_t              last_read;
     time_t              last_mod;
     int                 alarm_signal;                   // 1=alarma activa, 0=resuelta
     int                 alarm_temp;                     // 1=alarma activa, 0=resuelta
-    int                 disabled;                       // 0=activo, 1=deshabilitado temporalmente
 }   t_sensor_state;
 
 typedef struct s_smartgreen
@@ -233,6 +247,7 @@ typedef struct s_smartgreen
     int                 num_zones;
     int                 num_schedulers;
     int                 read_interval;
+    int                 ws_num_clients;
     modbus_t            *modbus_ctx;
     sqlite3             *db;
     t_cooler_state      *coolers;
@@ -246,7 +261,6 @@ typedef struct s_smartgreen
     struct MHD_Daemon   *api_daemon;
     struct lws_context  *ws_context;
     struct lws          *ws_clients[MAX_WS_CLIENTS];
-    int                 ws_num_clients;
 }   t_smartgreen;
 
 extern volatile sig_atomic_t g_sigint_received;

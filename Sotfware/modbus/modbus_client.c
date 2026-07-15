@@ -115,7 +115,8 @@ int     ft_modbus_write_cooler(t_smartgreen *smartgreen, int unit_id, int addr, 
         fprintf(stderr, "Set Slave data error: ( %s )\n", modbus_strerror(errno));
         return (-1);
     }
-    if (modbus_write_registers(smartgreen->modbus_ctx, addr, 1, &val) == -1)
+    // if (modbus_write_registers(smartgreen->modbus_ctx, addr, 1, &val) == -1)
+    if (modbus_write_register(smartgreen->modbus_ctx, addr, val) == -1)
     {
         fprintf(stderr, "Error Modbus Write Register: ( %s )\n", modbus_strerror(errno));
         return(-1);

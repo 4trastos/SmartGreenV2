@@ -2308,6 +2308,14 @@ VPN fallback:     Túnel WireGuard opcional si MQTT no disponible
 + Soporte multi-fabricante de coolers futuro
 + API REST propia más simple y eficiente
 + WebSocket nativo sin STOMP/SockJS
++ Structs optimizadas sin padding — alineación cacheline verificada con pahole:
+    t_cooler_state    → 144 bytes, 3 cachelines, 0 bytes padding ✅
+    t_sensor_state    → 128 bytes, 2 cachelines, 0 bytes padding ✅
+    t_smartgreen      → 312 bytes, 5 cachelines, 0 bytes padding ✅
+    t_zone_params     → 80 bytes,  2 cachelines, 0 bytes padding ✅
+    t_scheduler_entry → 120 bytes, 2 cachelines, 0 bytes padding ✅
+    → Mejor rendimiento en ARM Cortex-A55 (IXHUB producción)
+    → Sin falsas comparticiones de cacheline entre hilos
 ```
 
 ---
@@ -2389,6 +2397,74 @@ Todos los parámetros leídos de BD con fallback a macros.
 // ft_free_modbus    → modbus_close + modbus_free
 ```
 
-*Guía Técnica SmartGreen by Australair — Versión 2.1 — Junio 2025*
+### Hallazgos verificados en laboratorio con cooler real (unit_id=2)
+
+```
+regs[49] = 0x0000 en standby → cool_mode_on=0, fan_on=0, drain=0 ✅
+regs[50] = 0x0000 en standby → pump_on=0, solenoid_on=0 ✅
+regs[53] = 0x1001 → water_present zona 1 = 0x1001 & 0x0F = 1 (hay agua) ✅
+regs[54] = 0xFF0C → salinidad raw=12 → PPM=90.71, uS=165.06 ✅
+pump_on  → bit 1 de regs[50] (no bit 0 como pensábamos)
+```
+
+### Problema detectado — FC16 vs FC6
+
+```
+modbus_write_registers() → FC16 (Write Multiple Registers) → puede no ser compatible
+modbus_write_register()  → FC6  (Write Single Register)    → pendiente probar
+```
+Síntomas: write da "Connection timed out", lecturas posteriores dan "Invalid CRC".
+Causa probable: cooler Coolair CPMD solo acepta FC6.
+**PENDIENTE: cambiar a modbus_write_register() y verificar.**
+
+### Optimización structs — alineación cacheline (pahole)
+
+```
+t_cooler_state  → 144 bytes, 3 cachelines, sin padding ✅
+t_sensor_state  → 128 bytes, 2 cachelines, sin padding ✅
+t_smartgreen    → 312 bytes, 5 cachelines, sin padding ✅
+t_zone_params   → 80 bytes,  2 cachelines, sin padding ✅
+t_scheduler_entry → 120 bytes, 2 cachelines, sin padding ✅
+```
+
+### modbus_mutex — mutex separado para contexto Modbus
+
+```c
+// En t_smartgreen:
+pthread_mutex_t modbus_mutex;  // protege modbus_ctx de colisiones scheduler/API
+
+// En ft_modbus_read_cooler / ft_modbus_read_sensor:
+pthread_mutex_lock(&smartgreen->modbus_mutex);
+rc = modbus_read_registers(...);
+pthread_mutex_unlock(&smartgreen->modbus_mutex);
+
+// En ft_modbus_write_cooler:
+pthread_mutex_lock(&smartgreen->modbus_mutex);
+modbus_write_register(...);
+pthread_mutex_unlock(&smartgreen->modbus_mutex);
+```
+
+### ft_cooler_onoff — escritura correcta registros
+
+```c
+r50 = calculate_register_50(0, on, on ? 3 : 0);  // bomba + fan speed
+r51 = calculate_register_51(on, 0);               // solenoide + drenaje cerrado
+r52 = calculate_register_52(on ? 3 : 0);          // arranque físico ventilador
+ft_modbus_write_cooler(smartgreen, unit_id, 50, r50);
+ft_modbus_write_cooler(smartgreen, unit_id, 51, r51);
+ft_modbus_write_cooler(smartgreen, unit_id, 52, r52);
+ft_modbus_write_cooler(smartgreen, unit_id, 400, 300);  // comando periódico
+```
+
+### ft_cooler_drain — drenaje inmediato
+
+```c
+// Registro 49 → Inmediate drain ON/OFF (solo para drenaje manual)
+ft_modbus_write_cooler(smartgreen, unit_id, 49, on ? 1 : 0);
+ft_modbus_write_cooler(smartgreen, unit_id, 400, 300);
+// Endpoint: POST /api/zones/{id}/drain → {"action":"ON"|"OFF"}
+```
+
+*Guía Técnica SmartGreen by Australair — Versión 2.2 — Julio 2025*
 *Ingeniería inversa completada. Código fuente decompilado con jadx 1.4.7 desde SmartGreenAPI.jar (54MB)*
 *Toda la información fue obtenida por análisis del sistema propiedad de la empresa*
