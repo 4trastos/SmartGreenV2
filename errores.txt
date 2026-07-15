@@ -30,3 +30,15 @@ Connected (press CTRL+C to quit)
 - las alarmas instanteas funcionan perfectamente
 
 6. El pi se queda se desconecta del modbus cuando la pantalla de apaga :(
+
+
+
+
+    mirar:
+
+    sqlite3 /var/lib/smartgreen/smartgreen.db \
+  "SELECT unit_id, fan_on, pump_on, solenoid_on, water_present, cool_mode_on FROM cooler_state;"
+
+
+
+  curl http://192.168.2.135:8080/api/coolers | python3 -m json.tool
