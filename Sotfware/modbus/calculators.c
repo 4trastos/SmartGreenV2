@@ -62,16 +62,30 @@ int     calculate_register_0(t_smartgreen *smartgreen)
     return(wm + v_st + v_ws + v_ps + v_ar + v_tu + v_td);
 }
 
+int     ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on)
+{
+    int r49 = on ? 1 : 0;  // 1=drain ON, 0=drain OFF
+
+    if (ft_modbus_write_cooler(smartgreen, unit_id, 49, r49) == -1)
+        return (-1);
+    if (ft_modbus_write_cooler(smartgreen, unit_id, 400, 300) == -1)
+        return (-1);
+    return (0);
+}
+
 int     ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 {
-    int r50;
-    int r52;
+    int r50 = calculate_register_50(0, on, on ? 3 : 0);                 // Calcula valor para: bomba ON/OFF + fan speed 3
+    int r51 = calculate_register_51(on, 0);                             // Calcula valor para: solenoide ON/OFF + drenaje cerrado
+    int r52 = calculate_register_52(on ? 3 : 0);                        // Calcula valor para: arranque físico ventilador speed 3
 
-    r50 = calculate_register_50(0, on, on ? 3 : 0);
-    r52 = calculate_register_52(on ? 3 : 0);
-    if (ft_modbus_write_cooler(smartgreen, unit_id, 49, r50) == -1)
+    if (ft_modbus_write_cooler(smartgreen, unit_id, 50, r50) == -1)     // Escribe bomba + fan speed en registro 50
         return (-1);
-    if (ft_modbus_write_cooler(smartgreen, unit_id, 51, r52) == -1)
+    if (ft_modbus_write_cooler(smartgreen, unit_id, 51, r51) == -1)     // Escribe solenoide + drenaje en registro 51
+        return (-1);
+    if (ft_modbus_write_cooler(smartgreen, unit_id, 52, r52) == -1)     // Escribe arranque físico ventilador en registro 52
+        return (-1);
+    if (ft_modbus_write_cooler(smartgreen, unit_id, 400, 300) == -1)    // Comando periódico obligatorio - mantiene el cooler activo
         return (-1);
     return (0);
 }

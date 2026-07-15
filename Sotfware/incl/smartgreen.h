@@ -312,6 +312,7 @@ int     cooler_water_management(t_smartgreen *smartgreen);
 int     cooler_prewet(t_smartgreen *smartgreen, int zone_id);
 int     sensor_validate(t_sensor_state *sensor);
 int     scheduler_is_active_today(t_scheduler_entry *scheduler, int day);
+int     ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on);
 int     scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
 void    ft_check_alarms(t_smartgreen *smartgreen);
 void    ft_maintenance_alarms(t_smartgreen *smartgreen);
