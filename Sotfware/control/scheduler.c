@@ -62,6 +62,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
     int         current_hour;
     int         current_min;
     int         zone_idx;
+    int         on = 0;
 
     if (read_interval < 0)
         read_interval = SCHEDULER_READ_MIN;
@@ -118,7 +119,16 @@ void    scheduler_run(t_smartgreen *smartgreen)
                     continue;
                 zone_idx = ft_find_zone(smartgreen, smartgreen->scheduler[i].zone_id);
                 if (zone_idx != -1)
+                {
                     ft_strcpy(smartgreen->zone_params[zone_idx].on_off, smartgreen->scheduler[i].action, sizeof(smartgreen->zone_params->on_off));
+                    if (smartgreen->modbus_ctx)
+                    {
+                        on = (strcmp(smartgreen->scheduler[i].action, "ON") == 0) ? 1 : 0;
+                        for (int j = 0; j < smartgreen->num_coolers; j++)
+                            if (smartgreen->coolers[j].zone_id == smartgreen->scheduler[i].zone_id)
+                                ft_cooler_onoff(smartgreen, smartgreen->coolers[j].unit_id, on);
+                    }
+                }
             }
             last_scheduler = now;
         }

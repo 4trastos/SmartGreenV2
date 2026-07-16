@@ -58,7 +58,6 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (api_get_history(smartgreen, connection));
         if (strcmp(url, "/api/config") == 0)
             return (api_get_config(smartgreen, connection));
-        // Servir frontend estático
         if (strcmp(url, "/") == 0 || strcmp(url, "/index.html") == 0)
             return api_serve_file(connection, "/index.html", "text/html");
         if (strstr(url, ".js"))
@@ -95,18 +94,36 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (MHD_YES);
         }
 
+        // ctx = *con_cls;
+        // if (sscanf(url, "/api/zones/%d/%31s", &id, action) == 2)
+        // {
+        //     if (strcmp(action, "onoff") == 0)
+        //         ret = api_post_zone_onoff(smartgreen, connection, id, ctx->body, ctx->len);
+        //     else if(strcmp(action, "fanspeed") == 0)
+        //         ret = api_post_zone_fanspeed(smartgreen, connection, id, ctx->body, ctx->len);
+        //     else
+        //         ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown action\"}");
+        //     free(ctx);
+        //     *con_cls = NULL;
+        //     return(ret);
+        // }
+
         ctx = *con_cls;
         if (sscanf(url, "/api/zones/%d/%31s", &id, action) == 2)
         {
             if (strcmp(action, "onoff") == 0)
                 ret = api_post_zone_onoff(smartgreen, connection, id, ctx->body, ctx->len);
-            else if(strcmp(action, "fanspeed") == 0)
+            else if (strcmp(action, "fanspeed") == 0)
                 ret = api_post_zone_fanspeed(smartgreen, connection, id, ctx->body, ctx->len);
+            else if (strcmp(action, "drain") == 0)
+                ret = api_post_zone_drain(smartgreen, connection, id, ctx->body, ctx->len);
+            else if (strcmp(action, "mode") == 0)
+                ret = api_post_zone_mode(smartgreen, connection, id, ctx->body, ctx->len);
             else
                 ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown action\"}");
             free(ctx);
             *con_cls = NULL;
-            return(ret);
+            return (ret);
         }
 
         ctx = *con_cls;

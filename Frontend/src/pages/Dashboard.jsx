@@ -251,7 +251,8 @@ function DashboardLoading({ connected }) {
 export default function Dashboard({ data, connected }) {
   const [selected, setSelected] = useState(null)
 
-  const hasData = connected && data.coolers.length > 0 && data.coolers.some(c => !c.disabled && c.last_read > 0)
+  // const hasData = connected && data.coolers.length > 0 && data.coolers.some(c => !c.disabled && c.last_read > 0)
+  const hasData = connected && data.coolers.length > 0
   const n = hasData ? data.coolers.length : 0
 
   const Card = n <= 4 ? CoolerCard : n <= 20 ? CoolerMini : CoolerNano

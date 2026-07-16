@@ -32,6 +32,18 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "maint_opening_date",        0);                     // timestamp apertura prevista
     db_save_config(smartgreen, "maint_closing_date",        0);                     // timestamp cierre previsto
     db_save_config(smartgreen, "maint_legionella_date",     0);                     // timestamp legionela prevista
+    db_save_config(smartgreen, "free_cooling_temp",         0);                     // temperatura free cooling (0=desactivado)
+    db_save_config(smartgreen, "min_setpoint_temp",         20);                    // temperatura mínima setpoint
+    db_save_config(smartgreen, "max_setpoint_temp",         30);                    // temperatura máxima setpoint
+    db_save_config(smartgreen, "min_setpoint_fan",          0);                     // velocidad mínima ventilador
+    db_save_config(smartgreen, "max_setpoint_fan",          10);                    // velocidad máxima ventilador
+    db_save_config(smartgreen, "min_setpoint_hum",          20);                    // humedad mínima setpoint
+    db_save_config(smartgreen, "max_setpoint_hum",          80);                    // humedad máxima setpoint
+    db_save_config(smartgreen, "broadcast_coolers",         0);                     // 0=individual, 1=broadcast
+    db_save_config(smartgreen, "use_exterior_sensor",       1);                     // 0=no, 1=si
+    db_save_config(smartgreen, "auto_libera_individual",    120);                   // segundos antes de liberar control individual
+    db_save_config(smartgreen, "hours_show_errors",         12);                    // horas que se muestran errores
+    db_save_config(smartgreen, "retry_fault_auto",          1);                     // 0=no, 1=si reintentar fault automáticamente
 }
 
 int ft_init_data(t_smartgreen *smartgreen)
@@ -79,6 +91,20 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].install_date = get_timestamp();
             smartgreen->coolers[i].warranty_months = 24;
             smartgreen->coolers[i].disabled = 0;
+            smartgreen->coolers[i].ramp_rate = 0;
+            smartgreen->coolers[i].cold_starts = 0;
+            smartgreen->coolers[i].fan_starts = 0;
+            smartgreen->coolers[i].fan_hours = 0;
+            smartgreen->coolers[i].tank_drains = 0;
+            smartgreen->coolers[i].avg_tank_fill = 0;
+            smartgreen->coolers[i].fan_speed_z1 = 0;
+            smartgreen->coolers[i].fan_speed_z2 = 0;
+            smartgreen->coolers[i].fan_speed_z3 = 0;
+            smartgreen->coolers[i].fan_speed_z4 = 0;
+            smartgreen->coolers[i].fan_speed_z5 = 0;
+            smartgreen->coolers[i].extended_status = 0;
+            smartgreen->coolers[i].modbus_addr = 0;
+            smartgreen->coolers[i].r0_config = 0;
 
             if (db_save_cooler(smartgreen, &smartgreen->coolers[i]) == -1)
                 return (-1);

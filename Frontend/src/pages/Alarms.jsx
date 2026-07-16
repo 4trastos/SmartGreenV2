@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const API_URL = 'http://localhost:8080/api'
 
@@ -79,12 +79,19 @@ function HistoryModal({ onClose }) {
   const [history, setHistory] = useState([])
   const [loaded, setLoaded] = useState(false)
 
-  useState(() => {
+  // useState(() => {
+  //   fetch(`${API_URL}/alarms`)
+  //     .then(r => r.json())
+  //     .then(d => { setHistory(d); setLoaded(true) })
+  //     .catch(() => setLoaded(true))
+  // }, [])
+
+  useEffect(() => {
     fetch(`${API_URL}/alarms`)
       .then(r => r.json())
       .then(d => { setHistory(d); setLoaded(true) })
       .catch(() => setLoaded(true))
-  }, [])
+}, [])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>

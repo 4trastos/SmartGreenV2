@@ -24,7 +24,9 @@
 /*  PATHS   */
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
 # define SQL_INSERT_COOLER      "INSERT OR REPLACE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, drain_valve_confirm, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, fan_speed_confirmed, most_recent_fault, " \
-                                "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod, alarm_fault, alarm_salinity, alarm_water, alarm_comms, alarm_warranty, alarm_maint_opening, alarm_maint_closing, alarm_maint_legionella, hours_running, install_date, warranty_months, disabled) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                                "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod, alarm_fault, alarm_salinity, alarm_water, alarm_comms, alarm_warranty, alarm_maint_opening, alarm_maint_closing, alarm_maint_legionella, hours_running, " \
+                                "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config) " \
+                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 # define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
@@ -320,6 +322,7 @@ int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler
 int     db_save_maintenance_log(t_smartgreen *smartgreen, t_maintenance_log *maintenance);
 int     db_get_last_maintenance(t_smartgreen *smartgreen, int unit_id, const char *type, t_maintenance_log *out);
 int     db_save_users(t_smartgreen *smartgreen);
+int     db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone);
 
 /*  CONTROL */
 void    scheduler_run(t_smartgreen *smartgreen);
@@ -361,6 +364,8 @@ enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Conn
 enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 enum MHD_Result     api_serve_file(struct MHD_Connection *connection, const char *filepath, const char *mime);
 enum MHD_Result     api_post_reboot(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
+enum MHD_Result     api_post_zone_mode(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
+enum MHD_Result     api_post_zone_drain(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 
 /*  WEBSOCKET   */
 int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);

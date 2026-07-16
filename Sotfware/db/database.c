@@ -1,5 +1,62 @@
 #include "../incl/smartgreen.h"
 
+int     db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = "UPDATE zone_params SET "
+                           "fan_speed_cmd=?, target_temp=?, humidity_min=?, humidity_max=?, "
+                           "pump_on=?, cool_fan_mode=?, drain_valve=?, solenoid=?, "
+                           "on_off=?, inmediate_drain=?, prewet_in_progress=?, "
+                           "last_prewet=?, last_drain=?, last_pump_time=? "
+                           "WHERE zone_id=?";
+    int             rc;
+    int             attemps = 0;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "zone_params update prepare error: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return (-1);
+    }
+
+    sqlite3_bind_int(stmt, 1,  zone->fan_speed_cmd);
+    sqlite3_bind_double(stmt, 2,  zone->target_temp);
+    sqlite3_bind_double(stmt, 3,  zone->humidity_min);
+    sqlite3_bind_double(stmt, 4,  zone->humidity_max);
+    sqlite3_bind_int(stmt, 5,  zone->pump_on);
+    sqlite3_bind_text(stmt, 6,  zone->cool_fan_mode, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 7,  zone->drain_valve, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 8,  zone->solenoid, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 9,  zone->on_off, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 10, zone->inmediate_drain, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 11, zone->prewet_in_progress, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 12, zone->last_prewet);
+    sqlite3_bind_int(stmt, 13, zone->last_drain);
+    sqlite3_bind_int(stmt, 14, zone->last_pump_time);
+    sqlite3_bind_int(stmt, 15, zone->zone_id);  // WHERE zone_id=?
+
+    while (attemps > DB_MAX_RETRIES)
+    {
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_DONE)
+        {
+            sqlite3_finalize(stmt);
+            return (0);
+        }
+        if (rc == SQLITE_BUSY)
+        {
+            attemps++;
+            usleep(DB_RETRY_DELAY);
+            continue;
+        }
+        fprintf(stderr, "zone_params update error: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        sqlite3_finalize(stmt);
+        return (-1);
+    }
+    sqlite3_finalize(stmt);
+    return (-1);
+}
+
 int     db_update_config(t_smartgreen *smartgreen, const char *key, int value)
 {
     sqlite3_stmt    *stmt;
@@ -473,6 +530,20 @@ int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
     sqlite3_bind_int(stmt, 30, cooler->install_date);
     sqlite3_bind_int(stmt, 31, cooler->warranty_months);
     sqlite3_bind_int(stmt, 32, cooler->disabled);
+    sqlite3_bind_int(stmt, 33, cooler->ramp_rate);
+    sqlite3_bind_int(stmt, 34, cooler->cold_starts);
+    sqlite3_bind_int(stmt, 35, cooler->fan_starts);
+    sqlite3_bind_int(stmt, 36, cooler->fan_hours);
+    sqlite3_bind_int(stmt, 37, cooler->tank_drains);
+    sqlite3_bind_int(stmt, 38, cooler->avg_tank_fill);
+    sqlite3_bind_int(stmt, 39, cooler->fan_speed_z1);
+    sqlite3_bind_int(stmt, 40, cooler->fan_speed_z2);
+    sqlite3_bind_int(stmt, 41, cooler->fan_speed_z3);
+    sqlite3_bind_int(stmt, 42, cooler->fan_speed_z4);
+    sqlite3_bind_int(stmt, 43, cooler->fan_speed_z5);
+    sqlite3_bind_int(stmt, 44, cooler->extended_status);
+    sqlite3_bind_int(stmt, 45, cooler->modbus_addr);
+    sqlite3_bind_int(stmt, 46, cooler->r0_config);
 
     while (attemps < DB_MAX_RETRIES)
     {

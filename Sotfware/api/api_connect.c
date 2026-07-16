@@ -150,7 +150,7 @@ enum MHD_Result     api_get_status(t_smartgreen *smartgreen, struct MHD_Connecti
     return(api_send_response(connection, MHD_HTTP_OK, responsed));
 }
 
-enum MHD_Result     api_get_coolers(t_smartgreen *smartagreen, struct MHD_Connection *connection)
+enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {
     t_maintenance_log   last_maint;
     char                responsed[4096];
@@ -160,20 +160,20 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartagreen, struct MHD_Connec
     int                 last_legionella = 0;
     //char              cooler_json[512];
 
-    pthread_mutex_lock(&smartagreen->data_mutex);
+    pthread_mutex_lock(&smartgreen->data_mutex);
 
     offset += snprintf(responsed + offset, sizeof(responsed), "[");
-    for (int i = 0; i < smartagreen->num_coolers; i++)
+    for (int i = 0; i < smartgreen->num_coolers; i++)
     {
         last_closing = 0;
         last_opening = 0;
         last_legionella = 0;
 
-        if (db_get_last_maintenance(smartagreen, smartagreen->coolers[i].unit_id, MAINT_CLOSING, &last_maint) == 0)
+        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_CLOSING, &last_maint) == 0)
             last_closing = last_maint.timestamp;
-        if (db_get_last_maintenance(smartagreen, smartagreen->coolers[i].unit_id, MAINT_OPENING, &last_maint) == 0)
+        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_OPENING, &last_maint) == 0)
             last_opening = last_maint.timestamp;
-        if (db_get_last_maintenance(smartagreen, smartagreen->coolers[i].unit_id, MAINT_LEGIONELLA, &last_maint) == 0)
+        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_LEGIONELLA, &last_maint) == 0)
             last_legionella = last_maint.timestamp;
     
         offset += snprintf(responsed + offset, sizeof(responsed),
@@ -209,46 +209,65 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartagreen, struct MHD_Connec
             "\"alarm_maint_legionella\":%d,"
             "\"last_closing\":%d,"
             "\"last_opening\":%d,"
-            "\"last_legionella\":%d"
+            "\"last_legionella\":%d,"
+            "\"disabled\":%d,\"ramp_rate\":%d,\"cold_starts\":%d,\"fan_starts\":%d,"
+            "\"fan_hours\":%d,\"tank_drains\":%d,\"avg_tank_fill\":%d,\"fan_speed_z1\":%d,"
+            "\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
+            "\"extended_status\":%d,\"modbus_addr\":%d,\"r0_config\":%d"
             "}",
             i > 0 ? "," : "",
-            smartagreen->coolers[i].unit_id,
-            smartagreen->coolers[i].zone_id,
-            smartagreen->coolers[i].is_extractor,
-            smartagreen->coolers[i].drain_valve_open,
-            smartagreen->coolers[i].drain_valve_confirm,
-            smartagreen->coolers[i].cool_mode_on,
-            smartagreen->coolers[i].fan_on,
-            smartagreen->coolers[i].fault_present,
-            smartagreen->coolers[i].inlet_valve_open,
-            smartagreen->coolers[i].actual_fan_speed,
-            smartagreen->coolers[i].fan_speed_confirmed,
-            smartagreen->coolers[i].most_recent_fault,
-            smartagreen->coolers[i].water_present,
-            smartagreen->coolers[i].pump_on,
-            smartagreen->coolers[i].solenoid_on,
-            smartagreen->coolers[i].salinity_ppm,
-            smartagreen->coolers[i].salinity_us,
-            smartagreen->coolers[i].error_count,
-            smartagreen->coolers[i].last_read,
-            smartagreen->coolers[i].last_mod,
-            smartagreen->coolers[i].alarm_fault,
-            smartagreen->coolers[i].alarm_salinity,
-            smartagreen->coolers[i].alarm_water,
-            smartagreen->coolers[i].alarm_comms,
-            smartagreen->coolers[i].alarm_warranty,
-            smartagreen->coolers[i].hours_running / 3600.0,
-            smartagreen->coolers[i].alarm_maint_closing,
-            smartagreen->coolers[i].alarm_maint_opening,
-            smartagreen->coolers[i].alarm_maint_legionella,
+            smartgreen->coolers[i].unit_id,
+            smartgreen->coolers[i].zone_id,
+            smartgreen->coolers[i].is_extractor,
+            smartgreen->coolers[i].drain_valve_open,
+            smartgreen->coolers[i].drain_valve_confirm,
+            smartgreen->coolers[i].cool_mode_on,
+            smartgreen->coolers[i].fan_on,
+            smartgreen->coolers[i].fault_present,
+            smartgreen->coolers[i].inlet_valve_open,
+            smartgreen->coolers[i].actual_fan_speed,
+            smartgreen->coolers[i].fan_speed_confirmed,
+            smartgreen->coolers[i].most_recent_fault,
+            smartgreen->coolers[i].water_present,
+            smartgreen->coolers[i].pump_on,
+            smartgreen->coolers[i].solenoid_on,
+            smartgreen->coolers[i].salinity_ppm,
+            smartgreen->coolers[i].salinity_us,
+            smartgreen->coolers[i].error_count,
+            smartgreen->coolers[i].last_read,
+            smartgreen->coolers[i].last_mod,
+            smartgreen->coolers[i].alarm_fault,
+            smartgreen->coolers[i].alarm_salinity,
+            smartgreen->coolers[i].alarm_water,
+            smartgreen->coolers[i].alarm_comms,
+            smartgreen->coolers[i].alarm_warranty,
+            smartgreen->coolers[i].hours_running / 3600.0,
+            smartgreen->coolers[i].alarm_maint_closing,
+            smartgreen->coolers[i].alarm_maint_opening,
+            smartgreen->coolers[i].alarm_maint_legionella,
             last_closing,
             last_opening,
-            last_legionella
+            last_legionella,
+            smartgreen->coolers[i].disabled,
+            smartgreen->coolers[i].ramp_rate,
+            smartgreen->coolers[i].cold_starts,
+            smartgreen->coolers[i].fan_starts,
+            smartgreen->coolers[i].fan_hours,
+            smartgreen->coolers[i].tank_drains,
+            smartgreen->coolers[i].avg_tank_fill,
+            smartgreen->coolers[i].fan_speed_z1,
+            smartgreen->coolers[i].fan_speed_z2,
+            smartgreen->coolers[i].fan_speed_z3,
+            smartgreen->coolers[i].fan_speed_z4,
+            smartgreen->coolers[i].fan_speed_z5,
+            smartgreen->coolers[i].extended_status,
+            smartgreen->coolers[i].modbus_addr,
+            smartgreen->coolers[i].r0_config
         );
     }
     offset += snprintf(responsed + offset, sizeof(responsed), "]");
     
-    pthread_mutex_unlock(&smartagreen->data_mutex);
+    pthread_mutex_unlock(&smartgreen->data_mutex);
     return(api_send_response(connection, MHD_HTTP_OK, responsed));
 }
 

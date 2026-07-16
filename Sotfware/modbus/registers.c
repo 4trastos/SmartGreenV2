@@ -13,14 +13,59 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     FILE    *fd = fopen("/tmp/sg_debug.log", "a");
     if (fd)
     {
-        fprintf(fd, "[%ld] regs[49]=0x%04X (%d) regs[50]=0x%04X (%d) regs[53]=0x%04X regs[54]=0x%04X\n", (long)time(NULL), 
-                regs[49], regs[49],
-                regs[50], regs[50],
-                regs[53], regs[54]);
+        fprintf(fd, "=== unit_id=%d ===\n", state->unit_id);
+        fprintf(fd, "regs[0] =0x%04X r0_config=%d\n",        regs[0],  regs[0]);
+        fprintf(fd, "regs[8] =0x%04X modbus_addr=%d\n",       regs[8],  regs[8]);
+        fprintf(fd, "regs[19]=0x%04X fan_speed_z1=%d\n",      regs[19], regs[19]);
+        fprintf(fd, "regs[20]=0x%04X fan_speed_z2=%d\n",      regs[20], regs[20]);
+        fprintf(fd, "regs[21]=0x%04X fan_speed_z3=%d\n",      regs[21], regs[21]);
+        fprintf(fd, "regs[22]=0x%04X fan_speed_z4=%d\n",      regs[22], regs[22]);
+        fprintf(fd, "regs[23]=0x%04X fan_speed_z5=%d\n",      regs[23], regs[23]);
+        fprintf(fd, "regs[24]=0x%04X ramp_rate=%d\n",         regs[24], regs[24]);
+        fprintf(fd, "regs[27]=0x%04X cold_starts=%d\n",       regs[27], regs[27]);
+        fprintf(fd, "regs[28]=0x%04X fan_starts=%d\n",        regs[28], regs[28]);
+        fprintf(fd, "regs[29]=0x%04X fan_hours=%d\n",         regs[29], regs[29]);
+        fprintf(fd, "regs[32]=0x%04X tank_drains=%d\n",       regs[32], regs[32]);
+        fprintf(fd, "regs[43]=0x%04X avg_tank_fill=%d\n",     regs[43], regs[43]);
+        fprintf(fd, "regs[49]=0x%04X cool_mode=%d fan=%d fault=%d inlet=%d speed=%d fault_code=%d\n",
+                regs[49],
+                (regs[49] >> 1) & 0x01,
+                (regs[49] >> 2) & 0x01,
+                (regs[49] >> 3) & 0x01,
+                (regs[49] >> 4) & 0x01,
+                (regs[49] >> 8) & 0x0F,
+                (regs[49] >> 12) & 0x0F);
+        fprintf(fd, "regs[50]=0x%04X pump=%d solenoid=%d drain_confirm=%d fan_confirmed=%d\n",
+                regs[50],
+                (regs[50] >> 1) & 0x01,
+                (regs[50] >> 3) & 0x01,
+                (regs[50] >> 4) & 0x01,
+                (regs[50] >> 8) & 0x0F);
+        fprintf(fd, "regs[52]=0x%04X extended_status=%d\n",   regs[52], regs[52]);
+        fprintf(fd, "regs[53]=0x%04X water_present=%d\n",     regs[53], regs[53]);
+        fprintf(fd, "regs[54]=0x%04X salinity_raw=%d\n",      regs[54], regs[54]);
+        fprintf(fd, "---\n");
         fclose(fd);
     }
 
-    // offset  49 - r_40050 - bits de estado 
+    // offset 0 - 8
+    state->r0_config = (regs[0]);
+    state->modbus_addr = (regs[8]);
+    
+    // Offset 19 -43
+    state->fan_speed_z1 = (regs[19]);
+    state->fan_speed_z2 = (regs[20]);
+    state->fan_speed_z3 = (regs[21]);
+    state->fan_speed_z4 = (regs[22]);
+    state->fan_speed_z5 = (regs[23]);
+    state->ramp_rate = (regs[24]);
+    state->cold_starts = (regs[27]);
+    state->fan_starts = (regs[28]);
+    state->fan_hours = (regs[29]);
+    state->tank_drains = (regs[32]);
+    state->avg_tank_fill = (regs[43]);
+
+    // offset 49 - r_40050 - bits de estado 
     state->drain_valve_open = (regs[49] >> 0) & 0x01;               // drain valve open/close" (estado leído) 
     state->cool_mode_on = (regs[49] >> 1) & 0x01;
     state->fan_on = (regs[49] >> 2) & 0x01;
@@ -28,6 +73,9 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     state->inlet_valve_open = (regs[49] >> 4) & 0x01;
     state->actual_fan_speed = (regs[49] >> 8) & 0x0F;               // velocidad actual (antes de arranque)
     state->most_recent_fault = (regs[49] >> 12) & 0x0F;
+
+    // offfset 52 - estado extendido en bitmap
+    state->extended_status = (regs[52]);
 
     // offset 50 - r_40051 - bits de estado 
     // state->pump_on = (regs[50] >> 0) & 0x01;

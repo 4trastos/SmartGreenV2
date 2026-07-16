@@ -2,7 +2,7 @@
 
 void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
 {
-    char                buffer[8192];
+    char                buffer[16384];
     int                 offset = 0;
     t_maintenance_log   last_maint;
     int                 last_closing = 0;
@@ -45,7 +45,10 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             "\"alarm_maint_closing\":%d,\"alarm_maint_opening\":%d,"
             "\"alarm_maint_legionella\":%d,"
             "\"last_closing\":%d,\"last_opening\":%d,\"last_legionella\":%d,"
-            "\"disabled\":%d"
+            "\"disabled\":%d,\"ramp_rate\":%d,\"cold_starts\":%d,\"fan_starts\":%d,"
+            "\"fan_hours\":%d,\"tank_drains\":%d,\"avg_tank_fill\":%d,\"fan_speed_z1\":%d,"
+            "\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
+            "\"extended_status\":%d,\"modbus_addr\":%d,\"r0_config\":%d"
             "}",
             i > 0 ? "," : "",
             smartgreen->coolers[i].unit_id,
@@ -78,7 +81,21 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             smartgreen->coolers[i].alarm_maint_opening,
             smartgreen->coolers[i].alarm_maint_legionella,
             last_closing, last_opening, last_legionella,
-            smartgreen->coolers[i].disabled
+            smartgreen->coolers[i].disabled,
+            smartgreen->coolers[i].ramp_rate,
+            smartgreen->coolers[i].cold_starts,
+            smartgreen->coolers[i].fan_starts,
+            smartgreen->coolers[i].fan_hours,
+            smartgreen->coolers[i].tank_drains,
+            smartgreen->coolers[i].avg_tank_fill,
+            smartgreen->coolers[i].fan_speed_z1,
+            smartgreen->coolers[i].fan_speed_z2,
+            smartgreen->coolers[i].fan_speed_z3,
+            smartgreen->coolers[i].fan_speed_z4,
+            smartgreen->coolers[i].fan_speed_z5,
+            smartgreen->coolers[i].extended_status,
+            smartgreen->coolers[i].modbus_addr,
+            smartgreen->coolers[i].r0_config
         );
     }
     offset += snprintf(buffer + offset, sizeof(buffer) - offset, "],");
