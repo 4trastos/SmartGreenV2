@@ -1,9 +1,19 @@
 #include "../incl/smartgreen.h"
 
-int    decode_water_present_zone(int r_40054, int zone)
+// int    decode_water_present_zone(int r_40054, int zone)
+// {
+//     int shift = (zone - 1) * 4;
+//     return ((r_40054 >> shift) & 0x0F);
+// }
+
+int    decode_water_present_zone(uint16_t reg, int zone)
 {
-    int shift = (zone - 1) * 4;
-    return ((r_40054 >> shift) & 0x0F);
+    int shift;
+
+    if (zone < 1 || zone > 4)
+        return (-1);
+    shift = (zone - 1) * 4;
+    return ((reg >> shift) & 0x0F);
 }
 
 void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
@@ -13,7 +23,7 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     FILE    *fd = fopen("/tmp/sg_debug.log", "a");
     if (fd)
     {
-        fprintf(fd, "=== unit_id=%d  zone_id=%d ===\n", state->unit_id, state->zone_id);
+        fprintf(fd, "=== unit_id=%d  modbus_addr=%d zone_id=%d ===\n", state->unit_id, regs[8], state->zone_id);
         fprintf(fd, "regs[0] =0x%04X r0_config=%d\n",         regs[0],  regs[0]);
         fprintf(fd, "regs[1] =0x%04X fabricante_p1=%d\n",     regs[1],  regs[1]);
         fprintf(fd, "regs[2] =0x%04X fabricante_p2=%d\n",     regs[2],  regs[2]);
