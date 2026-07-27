@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 
-const WS_URL = 'ws://localhost:8081'
-const API_URL = 'http://localhost:8080/api'
+// const WS_URL = 'ws://localhost:8081'
+// const API_URL = 'http://localhost:8080/api'
+const HOST = window.location.hostname
+const WS_URL = `ws://${HOST}:8081`
+const API_URL = `http://${HOST}:8080/api`
 
 export function useSmartGreen() {
   const [data, setData] = useState({ coolers: [], sensors: [], zones: [], status: null })

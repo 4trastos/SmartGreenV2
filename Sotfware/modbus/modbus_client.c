@@ -17,6 +17,8 @@ int     ft_modbus_init(t_smartgreen *smartgreen)
         return (-1);
     }
 
+    modbus_set_response_timeout(ctx, 1, 0);
+
     printf("Modbus connected correctly\n");
     smartgreen->modbus_ctx = ctx;
     return (0);
@@ -61,7 +63,7 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     if (smartgreen->coolers[unit_idx].fan_on)
         smartgreen->coolers[unit_idx].hours_running += smartgreen->read_interval;
     db_save_cooler(smartgreen, &smartgreen->coolers[unit_idx]);
-    pthread_mutex_unlock(&smartgreen->data_mutex);
+    pthread_mutex_unlock(&smartgreen->modbus_mutex);
     return (0);
 }
 

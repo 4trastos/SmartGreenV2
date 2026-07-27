@@ -158,3 +158,38 @@ ps aux | grep -i java | grep -v grep
 ```
 
 */
+
+/*
+
+# Terminal 1 — debug en tiempo real
+ssh pi@<IP_WIFI_PI>
+tail -f /tmp/sg_debug.log
+
+# Terminal 2 — mandar comandos
+# Prueba 1 — encender zona
+curl -X POST http://<IP_WIFI_PI>:8080/api/zones/1/onoff \
+  -H "Content-Type: application/json" \
+  -d '{"action":"ON"}'
+
+# Prueba 2 — ver estado cooler
+curl http://<IP_WIFI_PI>:8080/api/coolers | python3 -m json.tool
+
+# Prueba 3 — apagar zona
+curl -X POST http://<IP_WIFI_PI>:8080/api/zones/1/onoff \
+  -H "Content-Type: application/json" \
+  -d '{"action":"OFF"}'
+
+# Prueba 4 — drenaje inmediato
+curl -X POST http://<IP_WIFI_PI>:8080/api/zones/1/drain \
+  -H "Content-Type: application/json" \
+  -d '{"action":"ON"}'
+
+# Prueba 5 — cambiar modo
+curl -X POST http://<IP_WIFI_PI>:8080/api/zones/1/mode \
+  -H "Content-Type: application/json" \
+  -d '{"mode":"FAN"}'
+
+# Prueba 6 — ver nuevos campos
+curl http://<IP_WIFI_PI>:8080/api/coolers | python3 -m json.tool | grep -E "ramp_rate|cold_starts|fan_hours|tank_drains"
+
+*/
