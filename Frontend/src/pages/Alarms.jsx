@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const API_URL = 'http://localhost:8080/api'
+import { API_URL } from '../config.js'
 
 function timeAgo(ts) {
   const diff = Math.floor(Date.now()/1000 - ts)
@@ -37,7 +37,7 @@ function getActiveAlarms(data) {
       alarms.push({ id: `comms_${c.unit_id}`, level: 'red', message: `Sin comunicación cooler #${c.unit_id}`, unit_id: c.unit_id, timestamp: now })
     if (c.alarm_salinity)
       alarms.push({ id: `sal_${c.unit_id}`, level: 'yellow', message: `Salinidad alta cooler #${c.unit_id} (${c.salinity_us?.toFixed(0)} μS)`, unit_id: c.unit_id, timestamp: now })
-    if (c.alarm_water)
+    if (c.alarm_water && c.salinity_us <= 10)
       alarms.push({ id: `water_${c.unit_id}`, level: 'yellow', message: `Sin agua cooler #${c.unit_id}`, unit_id: c.unit_id, timestamp: now })
     if (c.alarm_warranty)
       alarms.push({ id: `warranty_${c.unit_id}`, level: 'yellow', message: `Garantía próxima a vencer cooler #${c.unit_id}`, unit_id: c.unit_id, timestamp: now })

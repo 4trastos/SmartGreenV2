@@ -9,7 +9,8 @@ enum MHD_Result     api_serve_file(struct MHD_Connection *connection, const char
     char    *buffer;
     long    size;
 
-    snprintf(fullpath, sizeof(fullpath), "/home/pi/smartgreen_new/Frontend/dist%s", filepath);
+    //snprintf(fullpath, sizeof(fullpath), "/home/pi/smartgreen_new/Frontend/dist%s", filepath);
+    snprintf(fullpath, sizeof(fullpath), "/home/pi/smartgreen_new/Sotfware/www%s", filepath);
     file = fopen(fullpath, "rb");
     if (!file)
         return(api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Not found\"}"));

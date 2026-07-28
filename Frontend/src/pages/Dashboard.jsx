@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-const API_URL = 'http://localhost:8080/api'
+import { API_URL } from '../config.js'
 
 function coolerStatus(c) {
   if (c.alarm_fault || c.fault_present) return 'fault'
   if (c.alarm_comms || c.disabled) return 'offline'
-  if (c.alarm_water) return 'warning'
+  //if (c.alarm_water) return 'warning'
+  if (c.alarm_water && c.salinity_us <= 10) return 'warning'
   if (c.alarm_warranty) return 'warranty'
   if (c.fan_on) return 'active'
   return 'idle'
@@ -13,7 +14,7 @@ function coolerStatus(c) {
 
 const STATUS = {
   active:  { gradient: 'from-[#004d89]/40 to-[#088fc3]/10', border: 'border-[#088fc3]/35', dot: 'bg-[#088fc3] shadow-[0_0_10px_#088fc3]', label: 'ACTIVO',   lc: 'text-[#088fc3]' },
-  idle:    { gradient: 'from-white/4 to-transparent',        border: 'border-white/8',       dot: 'bg-white/25',                              label: 'STANDBY',  lc: 'text-white/30' },
+  idle:    { gradient: 'from-white/4 to-transparent',        border: 'border-white/8',       dot: 'bg-white/25',                              label: 'OFF',  lc: 'text-white/30' },
   warning: { gradient: 'from-yellow-900/30 to-transparent',  border: 'border-yellow-500/35', dot: 'bg-yellow-400 shadow-[0_0_10px_#eab308]',  label: 'SIN AGUA', lc: 'text-yellow-400' },
   fault:   { gradient: 'from-red-900/30 to-transparent',     border: 'border-red-500/40',    dot: 'bg-red-500 shadow-[0_0_10px_#ef4444]',     label: 'FALLO',    lc: 'text-red-400' },
   offline: { gradient: 'from-red-900/15 to-transparent',     border: 'border-red-500/20',    dot: 'bg-red-500/50',                            label: 'OFFLINE',  lc: 'text-red-400/60' },
@@ -36,6 +37,14 @@ function MiniChart({ value, status }) {
 function CoolerCard({ cooler, onClick }) {
   const st = STATUS[coolerStatus(cooler)]
   const s = coolerStatus(cooler)
+  const toggleOnOff = async (e) => {
+    e.stopPropagation()
+    await fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action: cooler.fan_on ? 'OFF' : 'ON'})
+    })
+  }
+
   return (
     <div onClick={() => onClick(cooler)}
       className={`relative rounded-2xl border cursor-pointer transition-all duration-200 hover:scale-[1.02] overflow-hidden bg-gradient-to-br ${st.gradient} ${st.border} p-4`}>
@@ -45,7 +54,14 @@ function CoolerCard({ cooler, onClick }) {
           <span className="text-white text-lg font-black">#{cooler.unit_id}</span>
           <span className="text-white/20 text-xs">Z{cooler.zone_id}</span>
         </div>
-        <span className={`text-xs font-bold tracking-wider ${st.lc}`}>{st.label}</span>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-bold tracking-wider ${st.lc}`}>{st.label}</span>
+          <button onClick={toggleOnOff}
+            className={`w-7 h-7 rounded-lg text-xs font-bold cursor-pointer transition-all
+              ${cooler.fan_on ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-[#004d89]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
+            {cooler.fan_on ? '■' : '▶'}
+          </button>
+        </div>
       </div>
       <div className="flex items-end justify-between gap-3 mb-3">
         <MiniChart value={cooler.actual_fan_speed} status={s} />
@@ -57,7 +73,7 @@ function CoolerCard({ cooler, onClick }) {
       <div className="flex gap-2 text-xs">
         <div className="flex-1 bg-black/20 rounded-lg p-2 text-center">
           <p className="text-white/25 mb-0.5">Agua</p>
-          <p className={cooler.water_present ? 'text-[#088fc3] font-bold' : 'text-yellow-400 font-bold'}>{cooler.water_present ? '●' : '○'}</p>
+          <p className={cooler.alarm_water ? 'text-yellow-400 font-bold' : 'text-[#088fc3] font-bold'}>{cooler.alarm_water ? '○' : '●'}</p>
         </div>
         <div className="flex-1 bg-black/20 rounded-lg p-2 text-center">
           <p className="text-white/25 mb-0.5">μS</p>
@@ -75,6 +91,13 @@ function CoolerCard({ cooler, onClick }) {
 function CoolerMini({ cooler, onClick }) {
   const st = STATUS[coolerStatus(cooler)]
   const s = coolerStatus(cooler)
+  const toggleOnOff = async (e) => {
+    e.stopPropagation()
+    await fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action: cooler.fan_on ? 'OFF' : 'ON'})
+    })
+  }
   return (
     <div onClick={() => onClick(cooler)}
       className={`rounded-xl border cursor-pointer transition-all duration-150 hover:brightness-110 overflow-hidden bg-gradient-to-br ${st.gradient} ${st.border} p-3`}>
@@ -83,12 +106,19 @@ function CoolerMini({ cooler, onClick }) {
           <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
           <span className="text-white font-bold text-sm">#{cooler.unit_id}</span>
         </div>
-        <span className={`text-xs font-bold ${st.lc}`}>{st.label}</span>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-bold ${st.lc}`}>{st.label}</span>
+          <button onClick={toggleOnOff}
+            className={`w-6 h-6 rounded-lg text-xs font-bold cursor-pointer transition-all
+              ${cooler.fan_on ? 'bg-red-500/20 text-red-400' : 'bg-[#004d89]/40 text-[#088fc3]'}`}>
+            {cooler.fan_on ? '■' : '▶'}
+          </button>
+        </div>
       </div>
       <MiniChart value={cooler.actual_fan_speed} status={s} />
       <div className="flex justify-between mt-2 text-xs text-white/30">
         <span>{cooler.actual_fan_speed}/10</span>
-        <span className={cooler.water_present ? 'text-[#088fc3]' : 'text-yellow-400'}>{cooler.water_present ? '● Agua' : '○ Seco'}</span>
+        <span className={cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'}>{cooler.alarm_water ? '○ Seco' : '● Agua'}</span>
         <span>{cooler.salinity_us.toFixed(0)}μS</span>
       </div>
     </div>
@@ -112,7 +142,7 @@ function CoolerNano({ cooler, onClick }) {
   )
 }
 
-function SingleHero({ cooler, onClick }) {
+function SingleHero({ cooler, onClick, toggleCooler }) {
   const st = STATUS[coolerStatus(cooler)]
   const s = coolerStatus(cooler)
   return (
@@ -129,6 +159,11 @@ function SingleHero({ cooler, onClick }) {
         </div>
         <div className="text-right">
           <span className={`text-sm font-bold px-3 py-1 rounded-full border ${st.lc} border-current bg-current/10`}>{st.label}</span>
+          <button onClick={(e) => { e.stopPropagation(); toggleCooler(cooler.zone_id, cooler.unit_id, cooler.fan_on) }}
+            className={`mt-2 px-4 py-1.5 rounded-xl font-bold text-xs cursor-pointer block ml-auto
+              ${cooler.fan_on ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30' : 'bg-[#004d89]/40 border border-[#088fc3]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
+            {cooler.fan_on ? '■ Apagar' : '▶ Encender'}
+          </button>
           <p className={`text-6xl font-black font-mono mt-3 leading-none ${st.lc}`}>{cooler.actual_fan_speed}<span className="text-2xl text-white/20">/10</span></p>
         </div>
       </div>
@@ -140,7 +175,7 @@ function SingleHero({ cooler, onClick }) {
       </div>
       <div className="grid grid-cols-4 gap-3">
         {[
-          { l:'Agua', v: cooler.water_present ? 'Presente' : 'Sin agua', c: cooler.water_present ? 'text-[#088fc3]' : 'text-yellow-400' },
+          { l:'Agua', v: cooler.alarm_water ? 'Sin agua' : 'Presente', c: cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
           { l:'Salinidad', v:`${cooler.salinity_us.toFixed(0)} μS`, c:'text-white' },
           { l:'PPM', v:`${cooler.salinity_ppm?.toFixed(0)||0}`, c:'text-white' },
           { l:'Horas', v:`${cooler.hours_running.toFixed(0)} h`, c:'text-white/50' },
@@ -157,12 +192,28 @@ function SingleHero({ cooler, onClick }) {
 
 function CoolerDetail({ cooler, onClose }) {
   const [speed, setSpeed] = useState(cooler.actual_fan_speed)
-  const st = STATUS[coolerStatus(cooler)]
+  const [fanOn, setFanOn] = useState(cooler.fan_on)
+
+  useEffect(() => {
+    setFanOn(cooler.fan_on)
+    setSpeed(cooler.actual_fan_speed)
+  }, [cooler.fan_on, cooler.actual_fan_speed])
+
+  const st = STATUS[coolerStatus({...cooler, fan_on: fanOn})]
 
   const sendSpeed = async s => {
     setSpeed(s)
     await fetch(`${API_URL}/zones/${cooler.zone_id}/fanspeed`, {
       method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({speed:s})
+    })
+  }
+
+  const toggleOnOff = async () => {
+    const newState = !fanOn
+    setFanOn(newState)
+    await fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action: newState ? 'ON' : 'OFF'})
     })
   }
 
@@ -174,7 +225,14 @@ function CoolerDetail({ cooler, onClose }) {
           <div>
             <p className="text-white/25 text-xs tracking-widest uppercase mb-1">Cooler · Zona {cooler.zone_id}</p>
             <p className="text-white text-3xl font-black">#{cooler.unit_id}</p>
-            <p className={`text-sm font-bold mt-1 ${st.lc}`}>{st.label}</p>
+            <p className={`text-sm font-bold mt-1 ${st.lc}`}>{fanOn ? 'ON' : 'OFF'}</p>
+            <button onClick={toggleOnOff}
+              className={`mt-2 px-4 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-all
+                ${fanOn
+                  ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30'
+                  : 'bg-[#004d89]/40 border border-[#088fc3]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
+              {fanOn ? '■ Apagar' : '▶ Encender'}
+            </button>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white cursor-pointer">✕</button>
         </div>
@@ -195,7 +253,7 @@ function CoolerDetail({ cooler, onClose }) {
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[
-            {l:'Agua', v:cooler.water_present?'● Presente':'○ Sin agua', c:cooler.water_present?'text-[#088fc3]':'text-yellow-400'},
+            {l:'Agua', v: c.alarm_water ? '○ Sin agua' : '● Presente', c: c.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
             {l:'Salinidad', v:`${cooler.salinity_us.toFixed(0)} μS`, c:'text-white'},
             {l:'PPM', v:`${cooler.salinity_ppm?.toFixed(0)||0}`, c:'text-white'},
             {l:'Bomba', v:cooler.pump_on?'ON':'OFF', c:cooler.pump_on?'text-[#088fc3]':'text-white/30'},
@@ -252,7 +310,8 @@ export default function Dashboard({ data, connected }) {
   const [selected, setSelected] = useState(null)
 
   // const hasData = connected && data.coolers.length > 0 && data.coolers.some(c => !c.disabled && c.last_read > 0)
-  const hasData = connected && data.coolers.length > 0
+  // const hasData = connected && data.coolers.length > 0
+  const hasData = connected && data.coolers.length > 0 && data.coolers.some(c => c.last_read > 0)
   const n = hasData ? data.coolers.length : 0
 
   const Card = n <= 4 ? CoolerCard : n <= 20 ? CoolerMini : CoolerNano

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-const API_URL = 'http://localhost:8080/api'
+import { API_URL } from '../config.js'
 
 const TILES = [
   { id: 'opening',    label: 'Apertura',       icon: '▲', desc: 'Inicio de temporada',       color: 'from-[#004d89]/40 to-[#088fc3]/10', border: 'border-[#088fc3]/40' },

@@ -60,16 +60,15 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
         }
 
         // 🟡 sin agua
-        if (!smartgreen->coolers[i].water_present && !smartgreen->coolers[i].alarm_water)
+        // if (!smartgreen->coolers[i].water_present && !smartgreen->coolers[i].alarm_water && smartgreen->coolers[i].salinity_us < 10.0)
+        if (smartgreen->coolers[i].salinity_us < 10.0 && !smartgreen->coolers[i].alarm_water)
         {
             snprintf(msg, sizeof(msg), "🟡 AVISO: Sin agua cooler unit_id=%d", smartgreen->coolers[i].unit_id);
             db_save_error(smartgreen, msg);
             smartgreen->coolers[i].alarm_water = 1;
         }
-        else if (smartgreen->coolers[i].water_present && smartgreen->coolers[i].alarm_water)
-        {
+        else if (smartgreen->coolers[i].salinity_us >= 10.0 && smartgreen->coolers[i].alarm_water)
             smartgreen->coolers[i].alarm_water = 0;
-        }
 
         // 🔴 Garantía vencida
         if (now > warranty_end && !smartgreen->coolers[i].alarm_warranty)

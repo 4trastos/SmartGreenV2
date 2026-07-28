@@ -6,7 +6,7 @@ import Maintenance from './pages/Maintenance'
 import Settings from './pages/Settings'
 import { useSmartGreen } from './hooks/useSmartGreen'
 
-const API_URL = 'http://localhost:8080/api'
+import { API_URL } from './config.js'
 
 const NAV = [
   { id: 'dashboard', label: 'Vista General',
@@ -76,6 +76,8 @@ export default function App() {
 
   const alarmCount = data.coolers.filter(c =>
     c.alarm_fault || c.alarm_water || c.alarm_comms || c.alarm_salinity
+  ).length + data.sensors.filter(s =>
+    s.alarm_signal || s.alarm_temp
   ).length
 
   const pages = { dashboard: Dashboard, control: Control, alarms: Alarms, maint: Maintenance, settings: Settings }

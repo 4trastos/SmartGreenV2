@@ -56,6 +56,7 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     }
     
     decode_cooler_state(tab_reg, &smartgreen->coolers[unit_idx]);
+    pthread_mutex_lock(&smartgreen->data_mutex);
     smartgreen->coolers[unit_idx].error_count = 0;
     smartgreen->coolers[unit_idx].disabled = 0;
     smartgreen->coolers[unit_idx].alarm_comms = 0;
@@ -63,6 +64,7 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     if (smartgreen->coolers[unit_idx].fan_on)
         smartgreen->coolers[unit_idx].hours_running += smartgreen->read_interval;
     db_save_cooler(smartgreen, &smartgreen->coolers[unit_idx]);
+    pthread_mutex_unlock(&smartgreen->data_mutex);
     pthread_mutex_unlock(&smartgreen->modbus_mutex);
     return (0);
 }
@@ -99,12 +101,14 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
     }
 
     decode_sensor_state(tab_reg, &smartgreen->sensors[unit_idx]);
+    pthread_mutex_lock(&smartgreen->data_mutex);
     smartgreen->sensors[unit_idx].disabled = 0;
     smartgreen->sensors[unit_idx].error_count = 0;
     smartgreen->sensors[unit_idx].alarm_signal = 0;
     smartgreen->sensors[unit_idx].last_read = get_timestamp();
     db_save_sensor(smartgreen, &smartgreen->sensors[unit_idx]);
     pthread_mutex_unlock(&smartgreen->data_mutex);
+    pthread_mutex_unlock(&smartgreen->modbus_mutex);
     return (0);
 }
 

@@ -77,8 +77,10 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].solenoid_on = 0;
             smartgreen->coolers[i].salinity_ppm = 0.00;
             smartgreen->coolers[i].salinity_us = 0.00;
-            smartgreen->coolers[i].last_read = get_timestamp();
-            smartgreen->coolers[i].last_mod = get_timestamp();
+            // smartgreen->coolers[i].last_read = get_timestamp();
+            // smartgreen->coolers[i].last_mod = get_timestamp();
+            smartgreen->coolers[i].last_read = 0;
+            smartgreen->coolers[i].last_mod = 0;
             smartgreen->coolers[i].alarm_fault = 0;
             smartgreen->coolers[i].alarm_salinity = 0;
             smartgreen->coolers[i].alarm_water = 0;

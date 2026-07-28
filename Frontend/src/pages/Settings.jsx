@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-const API_URL = 'http://localhost:8080/api'
+import { API_URL } from '../config.js'
 
 const TILES = [
   { id: 'sistema',   label: 'Sistema',      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>,       color: 'from-[#004d89]/40 to-[#088fc3]/10', border: 'border-[#088fc3]/30', keys: ['num_coolers','num_sensors','num_zones','refresh_interval','history_interval','modbus_retries'] },

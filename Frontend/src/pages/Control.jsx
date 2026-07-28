@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-const API_URL = 'http://localhost:8080/api'
+import { API_URL } from '../config.js'
 
 export default function Control({ data }) {
   const zones = data.zones.length > 0 ? data.zones : [
@@ -132,7 +132,7 @@ export default function Control({ data }) {
 }
 
 // import { useState } from 'react'
-// const API_URL = 'http://localhost:8080/api'
+// import { API_URL } from '../config.js'
 
 // export default function Control({ data }) {
 //   const zones = data.zones.length > 0 ? data.zones : [
