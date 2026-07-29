@@ -1,5 +1,29 @@
 #include "../incl/smartgreen.h"
 
+void    *prewet_thread(void *arg)
+{
+    t_prewet_args   *args = (t_prewet_args *)arg;
+    t_smartgreen    *smartgreen = args->smartgreen;
+    int             zone_id = args->zone_id;
+    int             zone_idx = ft_find_zone(smartgreen, zone_id);
+
+    free(args);
+    if (zone_idx == -1)
+        return(NULL);
+    
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes", sizeof(smartgreen->zone_params->prewet_in_progress));
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+
+    cooler_prewet(smartgreen, zone_id);
+
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+
+    return (NULL);
+}
+
 int     cooler_water_management(t_smartgreen *smartgreen) // Control automático de salinidad y Drenaje
 {
     int interval = db_read_config(smartgreen, "salinity_drain_interval");

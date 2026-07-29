@@ -228,9 +228,10 @@ enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Co
 
 enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size)
 {
-    char    action[8] = {0};
-    int     zone_idx;
-    int     on;
+    t_prewet_args   *args;
+    char            action[8] = {0};
+    int             zone_idx;
+    int             on;
 
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
@@ -256,8 +257,20 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
                 ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, on);
         }
     }
-
     pthread_mutex_unlock(&smartgreen->data_mutex);
+
+    if (on && smartgreen->modbus_ctx && db_read_config(smartgreen, "prewet_selector") == 1)
+    {
+        args = malloc(sizeof(t_prewet_args));
+        if (args)
+        {
+            args->smartgreen = smartgreen;
+            args->zone_id = id;
+            pthread_t tid;
+            pthread_create(&tid, NULL, prewet_thread, args);
+            pthread_detach(tid);
+        }
+    }
     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
 

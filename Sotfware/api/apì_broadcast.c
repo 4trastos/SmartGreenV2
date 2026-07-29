@@ -2,7 +2,7 @@
 
 void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
 {
-    char                buffer[16384];
+    char                buffer[32768];
     int                 offset = 0;
     t_maintenance_log   last_maint;
     int                 last_closing = 0;
@@ -132,13 +132,15 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
         offset += snprintf(buffer + offset, sizeof(buffer) - offset,
             "%s{\"zone_id\":%d,\"on_off\":\"%s\","
             "\"fan_speed_cmd\":%d,\"target_temp\":%.1f,"
-            "\"cool_fan_mode\":\"%s\"}",
+            "\"cool_fan_mode\":\"%s\","
+            "\"prewet_in_progress\":\"%s\"}",
             i > 0 ? "," : "",
             smartgreen->zone_params[i].zone_id,
             smartgreen->zone_params[i].on_off,
             smartgreen->zone_params[i].fan_speed_cmd,
             smartgreen->zone_params[i].target_temp,
-            smartgreen->zone_params[i].cool_fan_mode
+            smartgreen->zone_params[i].cool_fan_mode,
+            smartgreen->zone_params[i].prewet_in_progress
         );
     }
     offset += snprintf(buffer + offset, sizeof(buffer) - offset, "],");

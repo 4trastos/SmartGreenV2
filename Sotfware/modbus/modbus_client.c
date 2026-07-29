@@ -116,16 +116,20 @@ int     ft_modbus_write_cooler(t_smartgreen *smartgreen, int unit_id, int addr, 
 {
     uint16_t    val = (uint16_t)value;
 
+    pthread_mutex_lock(&smartgreen->modbus_mutex);
     if (modbus_set_slave(smartgreen->modbus_ctx, unit_id) == -1)
     {
+        pthread_mutex_unlock(&smartgreen->modbus_mutex);
         fprintf(stderr, "Set Slave data error: ( %s )\n", modbus_strerror(errno));
         return (-1);
     }
     // if (modbus_write_registers(smartgreen->modbus_ctx, addr, 1, &val) == -1)
     if (modbus_write_register(smartgreen->modbus_ctx, addr, val) == -1)
     {
+        pthread_mutex_unlock(&smartgreen->modbus_mutex);
         fprintf(stderr, "Error Modbus Write Register: ( %s )\n", modbus_strerror(errno));
         return(-1);
     }
+    pthread_mutex_unlock(&smartgreen->modbus_mutex);
     return (0);
 }

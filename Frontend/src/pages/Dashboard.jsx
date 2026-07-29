@@ -253,7 +253,7 @@ function CoolerDetail({ cooler, onClose }) {
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[
-            {l:'Agua', v: c.alarm_water ? '○ Sin agua' : '● Presente', c: c.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
+            {l:'Agua', v: cooler.alarm_water ? '○ Sin agua' : '● Presente', c: cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
             {l:'Salinidad', v:`${cooler.salinity_us.toFixed(0)} μS`, c:'text-white'},
             {l:'PPM', v:`${cooler.salinity_ppm?.toFixed(0)||0}`, c:'text-white'},
             {l:'Bomba', v:cooler.pump_on?'ON':'OFF', c:cooler.pump_on?'text-[#088fc3]':'text-white/30'},
@@ -306,16 +306,52 @@ function DashboardLoading({ connected }) {
   )
 }
 
+// Pantalla de espera PRELOADING del dashboard
+function PrewetLoading() {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-6">
+      <div className="relative">
+        <div className="text-6xl animate-bounce">💧</div>
+        <div className="absolute -inset-4 rounded-full border-2 border-[#088fc3]/30 animate-ping" />
+      </div>
+      <div className="text-center">
+        <p className="text-[#088fc3] font-black text-xl mb-2">Prewet en progreso</p>
+        <p className="text-white/40 text-sm">Mojando los paneles evaporativos...</p>
+        <p className="text-white/20 text-xs mt-1">Espere hasta que el sistema esté listo</p>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard({ data, connected }) {
   const [selected, setSelected] = useState(null)
+  const [coolerStates, setCoolerStates] = useState({})
 
-  // const hasData = connected && data.coolers.length > 0 && data.coolers.some(c => !c.disabled && c.last_read > 0)
-  // const hasData = connected && data.coolers.length > 0
   const hasData = connected && data.coolers.length > 0 && data.coolers.some(c => c.last_read > 0)
   const n = hasData ? data.coolers.length : 0
 
+  useEffect(() => {
+    setCoolerStates({})
+  }, [data.coolers])
+
+  const coolersWithState = data.coolers.map(c => ({
+    ...c,
+    fan_on: coolerStates[c.unit_id] !== undefined ? coolerStates[c.unit_id] : c.fan_on
+  }))
+
+  const toggleCooler = async (zoneId, unitId, currentState) => {
+    const newState = !currentState
+    setCoolerStates(prev => ({...prev, [unitId]: newState}))
+    await fetch(`${API_URL}/zones/${zoneId}/onoff`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action: newState ? 'ON' : 'OFF'})
+    })
+  }
+
   const Card = n <= 4 ? CoolerCard : n <= 20 ? CoolerMini : CoolerNano
   const gridClass = n <= 4 ? 'grid-cols-2' : n <= 9 ? 'grid-cols-3' : n <= 16 ? 'grid-cols-4' : n <= 25 ? 'grid-cols-5' : 'grid-cols-6'
+
+  const isPrewet = hasData && data.zones.some(z => z.prewet_in_progress === 'yes')
 
   const toggleAll = async (action) => {
     for (const z of data.zones) {
@@ -351,13 +387,15 @@ export default function Dashboard({ data, connected }) {
         {/* Contenido principal */}
         {!hasData ? (
           <DashboardLoading connected={connected} />
+        ) : isPrewet ? (
+          <PrewetLoading />
         ) : n === 1 ? (
           <div className="flex-1 flex">
-            <SingleHero cooler={data.coolers[0]} onClick={setSelected} />
+            <SingleHero cooler={coolersWithState[0]} onClick={setSelected} toggleCooler={toggleCooler} />
           </div>
         ) : (
           <div className={`flex-1 overflow-y-auto grid ${gridClass} gap-3 content-start`}>
-            {data.coolers.map(c => <Card key={c.unit_id} cooler={c} onClick={setSelected} />)}
+            {coolersWithState.map(c => <Card key={c.unit_id} cooler={c} onClick={setSelected} toggleCooler={toggleCooler} />)}
           </div>
         )}
 

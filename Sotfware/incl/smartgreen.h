@@ -265,6 +265,12 @@ typedef struct s_smartgreen
     struct lws          *ws_clients[MAX_WS_CLIENTS];
 }   t_smartgreen;
 
+typedef struct s_prewet_args
+{
+    t_smartgreen    *smartgreen;
+    int             zone_id;
+}   t_prewet_args;
+
 extern volatile sig_atomic_t g_sigint_received;
 extern volatile sig_atomic_t g_sigterm_received;
 extern volatile sig_atomic_t g_alarm_modbus;
@@ -334,6 +340,7 @@ int     ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on);
 int     scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
 void    ft_check_alarms(t_smartgreen *smartgreen);
 void    ft_maintenance_alarms(t_smartgreen *smartgreen);
+void    *prewet_thread(void *arg);
 
 /*  UTILS   */
 void    log_error(const char *message);
