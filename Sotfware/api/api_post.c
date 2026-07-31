@@ -248,7 +248,7 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
 
     pthread_mutex_lock(&smartgreen->data_mutex);
     ft_strcpy(smartgreen->zone_params[zone_idx].on_off, action, sizeof(smartgreen->zone_params->on_off));
-    db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);  // ← añadir aquí
+    //db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);  // ← añadir aquí
 
     if (smartgreen->modbus_ctx)
     {
@@ -259,6 +259,11 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
         }
     }
     pthread_mutex_unlock(&smartgreen->data_mutex);
+
+    //db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);  // ← añadir aquí
+    int ret = db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
+    printf("db_update_zone_params ret=%d on_off=%s\n", ret, smartgreen->zone_params[zone_idx].on_off);
+    fflush(stdout);
 
     if (on && smartgreen->modbus_ctx && db_read_config(smartgreen, "prewet_selector") == 1)
     {

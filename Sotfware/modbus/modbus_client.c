@@ -17,7 +17,7 @@ int     ft_modbus_init(t_smartgreen *smartgreen)
         return (-1);
     }
 
-    modbus_set_response_timeout(ctx, 3, 0);
+    modbus_set_response_timeout(ctx, 1, 0);
 
     printf("Modbus connected correctly\n");
     smartgreen->modbus_ctx = ctx;
@@ -40,7 +40,6 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
         return (-1);
     }
     
-    //pthread_mutex_lock(&smartgreen->modbus_mutex);
     rc = modbus_read_registers(smartgreen->modbus_ctx, 0, MODBUS_COOLER_REGS, tab_reg);
     if (rc == -1)
     {
@@ -98,6 +97,9 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
         {
             smartgreen->sensors[unit_idx].disabled = 1;
             smartgreen->sensors[unit_idx].alarm_signal = 1;
+            smartgreen->sensors[unit_idx].valid = 0;          
+            smartgreen->sensors[unit_idx].temperature = 0.0f; 
+            smartgreen->sensors[unit_idx].humidity = 0.0f;  
             db_save_error(smartgreen, modbus_strerror(errno));
         }
         pthread_mutex_unlock(&smartgreen->modbus_mutex);

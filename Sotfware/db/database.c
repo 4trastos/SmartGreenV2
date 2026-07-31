@@ -2,6 +2,8 @@
 
 int     db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone)
 {
+    printf("[DEBUG] DENTRO DE -> db_update_zone_params: zone_id=%d on_off=%s\n", zone->zone_id, zone->on_off);
+    fflush(stdout);
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = "UPDATE zone_params SET "
                            "fan_speed_cmd=?, target_temp=?, humidity_min=?, humidity_max=?, "
@@ -35,7 +37,7 @@ int     db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone)
     sqlite3_bind_int(stmt, 14, zone->last_pump_time);
     sqlite3_bind_int(stmt, 15, zone->zone_id);  // WHERE zone_id=?
 
-    while (attemps > DB_MAX_RETRIES)
+    while (attemps < DB_MAX_RETRIES)
     {
         rc = sqlite3_step(stmt);
         if (rc == SQLITE_DONE)

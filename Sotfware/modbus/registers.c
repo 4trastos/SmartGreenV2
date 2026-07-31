@@ -50,13 +50,14 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
                 (regs[49] >> 4) & 0x01,
                 (regs[49] >> 8) & 0x0F,
                 (regs[49] >> 12) & 0x0F);
-        fprintf(fd, "regs[50]=0x%04X pump=%d solenoid=%d drain_confirm=%d fan_confirmed=%d\n",
+        fprintf(fd, "regs[50]=0x%04X pump=%d drain_confirm=%d fan_confirmed=%d\n",
                 regs[50],
-                (regs[50] >> 1) & 0x01,
-                (regs[50] >> 3) & 0x01,
+                (regs[50] >> 0) & 0x01,
                 (regs[50] >> 4) & 0x01,
                 (regs[50] >> 8) & 0x0F);
-        fprintf(fd, "regs[51]=0x%04X fan_individual=%d\n",    regs[51], regs[51]);
+        fprintf(fd, "regs[51]=0x%04X solenoid=%d fan_individual=%d\n",
+                regs[51],
+                (regs[51] >> 3) & 0x01,regs[51]);
         fprintf(fd, "regs[52]=0x%04X extended_status=%d\n",   regs[52], regs[52]);
         fprintf(fd, "regs[53]=0x%04X water_present=%d\n",     regs[53], regs[53]);
         fprintf(fd, "regs[54]=0x%04X salinity_raw=%d ppm=%.2f us=%.2f\n",
@@ -98,9 +99,9 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     state->extended_status = (regs[52]);
 
     // offset 50 - r_40051 - bits de estado 
-    // state->pump_on = (regs[50] >> 0) & 0x01;
+    state->pump_on = (regs[50] >> 0) & 0x01;
     // state->solenoid_on = (regs[50] >> 3) & 0x01;
-    state->pump_on = (regs[50] >> 1) & 0x01;
+    // state->pump_on = (regs[50] >> 1) & 0x01;
     state->solenoid_on = (regs[51] >> 3) & 0x01;
     state->drain_valve_confirm = (regs[50] >> 4) & 0x01;            // drain valve open/close" (comando/confirmación)
     state->fan_speed_confirmed = (regs[50] >> 8) & 0x0F;            // velocidad actual (post arranque)

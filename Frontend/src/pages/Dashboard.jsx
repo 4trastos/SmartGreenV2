@@ -8,7 +8,7 @@ function coolerStatus(c) {
   //if (c.alarm_water) return 'warning'
   if (c.alarm_water && c.salinity_us <= 10) return 'warning'
   if (c.alarm_warranty) return 'warranty'
-  if (c.fan_on) return 'active'
+  if (c.fan_on ) return 'active'
   return 'idle'
 }
 
