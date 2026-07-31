@@ -17,7 +17,7 @@ int     ft_modbus_init(t_smartgreen *smartgreen)
         return (-1);
     }
 
-    modbus_set_response_timeout(ctx, 1, 0);
+    modbus_set_response_timeout(ctx, 3, 0);
 
     printf("Modbus connected correctly\n");
     smartgreen->modbus_ctx = ctx;
@@ -32,13 +32,15 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     if (unit_idx == -1)
         return (-1);
 
+    pthread_mutex_lock(&smartgreen->modbus_mutex);
     if (modbus_set_slave(smartgreen->modbus_ctx, unit_id) == -1)
     {
+        pthread_mutex_unlock(&smartgreen->modbus_mutex);
         fprintf(stderr, "Set Slave data error: ( %s )\n", modbus_strerror(errno));
         return (-1);
     }
     
-    pthread_mutex_lock(&smartgreen->modbus_mutex);
+    //pthread_mutex_lock(&smartgreen->modbus_mutex);
     rc = modbus_read_registers(smartgreen->modbus_ctx, 0, MODBUS_COOLER_REGS, tab_reg);
     if (rc == -1)
     {
@@ -77,13 +79,15 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
     if (unit_idx == -1)
         return (-1);
 
+    pthread_mutex_lock(&smartgreen->modbus_mutex);
     if (modbus_set_slave(smartgreen->modbus_ctx, unit_id) == -1)
     {
+        pthread_mutex_unlock(&smartgreen->modbus_mutex);
         fprintf(stderr, "Set Slave data error: ( %s )\n", modbus_strerror(errno));
         return (-1);
     }
 
-    pthread_mutex_lock(&smartgreen->modbus_mutex);
+    //pthread_mutex_lock(&smartgreen->modbus_mutex);
     rc = modbus_read_registers(smartgreen->modbus_ctx, MODBUS_SENSOR_ADDR, MODBUS_SENSOR_REGS, tab_reg);
     if (rc == -1)
     {
@@ -123,8 +127,8 @@ int     ft_modbus_write_cooler(t_smartgreen *smartgreen, int unit_id, int addr, 
         fprintf(stderr, "Set Slave data error: ( %s )\n", modbus_strerror(errno));
         return (-1);
     }
-    // if (modbus_write_registers(smartgreen->modbus_ctx, addr, 1, &val) == -1)
-    if (modbus_write_register(smartgreen->modbus_ctx, addr, val) == -1)
+    // if (modbus_write_register(smartgreen->modbus_ctx, addr, val) == -1)
+    if (modbus_write_registers(smartgreen->modbus_ctx, addr, 1, &val) == -1)
     {
         pthread_mutex_unlock(&smartgreen->modbus_mutex);
         fprintf(stderr, "Error Modbus Write Register: ( %s )\n", modbus_strerror(errno));

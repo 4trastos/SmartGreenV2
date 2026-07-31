@@ -1,11 +1,5 @@
 #include "../incl/smartgreen.h"
 
-// int    decode_water_present_zone(int r_40054, int zone)
-// {
-//     int shift = (zone - 1) * 4;
-//     return ((r_40054 >> shift) & 0x0F);
-// }
-
 int    decode_water_present_zone(uint16_t reg, int zone)
 {
     int shift;
@@ -23,6 +17,7 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     FILE    *fd = fopen("/tmp/sg_debug.log", "a");
     if (fd)
     {
+        fprintf(fd, "******** NUEVO DECODE v2 ********\n");
         fprintf(fd, "=== unit_id=%d  modbus_addr=%d zone_id=%d ===\n", state->unit_id, regs[8], state->zone_id);
         fprintf(fd, "regs[0] =0x%04X r0_config=%d\n",         regs[0],  regs[0]);
         fprintf(fd, "regs[1] =0x%04X fabricante_p1=%d\n",     regs[1],  regs[1]);
@@ -104,8 +99,9 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
 
     // offset 50 - r_40051 - bits de estado 
     // state->pump_on = (regs[50] >> 0) & 0x01;
+    // state->solenoid_on = (regs[50] >> 3) & 0x01;
     state->pump_on = (regs[50] >> 1) & 0x01;
-    state->solenoid_on = (regs[50] >> 3) & 0x01;
+    state->solenoid_on = (regs[51] >> 3) & 0x01;
     state->drain_valve_confirm = (regs[50] >> 4) & 0x01;            // drain valve open/close" (comando/confirmación)
     state->fan_speed_confirmed = (regs[50] >> 8) & 0x0F;            // velocidad actual (post arranque)
 
@@ -119,6 +115,20 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
 
 void    decode_sensor_state(uint16_t *regs, t_sensor_state *state)
 {
+    // tail -f /tmp/sg_sensor_debug.log
+
+    FILE *fd = fopen("/tmp/sg_sensor_debug.log", "a");
+    if (fd)
+    {
+        fprintf(fd,  "=== sensor_id=%d ===\n", state->sensor_id);
+        fprintf(fd, "regs[0]=0x%04X sensor_id=%d\n", regs[0], regs[0]);
+        fprintf(fd, "regs[1]=0x%04X temp_raw=%d (%.1f°C)\n", regs[1], (int16_t)regs[1], (int16_t)regs[1] / 10.0f);
+        fprintf(fd, "regs[2]=0x%04X hum_raw=%d (%.1f%%)\n", regs[2], (int16_t)regs[2], (int16_t)regs[2] / 10.0f);
+        fprintf(fd, "regs[3]=0x%04X flags=%d\n", regs[3], regs[3]);
+        fprintf(fd, "---\n");
+        fclose(fd);
+    }
+
     state->sensor_id = regs[0];
     state->flags = regs[3];
     if ((int16_t)regs[1] == SENSOR_NO_SIGNAL || (int16_t)regs[1] > MAX_SENSOR_TEMP || (int16_t)regs[2] == SENSOR_NO_SIGNAL || (int16_t)regs[2] > MAX_SENSOR_HUM)
@@ -130,7 +140,7 @@ void    decode_sensor_state(uint16_t *regs, t_sensor_state *state)
     else
     {
         state->valid = 1;
-        state->temperature = (int16_t)regs[1] / 10.0f;
-        state->humidity = (int16_t)regs[2] / 10.0f;
+        state->temperature = ((int16_t)regs[1] / 10.0f) + state->offset_val;
+        state->humidity = ((int16_t)regs[2] / 10.0f) + state->humidity_offset_val;
     }
 }

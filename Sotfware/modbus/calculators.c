@@ -75,40 +75,54 @@ int     ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on)
 
 // int     ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 // {
-//     int r50 = calculate_register_50(0, on, on ? 3 : 0);                 // Calcula valor para: bomba ON/OFF + fan speed 3
-//     int r51 = calculate_register_51(on, 0);                             // Calcula valor para: solenoide ON/OFF + drenaje cerrado
-//     int r52 = calculate_register_52(on ? 3 : 0);                        // Calcula valor para: arranque físico ventilador speed 3
+//     int r50 = calculate_register_50(0, on, on ? 3 : 0);
+//     int r51 = calculate_register_51(on, 0);
+//     int r52 = calculate_register_52(on ? 3 : 0);
 
-//     if (ft_modbus_write_cooler(smartgreen, unit_id, 49, r50) == -1)     // Escribe bomba + fan speed en registro 50
+//     printf("ft_cooler_onoff: unit_id=%d on=%d r50=%d r51=%d r52=%d\n", 
+//            unit_id, on, r50, r51, r52);
+//     fflush(stdout);
+    
+//     printf("Escribiendo reg 49 = %d\n", r50); fflush(stdout);
+//     //if (ft_modbus_write_cooler(smartgreen, unit_id, 50, r50) == -1)
+//     if (ft_modbus_write_cooler(smartgreen, unit_id, 49, r50) == -1)
 //         return (-1);
-//     if (ft_modbus_write_cooler(smartgreen, unit_id, 50, r51) == -1)     // Escribe solenoide + drenaje en registro 51
+//     usleep(200000);
+//     printf("Escribiendo reg 50 = %d\n", r51); fflush(stdout);
+//     //if (ft_modbus_write_cooler(smartgreen, unit_id, 51, r51) == -1)
+//     if (ft_modbus_write_cooler(smartgreen, unit_id, 50, r51) == -1)
 //         return (-1);
-//     if (ft_modbus_write_cooler(smartgreen, unit_id, 51, r52) == -1)     // Escribe arranque físico ventilador en registro 52
+//     usleep(200000);
+//     printf("Escribiendo reg 51 = %d\n", r52); fflush(stdout);
+//     //if (ft_modbus_write_cooler(smartgreen, unit_id, 52, r52) == -1)
+//     if (ft_modbus_write_cooler(smartgreen, unit_id, 51, r52) == -1)
 //         return (-1);
-//     if (ft_modbus_write_cooler(smartgreen, unit_id, 400, 300) == -1)    // Comando periódico obligatorio - mantiene el cooler activo
+//     usleep(200000);
+//     printf("Escribiendo reg 400 = 300\n"); fflush(stdout);
+//     if (ft_modbus_write_cooler(smartgreen, unit_id, 400, 300) == -1)
 //         return (-1);
 //     return (0);
 // }
 
-int     ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
+int ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 {
-    int r50 = calculate_register_50(0, on, on ? 3 : 0);
-    int r51 = calculate_register_51(on, 0);
-    int r52 = calculate_register_52(on ? 3 : 0);
+    int r0  = calculate_register_0(smartgreen);
+    int r50 = calculate_register_50(0, 0, on ? 3 : 0);
+    int r51 = calculate_register_51(0, on ? 1 : 0);
 
-    printf("ft_cooler_onoff: unit_id=%d on=%d r50=%d r51=%d r52=%d\n", 
-           unit_id, on, r50, r51, r52);
-    fflush(stdout);
-    
+    // Escribir R_0 primero — configura el modo
+    printf("Escribiendo R_0 primero = %d\n", r0); fflush(stdout);
+    if (ft_modbus_write_cooler(smartgreen, unit_id, 0, on ? r0 : 0) == -1)
+        return (-1);
+    usleep(200000);
     printf("Escribiendo reg 49 = %d\n", r50); fflush(stdout);
     if (ft_modbus_write_cooler(smartgreen, unit_id, 49, r50) == -1)
         return (-1);
+    usleep(200000);
     printf("Escribiendo reg 50 = %d\n", r51); fflush(stdout);
     if (ft_modbus_write_cooler(smartgreen, unit_id, 50, r51) == -1)
         return (-1);
-    printf("Escribiendo reg 51 = %d\n", r52); fflush(stdout);
-    if (ft_modbus_write_cooler(smartgreen, unit_id, 51, r52) == -1)
-        return (-1);
+    usleep(200000);
     printf("Escribiendo reg 400 = 300\n"); fflush(stdout);
     if (ft_modbus_write_cooler(smartgreen, unit_id, 400, 300) == -1)
         return (-1);

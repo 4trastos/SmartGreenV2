@@ -63,6 +63,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
     int         current_min;
     int         zone_idx;
     int         on = 0;
+    int         z = 0;
 
     if (read_interval < 0)
         read_interval = SCHEDULER_READ_MIN;
@@ -86,6 +87,16 @@ void    scheduler_run(t_smartgreen *smartgreen)
                 for (int i = 0; i < smartgreen->num_sensors; i++)
                     ft_modbus_read_sensor(smartgreen, smartgreen->sensors[i].sensor_id);
                 // ft_ws_broadcast_status(smartgreen);             // Enviar estado actualizado por WebSocket
+                for (int i = 0; i < smartgreen->num_coolers; i++)
+                {
+                    z = ft_find_zone(smartgreen, smartgreen->coolers[i].zone_id);
+                    if (z != -1 && strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].prewet_in_progress, "no") == 0)
+                    {
+                        printf("SCHEDULER: mandando cmd 400 a cooler %d\n", smartgreen->coolers[i].unit_id);
+                        ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 400, 300);
+                    }
+                }
+                
             }
             ft_ws_broadcast_status(smartgreen);
             ft_check_alarms(smartgreen);

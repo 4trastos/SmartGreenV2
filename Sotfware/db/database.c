@@ -453,12 +453,13 @@ int db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor)
     sqlite3_bind_int(stmt, 7, sensor->flags);
     sqlite3_bind_int(stmt, 8, sensor->valid);
     sqlite3_bind_int(stmt, 9, sensor->offset_val);
-    sqlite3_bind_int(stmt, 10, sensor->error_count);
-    sqlite3_bind_int(stmt, 11, sensor->last_read);
-    sqlite3_bind_int(stmt, 12, sensor->last_mod);
-    sqlite3_bind_int(stmt, 13, sensor->alarm_signal);
-    sqlite3_bind_int(stmt, 14, sensor->alarm_temp);
-    sqlite3_bind_int(stmt, 15, sensor->disabled);
+    sqlite3_bind_int(stmt, 10, sensor->humidity_offset_val);
+    sqlite3_bind_int(stmt, 11, sensor->error_count);
+    sqlite3_bind_int(stmt, 12, sensor->last_read);
+    sqlite3_bind_int(stmt, 13, sensor->last_mod);
+    sqlite3_bind_int(stmt, 14, sensor->alarm_signal);
+    sqlite3_bind_int(stmt, 15, sensor->alarm_temp);
+    sqlite3_bind_int(stmt, 16, sensor->disabled);
 
     while (attemps < DB_MAX_RETRIES)
     {

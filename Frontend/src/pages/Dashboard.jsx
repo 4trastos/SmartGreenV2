@@ -175,7 +175,7 @@ function SingleHero({ cooler, onClick, toggleCooler }) {
       </div>
       <div className="grid grid-cols-4 gap-3">
         {[
-          { l:'Agua', v: cooler.alarm_water ? 'Sin agua' : 'Presente', c: cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
+          { l:'Agua', v: cooler.alarm_water ? 'Sin agua' : 'Con agua', c: cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
           { l:'Salinidad', v:`${cooler.salinity_us.toFixed(0)} μS`, c:'text-white' },
           { l:'PPM', v:`${cooler.salinity_ppm?.toFixed(0)||0}`, c:'text-white' },
           { l:'Horas', v:`${cooler.hours_running.toFixed(0)} h`, c:'text-white/50' },
@@ -253,7 +253,7 @@ function CoolerDetail({ cooler, onClose }) {
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[
-            {l:'Agua', v: cooler.alarm_water ? '○ Sin agua' : '● Presente', c: cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
+            {l:'Agua', v: cooler.alarm_water ? '○ Sin agua' : '● Con agua', c: cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
             {l:'Salinidad', v:`${cooler.salinity_us.toFixed(0)} μS`, c:'text-white'},
             {l:'PPM', v:`${cooler.salinity_ppm?.toFixed(0)||0}`, c:'text-white'},
             {l:'Bomba', v:cooler.pump_on?'ON':'OFF', c:cooler.pump_on?'text-[#088fc3]':'text-white/30'},
@@ -311,7 +311,9 @@ function PrewetLoading() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6">
       <div className="relative">
-        <div className="text-6xl animate-bounce">💧</div>
+        <svg viewBox="0 0 24 24" className="w-16 h-16 animate-bounce text-[#088fc3]" fill="currentColor">
+          <path d="M12 2C6 2 2 8 2 13a10 10 0 0 0 20 0C22 8 18 2 12 2z"/>
+        </svg>
         <div className="absolute -inset-4 rounded-full border-2 border-[#088fc3]/30 animate-ping" />
       </div>
       <div className="text-center">

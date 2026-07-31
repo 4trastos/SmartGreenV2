@@ -27,8 +27,8 @@
                                 "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod, alarm_fault, alarm_salinity, alarm_water, alarm_comms, alarm_warranty, alarm_maint_opening, alarm_maint_closing, alarm_maint_legionella, hours_running, " \
                                 "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-# define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
-                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+# define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, humidity_offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
+                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
 # define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
                                 "salinity_us, drain_open, solenoid_on, on_off, fault_code) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -56,13 +56,13 @@
 # define MODBUS_MAX_UNIT_ID     247    // límite protocolo Modbus RTU
 # define MODBUS_MAX_COOLERS     32     // límite práctico RS485 en un bus
 # define MODBUS_MIN_UNIT_ID     1      // dirección mínima válida (0=broadcast)
-# define MODBUS_FIRST_SENSOR    177
+# define MODBUS_FIRST_SENSOR    175
 # define MODBUS_FIRST_COOLER    2
 
 /*  LIMITS  */
 # define SENSOR_NO_SIGNAL       -200
 # define MAX_SENSOR_TEMP        500
-# define MAX_SENSOR_HUM         100
+# define MAX_SENSOR_HUM         1000
 # define MAX_COOLER_ERRORS      10
 # define MAX_SENSOR_ERRORS      10
 # define SALINITY_TRIGGER       4275
@@ -234,6 +234,7 @@ typedef struct  s_sensor_state
     int                 flags;
     int                 valid;
     int                 offset_val;
+    int                 humidity_offset_val;
     int                 error_count;
     int                 disabled;                       // 0=activo, 1=deshabilitado temporalmente
     time_t              last_read;
@@ -301,7 +302,7 @@ int     ft_modbus_write_cooler(t_smartgreen *smartgreen, int unit_id, int addr, 
 /*  REGISTERS   */
 void    decode_cooler_state(uint16_t *regs, t_cooler_state *state);
 void    decode_sensor_state(uint16_t *regs, t_sensor_state *state);
-int     decode_water_present_zone(int r_40054, int zone);
+int     decode_water_present_zone(uint16_t reg, int zone);
 int     calculate_register_0(t_smartgreen *smartgreen);
 int     calculate_register_50(int drain_valve, int pump_on, int fan_speed);
 int     calculate_register_51(int solenoid_on, int drain_closed);

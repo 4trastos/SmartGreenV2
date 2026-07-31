@@ -44,6 +44,10 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "auto_libera_individual",    120);                   // segundos antes de liberar control individual
     db_save_config(smartgreen, "hours_show_errors",         12);                    // horas que se muestran errores
     db_save_config(smartgreen, "retry_fault_auto",          1);                     // 0=no, 1=si reintentar fault automáticamente
+    db_save_config(smartgreen, "sensor_1_id",               175);                   // unit_id primer sensor
+    db_save_config(smartgreen, "sensor_1_offset",           -4);                    // offset corrección
+    db_save_config(smartgreen, "sensor_1_humidity_offset",  25);                     // offset correciión humnedad
+
 }
 
 int ft_init_data(t_smartgreen *smartgreen)
@@ -125,7 +129,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             return (-1);
         while (i < smartgreen->num_sensors)
         {
-            smartgreen->sensors[i].sensor_id = MODBUS_FIRST_SENSOR + i;
+            smartgreen->sensors[i].sensor_id = db_read_config(smartgreen, "sensor_1_id") + i;
             smartgreen->sensors[i].zone_id = 1;
             ft_strcpy(smartgreen->sensors[i].type, "INT", sizeof(smartgreen->sensors->type));
             ft_strcpy(smartgreen->sensors[i].name, "TEST SENSOR", sizeof(smartgreen->sensors->name));
@@ -133,7 +137,8 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->sensors[i].humidity = -200.00;
             smartgreen->sensors[i].flags = 0;
             smartgreen->sensors[i].valid = 0;
-            smartgreen->sensors[i].offset_val = 0;
+            smartgreen->sensors[i].offset_val = db_read_config(smartgreen, "sensor_1_offset");
+            smartgreen->sensors[i].humidity_offset_val = db_read_config(smartgreen, "sensor_1_humidity_offset");
             smartgreen->sensors[i].error_count = 0;
             smartgreen->sensors[i].last_read = get_timestamp();
             smartgreen->sensors[i].last_mod = get_timestamp();
