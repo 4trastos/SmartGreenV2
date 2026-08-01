@@ -42,7 +42,7 @@ void    *prewet_thread(void *arg)
     // Fan speed 3 — FUERA del mutex
     for (int i = 0; i < smartgreen->num_coolers; i++)
         if (smartgreen->coolers[i].zone_id == zone_id)
-            ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 51, calculate_register_52(3));
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, calculate_register_52(3));
 
     return (NULL);
 }
@@ -62,14 +62,14 @@ int     cooler_water_management(t_smartgreen *smartgreen) // Control automático
         {
             if (smartgreen->coolers[i].salinity_us >= db_read_config(smartgreen, "salinity_trigger"))
             {
-                ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 49, 1);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, 1);
                 while (elapsed < drain_time)
                 {
                     sleep(interval);
                     elapsed += interval;
-                    ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 49, 1);
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, 1);
                 }
-                ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 49, 0);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, 0);
             }
         }
     }
@@ -99,7 +99,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
     printf("PREWET paso 1: cerrar solenoide + drain (addr=50 val=%d)\n", calculate_register_51(0, 1)); fflush(stdout);
     for (int i = 0; i < smartgreen->num_coolers; i++)
         if (smartgreen->coolers[i].zone_id == zone_id)
-            ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 50, calculate_register_51(0, 1));
+            ft_modbus_enqueue(&smartgreen->modbus_queue,CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(0, 1));
 
     printf("PREWET esperando %ds antes de abrir solenoide...\n", db_read_config(smartgreen, "prewet_delay_solenoid")); fflush(stdout);
     sleep(db_read_config(smartgreen, "prewet_delay_solenoid"));
@@ -108,7 +108,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
     printf("PREWET paso 2: abrir solenoide (addr=50 val=%d)\n", calculate_register_51(1, 1)); fflush(stdout);
     for (int i = 0; i < smartgreen->num_coolers; i++)
         if (smartgreen->coolers[i].zone_id == zone_id)
-            ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 50, calculate_register_51(1, 1));
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(1, 1));
 
     // PASO 3 — esperar agua (max_wait segundos)
     printf("PREWET paso 3: esperando agua (max=%ds interval=%ds)\n", max_wait, check_interval); fflush(stdout);
@@ -116,9 +116,6 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
     {
         sleep(check_interval);
         elapsed += check_interval;
-        for (int i = 0; i < smartgreen->num_coolers; i++)
-            if (smartgreen->coolers[i].zone_id == zone_id)
-                ft_modbus_read_cooler(smartgreen, smartgreen->coolers[i].unit_id);
         all_water = 1;
         for (int i = 0; i < smartgreen->num_coolers; i++)
             if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].water_present)
@@ -136,7 +133,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
     printf("PREWET paso 5: encender bomba (addr=49 val=%d)\n", calculate_register_50(0, 1, 0)); fflush(stdout);
     for (int i = 0; i < smartgreen->num_coolers; i++)
         if (smartgreen->coolers[i].zone_id == zone_id)
-            ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, 1, 0));
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, 1, 0));
 
     printf("PREWET esperando %ds con bomba encendida...\n", db_read_config(smartgreen, "prewet_delay_pump")); fflush(stdout);
     sleep(db_read_config(smartgreen, "prewet_delay_pump"));

@@ -200,10 +200,9 @@ int api_start(t_smartgreen *smartgreen)
     return (0);
 }
 
-int api_stop(t_smartgreen *smartgreen)
+void    api_stop(t_smartgreen *smartgreen)
 {
     if (smartgreen->api_daemon)
         MHD_stop_daemon(smartgreen->api_daemon);
     smartgreen->api_thread.status = THREAD_STOPPED;
-    return(0);
 }

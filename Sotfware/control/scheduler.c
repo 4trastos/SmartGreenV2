@@ -50,7 +50,6 @@ void    scheduler_run(t_smartgreen *smartgreen)
 {
     setenv("TZ", "Europe/Madrid", 1);
     tzset();
-    
     struct tm   *tm_info;
     time_t      last_read = get_timestamp();
     time_t      last_history = get_timestamp();
@@ -69,63 +68,31 @@ void    scheduler_run(t_smartgreen *smartgreen)
         read_interval = SCHEDULER_READ_MIN;
     if (history_interval < 0)
         history_interval = HISTORY_INTERVAL;
-    
     smartgreen->read_interval = read_interval;
 
     while (!g_sigint_received && !g_sigterm_received)
     {
         now = get_timestamp();
 
+        // Lectura periódica — encolar lecturas
         if (now - last_read >= read_interval)
         {
             if (!smartgreen->modbus_ctx)
                 ft_modbus_init(smartgreen);
             if (smartgreen->modbus_ctx)
             {
-                // Verificar si hay prewet activo
-                int prewet_active = 0;
-                for (int z = 0; z < smartgreen->num_zones; z++)
-                    if (strcmp(smartgreen->zone_params[z].prewet_in_progress, "yes") == 0)
-                        prewet_active = 1;
-
-                // Heartbeat PRIMERO — antes de leer
-                heartbeat_tick++;
                 for (int i = 0; i < smartgreen->num_coolers; i++)
-                {
-                    int z = ft_find_zone(smartgreen, smartgreen->coolers[i].zone_id);
-                    if (z != -1 && strcmp(smartgreen->zone_params[z].on_off, "ON") == 0)
-                    {
-                        if (heartbeat_tick % 2 == 0)
-                        {
-                            printf("SCHEDULER: heartbeat 400 → cooler %d (prewet=%d)\n",
-                                smartgreen->coolers[i].unit_id, prewet_active); fflush(stdout);
-                            ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 400, 300);
-                        }
-                    }
-                }
-
-                // Leer solo si NO hay prewet — DESPUÉS del heartbeat
-                if (!prewet_active)
-                {
-                    printf("SCHEDULER: leyendo coolers y sensores\n"); fflush(stdout);
-                    for (int i = 0; i < smartgreen->num_coolers; i++)
-                    {
-                        ft_modbus_read_cooler(smartgreen, smartgreen->coolers[i].unit_id);
-                        usleep(50000);
-                    }
-                    for (int i = 0; i < smartgreen->num_sensors; i++)
-                    {
-                        ft_modbus_read_sensor(smartgreen, smartgreen->sensors[i].sensor_id);
-                        usleep(50000);
-                    }
-                }
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
+                for (int i = 0; i < smartgreen->num_sensors; i++)
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_SENSOR, smartgreen->sensors[i].sensor_id, 0, 0);
             }
             ft_ws_broadcast_status(smartgreen);
             ft_check_alarms(smartgreen);
             ft_maintenance_alarms(smartgreen);
             last_read = now;
-        } 
+        }
 
+        // Historial periódico
         if (now - last_history >= history_interval)
         {
             for (int i = 0; i < smartgreen->num_coolers; i++)
@@ -135,13 +102,13 @@ void    scheduler_run(t_smartgreen *smartgreen)
             last_history = now;
         }
 
-        if (now - last_scheduler >= SCHEDULER_SEQUENCE)         // Mirar el horario cada 15 segundos
+        // Scheduler horario — cada SCHEDULER_SEQUENCE segundos
+        if (now - last_scheduler >= SCHEDULER_SEQUENCE)
         {
             tm_info = localtime(&now);
-
-            current_day = (tm_info->tm_wday == 0) ? 7 : tm_info->tm_wday;
+            current_day  = (tm_info->tm_wday == 0) ? 7 : tm_info->tm_wday;
             current_hour = tm_info->tm_hour;
-            current_min = tm_info->tm_min;
+            current_min  = tm_info->tm_min;
 
             db_read_scheduler(smartgreen);
             for (int i = 0; i < smartgreen->num_schedulers; i++)
@@ -153,7 +120,9 @@ void    scheduler_run(t_smartgreen *smartgreen)
                 zone_idx = ft_find_zone(smartgreen, smartgreen->scheduler[i].zone_id);
                 if (zone_idx != -1)
                 {
+                    pthread_mutex_lock(&smartgreen->data_mutex);
                     ft_strcpy(smartgreen->zone_params[zone_idx].on_off, smartgreen->scheduler[i].action, sizeof(smartgreen->zone_params->on_off));
+                    pthread_mutex_unlock(&smartgreen->data_mutex);
                     if (smartgreen->modbus_ctx)
                     {
                         on = (strcmp(smartgreen->scheduler[i].action, "ON") == 0) ? 1 : 0;
@@ -166,12 +135,24 @@ void    scheduler_run(t_smartgreen *smartgreen)
             last_scheduler = now;
         }
 
+        // Heartbeat — cada 5 segundos, fuera del read_interval
+        if (smartgreen->modbus_ctx)
+        {
+            heartbeat_tick++;
+            for (int i = 0; i < smartgreen->num_coolers; i++)
+            {
+                int z = ft_find_zone(smartgreen, smartgreen->coolers[i].zone_id);
+                if (z != -1 && strcmp(smartgreen->zone_params[z].on_off, "ON") == 0)
+                    if (heartbeat_tick % 5 == 0)
+                        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_HEARTBEAT, smartgreen->coolers[i].unit_id, 400, 300);
+            }
+        }
+
         if (smartgreen->ws_context)
-            lws_service(smartgreen->ws_context, 0);             // 0 = no blocking
+            lws_service(smartgreen->ws_context, 0);
 
         sleep(1);
     }
-    
 }
 
 int     db_read_scheduler(t_smartgreen *smartgreen)

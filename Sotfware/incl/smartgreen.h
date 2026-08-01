@@ -89,6 +89,14 @@ extern const char *SCHEMA_SQL;
 
 /*  STRUCTS */
 
+typedef enum e_modbus_cmd_type
+{
+    CMD_HEARTBEAT,                  // prioridad máxima — addr 400
+    CMD_WRITE,                      // escribir registro
+    CMD_READ_COOLER,                // leer cooler
+    CMD_READ_SENSOR,                // leer sensor
+}   t_modbus_cmd_type;
+
 typedef enum e_alarm_level
 {
     ALARM_GREEN = 0,                // Todo OK
@@ -104,6 +112,25 @@ typedef enum e_thread_status
     THREAD_STOPPED,
     THREAD_ERROR,
 }   t_thread_status;
+
+typedef struct s_modbus_cmd
+{
+    t_modbus_cmd_type   type;
+    int                 unit_id;
+    int                 addr;
+    int                 value;
+    struct s_modbus_cmd *next;
+}   t_modbus_cmd;
+
+typedef struct s_modbus_queue
+{
+    t_modbus_cmd        *head;
+    t_modbus_cmd        *tail;
+    int                 size;
+    int                 stop;
+    pthread_mutex_t     mutex;
+    pthread_cond_t      cond;
+}   t_modbus_queue;
 
 typedef struct  s_thread_ctrl
 {
@@ -191,10 +218,6 @@ typedef struct  s_cooler_state
     int                 water_present;
     int                 pump_on;
     int                 solenoid_on;
-    double              salinity_ppm;
-    double              salinity_us;
-    time_t              last_read;
-    time_t              last_mod;
     int                 alarm_fault;                    // 1=alarma activa, 0=resuelta
     int                 alarm_salinity;                 // 1=alarma activa, 0=resuelta
     int                 alarm_water;                    // 1=alarma activa, 0=resuelta
@@ -221,26 +244,31 @@ typedef struct  s_cooler_state
     int                 extended_status;                // regs[52] — estado extendido bitmap
     int                 modbus_addr;                    // regs[8]  — dirección Modbus actual
     int                 r0_config;                      // regs[0]  — configuración global actual
+    double              salinity_ppm;
+    double              salinity_us;
+    time_t              last_read;
+    time_t              last_mod;
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
 {
-    int                 sensor_id;                      // dirección Modbus (177-178)
-    int                 zone_id;
     char                type[4];                        // "INT" o "EXT"
     char                name[64];                 
-    float               temperature;
-    float               humidity;
+    int                 sensor_id;                      // dirección Modbus (177-178)
+    int                 zone_id;
     int                 flags;
     int                 valid;
     int                 offset_val;
     int                 humidity_offset_val;
     int                 error_count;
     int                 disabled;                       // 0=activo, 1=deshabilitado temporalmente
-    time_t              last_read;
-    time_t              last_mod;
     int                 alarm_signal;                   // 1=alarma activa, 0=resuelta
     int                 alarm_temp;                     // 1=alarma activa, 0=resuelta
+    float               temperature;
+    float               humidity;
+    int                 padding;
+    time_t              last_read;
+    time_t              last_mod;
 }   t_sensor_state;
 
 typedef struct s_smartgreen
@@ -258,18 +286,20 @@ typedef struct s_smartgreen
     t_zone_params       *zone_params;
     t_zones             *zones;
     t_scheduler_entry   *scheduler;
-    t_thread_ctrl       api_thread;
-    pthread_mutex_t     data_mutex;
-    pthread_mutex_t     modbus_mutex; 
     struct MHD_Daemon   *api_daemon;
     struct lws_context  *ws_context;
     struct lws          *ws_clients[MAX_WS_CLIENTS];
+    t_thread_ctrl       api_thread;
+    t_thread_ctrl       modbus_thread;                  // nuevo hilo worker
+    t_modbus_queue      modbus_queue;
+    pthread_mutex_t     data_mutex;
 }   t_smartgreen;
 
 typedef struct s_prewet_args
 {
     t_smartgreen    *smartgreen;
     int             zone_id;
+    int             padding;
 }   t_prewet_args;
 
 extern volatile sig_atomic_t g_sigint_received;
@@ -277,84 +307,90 @@ extern volatile sig_atomic_t g_sigterm_received;
 extern volatile sig_atomic_t g_alarm_modbus;
 
 /*  FUNCTIONS   */
-int     main(void);
-int     ft_check_database(t_smartgreen *smartgreen);
-int     ft_init_data(t_smartgreen *smartgreen);
-int     ft_find_zone(t_smartgreen *smartgreen, int id);
-int     ft_find_cooler(t_smartgreen *smargreen, int id);
-int     ft_find_sensor(t_smartgreen *smargreen, int id);
-void    ft_free_structs(t_smartgreen *smartgreen);
-void    ft_free_modbus(t_smartgreen *smartgreen);
-void    ft_init_struct(t_smartgreen *smartgreen);
-void    ft_init_config(t_smartgreen *smartgreen);
-void    ft_init_users(t_smartgreen *smartgreen);
-void    sigint_handler(int sig);
-void    sigterm_handler(int sig);
-void    init_signal();
+int                 main(void);
+int                 ft_check_database(t_smartgreen *smartgreen);
+int                 ft_init_data(t_smartgreen *smartgreen);
+int                 ft_find_zone(t_smartgreen *smartgreen, int id);
+int                 ft_find_cooler(t_smartgreen *smargreen, int id);
+int                 ft_find_sensor(t_smartgreen *smargreen, int id);
+void                ft_free_structs(t_smartgreen *smartgreen);
+void                ft_free_modbus(t_smartgreen *smartgreen);
+void                ft_init_struct(t_smartgreen *smartgreen);
+void                ft_init_config(t_smartgreen *smartgreen);
+void                ft_init_users(t_smartgreen *smartgreen);
+void                sigint_handler(int sig);
+void                sigterm_handler(int sig);
+void                init_signal();
 
 /*  MODBUS  */
-int     ft_modbus(t_smartgreen *smartgreen);
-int     ft_modbus_init(t_smartgreen *smartgreen);
-int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id);
-int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id);
-int     ft_modbus_write_cooler(t_smartgreen *smartgreen, int unit_id, int addr, int value);
+int                 ft_modbus(t_smartgreen *smartgreen);
+int                 ft_modbus_init(t_smartgreen *smartgreen);
+int                 ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id);
+int                 ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id);
+int                 ft_modbus_write_cooler(t_smartgreen *smartgreen, int unit_id, int addr, int value);
+int                 ft_modbus_queue_init(t_modbus_queue *queue);
+int                 ft_modbus_enqueue(t_modbus_queue *queue, t_modbus_cmd_type type, int unit_id, int addr, int value);
+void                ft_modbus_queue_destroy(t_modbus_queue *queue);
+void                ft_modbus_queue_stop(t_modbus_queue *queue);
+void                *ft_modbus_worker(void *arg);
+t_modbus_cmd        *ft_modbus_dequeue(t_modbus_queue *queue);
 
 /*  REGISTERS   */
-void    decode_cooler_state(uint16_t *regs, t_cooler_state *state);
-void    decode_sensor_state(uint16_t *regs, t_sensor_state *state);
-int     decode_water_present_zone(uint16_t reg, int zone);
-int     calculate_register_0(t_smartgreen *smartgreen);
-int     calculate_register_50(int drain_valve, int pump_on, int fan_speed);
-int     calculate_register_51(int solenoid_on, int drain_closed);
-int     calculate_register_52(int fan_speed);
-int     ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on);
-double  calculate_salinity_ppm(int raw_value);
-double  calculate_salinity_us(int raw_value);
+void                decode_cooler_state(uint16_t *regs, t_cooler_state *state);
+void                decode_sensor_state(uint16_t *regs, t_sensor_state *state);
+int                 decode_water_present_zone(uint16_t reg, int zone);
+int                 calculate_register_0(t_smartgreen *smartgreen);
+int                 calculate_register_50(int drain_valve, int pump_on, int fan_speed);
+int                 calculate_register_51(int solenoid_on, int drain_closed);
+int                 calculate_register_52(int fan_speed);
+double              calculate_salinity_ppm(int raw_value);
+double              calculate_salinity_us(int raw_value);
 
 /*  DATABASE    */
-int     db_init(t_smartgreen *smartgreen);
-int     db_read_config(t_smartgreen *smartgreen, const char *key);
-int     db_read_scheduler(t_smartgreen *smartgreen);
-int     db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler);
-int     db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor);
-int     db_save_zone_params(t_smartgreen *smartgreen, t_zone_params *zone_params);
-int     db_save_history(t_smartgreen *smartgreen, const char *device_type, t_cooler_state *cooler, t_sensor_state *sensor);
-int     db_save_error(t_smartgreen *smartgreen, const char *message);
-int     db_save_fault(t_smartgreen *smartgreen, int unit_id, int fault_code);
-int     db_save_config(t_smartgreen *smartgreen, const char *key, int value);
-int     db_update_config(t_smartgreen *smartgreen, const char *key, int value);
-int     db_save_zones(t_smartgreen *smartgreen, t_zones *zones);
-int     db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor);
-int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler);
-int     db_save_maintenance_log(t_smartgreen *smartgreen, t_maintenance_log *maintenance);
-int     db_get_last_maintenance(t_smartgreen *smartgreen, int unit_id, const char *type, t_maintenance_log *out);
-int     db_save_users(t_smartgreen *smartgreen);
-int     db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone);
+int                 db_init(t_smartgreen *smartgreen);
+int                 db_read_config(t_smartgreen *smartgreen, const char *key);
+int                 db_read_scheduler(t_smartgreen *smartgreen);
+int                 db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler);
+int                 db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor);
+int                 db_save_zone_params(t_smartgreen *smartgreen, t_zone_params *zone_params);
+int                 db_save_history(t_smartgreen *smartgreen, const char *device_type, t_cooler_state *cooler, t_sensor_state *sensor);
+int                 db_save_error(t_smartgreen *smartgreen, const char *message);
+int                 db_save_fault(t_smartgreen *smartgreen, int unit_id, int fault_code);
+int                 db_save_config(t_smartgreen *smartgreen, const char *key, int value);
+int                 db_update_config(t_smartgreen *smartgreen, const char *key, int value);
+int                 db_save_zones(t_smartgreen *smartgreen, t_zones *zones);
+int                 db_save_sensor_zone(t_smartgreen *smartgreen, t_sensor_state *sensor);
+int                 db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler);
+int                 db_save_maintenance_log(t_smartgreen *smartgreen, t_maintenance_log *maintenance);
+int                 db_get_last_maintenance(t_smartgreen *smartgreen, int unit_id, const char *type, t_maintenance_log *out);
+int                 db_save_users(t_smartgreen *smartgreen);
+int                 db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone);
 
 /*  CONTROL */
-void    scheduler_run(t_smartgreen *smartgreen);
-int     cooler_water_management(t_smartgreen *smartgreen);
-int     cooler_prewet(t_smartgreen *smartgreen, int zone_id);
-int     sensor_validate(t_sensor_state *sensor);
-int     scheduler_is_active_today(t_scheduler_entry *scheduler, int day);
-int     ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on);
-int     scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
-void    ft_check_alarms(t_smartgreen *smartgreen);
-void    ft_maintenance_alarms(t_smartgreen *smartgreen);
-void    *prewet_thread(void *arg);
+void                scheduler_run(t_smartgreen *smartgreen);
+int                 cooler_water_management(t_smartgreen *smartgreen);
+int                 cooler_prewet(t_smartgreen *smartgreen, int zone_id);
+int                 sensor_validate(t_sensor_state *sensor);
+int                 scheduler_is_active_today(t_scheduler_entry *scheduler, int day);
+int                 scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
+void                ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on);
+void                ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on);
+void                ft_check_alarms(t_smartgreen *smartgreen);
+void                ft_maintenance_alarms(t_smartgreen *smartgreen);
+void                *prewet_thread(void *arg);
 
 /*  UTILS   */
-void    log_error(const char *message);
-void    log_info(const char *message);
-time_t  get_timestamp(void);
+void                log_error(const char *message);
+void                log_info(const char *message);
+time_t              get_timestamp(void);
 
 /*  AUXILIARS   */
-int     ft_strlen(char *str);
-char    *ft_strcpy(char *dst, char *src, int max_len);
+int                 ft_strlen(char *str);
+char                *ft_strcpy(char *dst, char *src, int max_len);
 
 /*  API */
 int                 api_start(t_smartgreen *smartgreen);
-int                 api_stop(t_smartgreen *smartgreen);
+void                api_stop(t_smartgreen *smartgreen);
 enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls);
 enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_get_sensors(t_smartgreen *smartgreen, struct MHD_Connection *connection);

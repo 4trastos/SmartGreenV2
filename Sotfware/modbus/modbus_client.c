@@ -32,10 +32,8 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     if (unit_idx == -1)
         return (-1);
 
-    pthread_mutex_lock(&smartgreen->modbus_mutex);
     if (modbus_set_slave(smartgreen->modbus_ctx, unit_id) == -1)
     {
-        pthread_mutex_unlock(&smartgreen->modbus_mutex);
         fprintf(stderr, "Set Slave data error: ( %s )\n", modbus_strerror(errno));
         return (-1);
     }
@@ -52,7 +50,6 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
             smartgreen->coolers[unit_idx].alarm_comms = 1;
             db_save_error(smartgreen, modbus_strerror(errno));
         }
-        pthread_mutex_unlock(&smartgreen->modbus_mutex);
         return (-1);
     }
     
@@ -66,7 +63,6 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
         smartgreen->coolers[unit_idx].hours_running += smartgreen->read_interval;
     db_save_cooler(smartgreen, &smartgreen->coolers[unit_idx]);
     pthread_mutex_unlock(&smartgreen->data_mutex);
-    pthread_mutex_unlock(&smartgreen->modbus_mutex);
     return (0);
 }
 
@@ -78,15 +74,12 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
     if (unit_idx == -1)
         return (-1);
 
-    pthread_mutex_lock(&smartgreen->modbus_mutex);
     if (modbus_set_slave(smartgreen->modbus_ctx, unit_id) == -1)
     {
-        pthread_mutex_unlock(&smartgreen->modbus_mutex);
         fprintf(stderr, "Set Slave data error: ( %s )\n", modbus_strerror(errno));
         return (-1);
     }
 
-    //pthread_mutex_lock(&smartgreen->modbus_mutex);
     rc = modbus_read_registers(smartgreen->modbus_ctx, MODBUS_SENSOR_ADDR, MODBUS_SENSOR_REGS, tab_reg);
     if (rc == -1)
     {
@@ -102,7 +95,6 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
             smartgreen->sensors[unit_idx].humidity = 0.0f;  
             db_save_error(smartgreen, modbus_strerror(errno));
         }
-        pthread_mutex_unlock(&smartgreen->modbus_mutex);
         return (-1);
     }
 
@@ -114,7 +106,6 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
     smartgreen->sensors[unit_idx].last_read = get_timestamp();
     db_save_sensor(smartgreen, &smartgreen->sensors[unit_idx]);
     pthread_mutex_unlock(&smartgreen->data_mutex);
-    pthread_mutex_unlock(&smartgreen->modbus_mutex);
     return (0);
 }
 
@@ -122,20 +113,16 @@ int     ft_modbus_write_cooler(t_smartgreen *smartgreen, int unit_id, int addr, 
 {
     uint16_t    val = (uint16_t)value;
 
-    pthread_mutex_lock(&smartgreen->modbus_mutex);
     if (modbus_set_slave(smartgreen->modbus_ctx, unit_id) == -1)
     {
-        pthread_mutex_unlock(&smartgreen->modbus_mutex);
         fprintf(stderr, "Set Slave data error: ( %s )\n", modbus_strerror(errno));
         return (-1);
     }
-    // if (modbus_write_register(smartgreen->modbus_ctx, addr, val) == -1)
+
     if (modbus_write_registers(smartgreen->modbus_ctx, addr, 1, &val) == -1)
     {
-        pthread_mutex_unlock(&smartgreen->modbus_mutex);
         fprintf(stderr, "Error Modbus Write Register: ( %s )\n", modbus_strerror(errno));
         return(-1);
     }
-    pthread_mutex_unlock(&smartgreen->modbus_mutex);
     return (0);
 }

@@ -62,38 +62,30 @@ int     calculate_register_0(t_smartgreen *smartgreen)
     return(wm + v_st + v_ws + v_ps + v_ar + v_tu + v_td);
 }
 
-int     ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on)
+void    ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on)
 {
     int r49 = on ? 1 : 0;  // 1=drain ON, 0=drain OFF
 
-    if (ft_modbus_write_cooler(smartgreen, unit_id, 49, r49) == -1)
-        return (-1);
-    if (ft_modbus_write_cooler(smartgreen, unit_id, 400, 300) == -1)
-        return (-1);
-    return (0);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r49);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_HEARTBEAT, unit_id, 400, 300);
 }
 
-int ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
+
+void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 {
     int r0  = calculate_register_0(smartgreen);
     int r50 = calculate_register_50(0, 0, on ? 3 : 0);
     int r51 = calculate_register_51(0, on ? 1 : 0);
 
-    // Escribir R_0 primero — configura el modo
     printf("Escribiendo R_0 primero = %d\n", r0); fflush(stdout);
-    if (ft_modbus_write_cooler(smartgreen, unit_id, 0, on ? r0 : 0) == -1)
-        return (-1);
-    usleep(200000);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 0, on ? r0 : 0);
+
     printf("Escribiendo reg 49 = %d\n", r50); fflush(stdout);
-    if (ft_modbus_write_cooler(smartgreen, unit_id, 49, r50) == -1)
-        return (-1);
-    usleep(200000);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r50);
+
     printf("Escribiendo reg 50 = %d\n", r51); fflush(stdout);
-    if (ft_modbus_write_cooler(smartgreen, unit_id, 50, r51) == -1)
-        return (-1);
-    usleep(200000);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, r51);
+
     printf("Escribiendo reg 400 = 300\n"); fflush(stdout);
-    if (ft_modbus_write_cooler(smartgreen, unit_id, 400, 300) == -1)
-        return (-1);
-    return (0);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_HEARTBEAT, unit_id, 400, 300);
 }

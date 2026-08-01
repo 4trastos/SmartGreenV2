@@ -6,23 +6,13 @@ volatile sig_atomic_t g_alarm_modbus = 0;
 
 int ft_modbus(t_smartgreen *smartgreen)
 {
-    int i = 0;
-
     if (ft_modbus_init(smartgreen) == -1)
         return (-1);
-    while (i < smartgreen->num_coolers)
-    {
-        ft_modbus_read_cooler(smartgreen, smartgreen->coolers[i].unit_id);
-        i++;
-    }
-
-    i = 0;
-    while (i < smartgreen->num_sensors)
-    {
-        ft_modbus_read_sensor(smartgreen, smartgreen->sensors[i].sensor_id);
-        i++;
-    }
     
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
+    for (int i = 0; i < smartgreen->num_sensors; i++)
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_SENSOR, smartgreen->sensors[i].sensor_id, 0, 0);
     return (0);
 }
 
@@ -49,7 +39,7 @@ int main(void)
         return (1);
     memset(smartgreen, 0, sizeof(t_smartgreen));
     pthread_mutex_init(&smartgreen->data_mutex, NULL);
-    pthread_mutex_init(&smartgreen->modbus_mutex, NULL);
+    ft_modbus_queue_init(&smartgreen->modbus_queue);
 
     init_signal();
     
@@ -59,9 +49,13 @@ int main(void)
         return (1);
     }
 
-    ft_modbus(smartgreen);              // intenta conectar, pero aunque falle seguimos
+    pthread_create(&smartgreen->modbus_thread.tid, NULL, ft_modbus_worker, smartgreen);     // Arrancar worker thread Modbus
+    ft_modbus(smartgreen);
+
     if (api_start(smartgreen) == -1)
     {
+        ft_modbus_queue_stop(&smartgreen->modbus_queue);
+        pthread_join(smartgreen->modbus_thread.tid, NULL);
         sqlite3_close(smartgreen->db);
         ft_free_modbus(smartgreen);
         ft_free_structs(smartgreen);
@@ -70,28 +64,27 @@ int main(void)
 
     if (ft_ws_init(smartgreen) == -1)
     {
+        ft_modbus_queue_stop(&smartgreen->modbus_queue);
+        pthread_join(smartgreen->modbus_thread.tid, NULL);
         sqlite3_close(smartgreen->db);
         ft_free_modbus(smartgreen);
         ft_free_structs(smartgreen);
         return(1);
     }
     
-    scheduler_run(smartgreen);          // el scheduler corre siempre
+    scheduler_run(smartgreen);          // bucle principal
     ft_ws_stop(smartgreen);
 
-    if (api_stop(smartgreen) == -1)
-    {
-        sqlite3_close(smartgreen->db);
-        ft_free_modbus(smartgreen);
-        ft_free_structs(smartgreen);
-        return (1);
-    }
+    ft_modbus_queue_stop(&smartgreen->modbus_queue);
+    pthread_join(smartgreen->modbus_thread.tid, NULL);
+    ft_modbus_queue_destroy(&smartgreen->modbus_queue);
+
+    api_stop(smartgreen);
 
     if (smartgreen->db)
         sqlite3_close(smartgreen->db);
     
     pthread_mutex_destroy(&smartgreen->data_mutex);
-    pthread_mutex_destroy(&smartgreen->modbus_mutex);
     ft_free_modbus(smartgreen);
     ft_free_structs(smartgreen);
     return (0);

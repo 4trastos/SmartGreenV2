@@ -248,7 +248,6 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
 
     pthread_mutex_lock(&smartgreen->data_mutex);
     ft_strcpy(smartgreen->zone_params[zone_idx].on_off, action, sizeof(smartgreen->zone_params->on_off));
-    //db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);  // ← añadir aquí
 
     if (smartgreen->modbus_ctx)
     {
@@ -260,7 +259,6 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
     }
     pthread_mutex_unlock(&smartgreen->data_mutex);
 
-    //db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);  // ← añadir aquí
     int ret = db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
     printf("db_update_zone_params ret=%d on_off=%s\n", ret, smartgreen->zone_params[zone_idx].on_off);
     fflush(stdout);
@@ -286,17 +284,16 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
     int speed = 0;
 
     if (!body || body_size == 0)
-        return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
-
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
     if (sscanf(body, "{\"speed\":%d}", &speed) != 1)
-        return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON SPEED\"}"));
-    
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON SPEED\"}"));
     zone_idx = ft_find_zone(smartgreen, id);
     if (zone_idx == -1)
-        return(api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
-    
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
+
     pthread_mutex_lock(&smartgreen->data_mutex);
     smartgreen->zone_params[zone_idx].fan_speed_cmd = speed;
+    pthread_mutex_unlock(&smartgreen->data_mutex);
 
     if (smartgreen->modbus_ctx)
     {
@@ -306,12 +303,12 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
             {
                 int r50 = calculate_register_50(0, 1, speed);
                 int r52 = calculate_register_52(speed);
-                ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 49, r50);
-                ft_modbus_write_cooler(smartgreen, smartgreen->coolers[i].unit_id, 51, r52);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE,
+                                  smartgreen->coolers[i].unit_id, 49, r50);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE,
+                                  smartgreen->coolers[i].unit_id, 51, r52);
             }
         }
     }
-
-    pthread_mutex_unlock(&smartgreen->data_mutex);
     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
