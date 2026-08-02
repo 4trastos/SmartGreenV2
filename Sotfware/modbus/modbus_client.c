@@ -41,6 +41,7 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     rc = modbus_read_registers(smartgreen->modbus_ctx, 0, MODBUS_COOLER_REGS, tab_reg);
     if (rc == -1)
     {
+        pthread_mutex_lock(&smartgreen->data_mutex);
         if (!smartgreen->coolers[unit_idx].disabled)
             fprintf(stderr, "Error Modbus Read Register (Cooler): ( %s )\n", modbus_strerror(errno));
         smartgreen->coolers[unit_idx].error_count++;
@@ -50,6 +51,7 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
             smartgreen->coolers[unit_idx].alarm_comms = 1;
             db_save_error(smartgreen, modbus_strerror(errno));
         }
+        pthread_mutex_unlock(&smartgreen->data_mutex); 
         return (-1);
     }
     
@@ -83,6 +85,7 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
     rc = modbus_read_registers(smartgreen->modbus_ctx, MODBUS_SENSOR_ADDR, MODBUS_SENSOR_REGS, tab_reg);
     if (rc == -1)
     {
+        pthread_mutex_lock(&smartgreen->data_mutex); 
         if (!smartgreen->sensors[unit_idx].disabled)
             fprintf(stderr, "Error Modbus Read Register (Sensor): ( %s )\n", modbus_strerror(errno));
         smartgreen->sensors[unit_idx].error_count++;
@@ -95,6 +98,7 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
             smartgreen->sensors[unit_idx].humidity = 0.0f;  
             db_save_error(smartgreen, modbus_strerror(errno));
         }
+        pthread_mutex_unlock(&smartgreen->data_mutex); 
         return (-1);
     }
 

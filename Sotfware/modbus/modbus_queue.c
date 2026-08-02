@@ -112,8 +112,12 @@ void    *ft_modbus_worker(void *arg)
 
         if (!smartgreen->modbus_ctx)
         {
-            free(cmd);
-            continue;
+            ft_modbus_init(smartgreen);
+            if (!smartgreen)
+            {
+                free(cmd);
+                continue;
+            }
         }
 
         switch (cmd->type)
@@ -121,6 +125,7 @@ void    *ft_modbus_worker(void *arg)
             case CMD_HEARTBEAT:
             case CMD_WRITE:
                 modbus_set_slave(smartgreen->modbus_ctx, cmd->unit_id);
+                printf("MODBUS WRITE -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
                 if (modbus_write_registers(smartgreen->modbus_ctx, cmd->addr, 1, (uint16_t[]){(uint16_t)cmd->value}) == -1)
                     fprintf(stderr, "MODBUS WORKER write error: %s\n", modbus_strerror(errno));
                 break;

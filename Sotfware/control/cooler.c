@@ -94,6 +94,15 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
 
     if (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") == 0 || strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "IMD") == 0)
         return (0);
+    
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+    {
+        if (smartgreen->coolers[i].zone_id == zone_id)
+        {
+            printf("ESTADO Cooler (unit=%d) comnezando: [PREWET]: pump=%d fan=%d cool=%d speed=%d\n", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].pump_on, smartgreen->coolers[i].fan_on, smartgreen->coolers[i].cool_mode_on, smartgreen->coolers[i].actual_fan_speed);
+            fflush(stdout);
+        }
+    }
 
     // PASO 1 — cerrar solenoide + drain closed (R_51 → addr 50)
     printf("PREWET paso 1: cerrar solenoide + drain (addr=50 val=%d)\n", calculate_register_51(0, 1)); fflush(stdout);
@@ -139,5 +148,15 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
     sleep(db_read_config(smartgreen, "prewet_delay_pump"));
 
     printf("PREWET completado\n"); fflush(stdout);
+
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+    {
+        if (smartgreen->coolers[i].zone_id == zone_id)
+        {
+            printf("ESTADO Cooler (unit=%d) después de [PREWET completado]: pump=%d fan=%d cool=%d speed=%d\n", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].pump_on, smartgreen->coolers[i].fan_on, smartgreen->coolers[i].cool_mode_on, smartgreen->coolers[i].actual_fan_speed);
+            fflush(stdout);
+        }
+    }
+
     return (0);
 }

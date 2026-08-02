@@ -77,6 +77,8 @@ void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
     int r50 = calculate_register_50(0, 0, on ? 3 : 0);
     int r51 = calculate_register_51(0, on ? 1 : 0);
 
+    printf("ft_cooler_onoff(unit=%d, on=%d)\n", unit_id, on); fflush(stdout);
+
     printf("Escribiendo R_0 primero = %d\n", r0); fflush(stdout);
     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 0, on ? r0 : 0);
 
