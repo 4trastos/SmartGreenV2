@@ -1,4 +1,5 @@
 NAME = smartgreen
+TEST_NAME = test
 
 # Compilación Nativa (Rasberry Pi actual) 
 CC = gcc
@@ -14,8 +15,7 @@ LDFLAGS = -lmodbus -lsqlite3 -lm -lpthread -lmicrohttpd -lwebsockets
 RM = rm -f
 DB_DIR = /var/lib/smartgreen
 
-SRC = src/main.c \
-		api/api_server.c api/api_connect.c api/api_response.c api/api_post.c \
+COMMON_SRC = api/api_server.c api/api_connect.c api/api_response.c api/api_post.c \
 		api/api_ws.c api/apì_broadcast.c \
 		control/cooler.c control/error_control.c control/scheduler.c control/sensor.c \
 		control/signal.c control/maintenance.c control/alarms.c control/users.c \
@@ -23,12 +23,23 @@ SRC = src/main.c \
 		modbus/modbus_client.c modbus/registers.c modbus/calculators.c modbus/modbus_queue.c \
 		utils/utils.c
 
-OBJTS = $(SRC:.c=.o)
+SRC = src/main.c \
+		$(COMMON_SRC)
 
-all: setup  $(NAME)
+SRC_TEST = tools/test_main.c tools/test_actuators.c tools/test_menu.c tools/test_monitor.c \
+		tools/test_report.c tools/test_scan.c tools/test_write.c tools/test_read.c \
+		$(COMMON_SRC)
+
+OBJTS = $(SRC:.c=.o)
+TEST_OBJS = $(SRC_TEST:.c=.o)
+
+all: setup $(NAME) $(TEST_NAME)
 
 $(NAME): $(OBJTS)
-	$(CC) $(CFLAGS) $(OBJTS) -o $(NAME) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(OBJTS) -o $@ $(LDFLAGS)
+
+$(TEST_NAME): $(TEST_OBJS)
+	$(CC) $(CFLAGS) $(TEST_OBJS) -o $@ $(LDFLAGS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
@@ -39,9 +50,11 @@ setup:
 	
 clean:
 	$(RM) $(OBJTS)
+	$(RM) $(TEST_OBJS)
 
 fclean: clean
 	$(RM) $(NAME)
+	$(RM) $(TEST_NAME)
 
 debug: CFLAGS += -fsanitize=address
 
