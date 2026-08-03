@@ -41,20 +41,20 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
         fprintf(fd, "regs[32]=0x%04X tank_drains=%d\n",       regs[32], regs[32]);
         fprintf(fd, "regs[43]=0x%04X avg_tank_fill=%d\n",     regs[43], regs[43]);
         fprintf(fd, "regs[44]=0x%04X rf_messages=%d\n",       regs[44], regs[44]);
-        fprintf(fd, "regs[49]=0x%04X drain=%d cool_mode=%d fan=%d fault=%d inlet=%d speed=%d fault_code=%d\n",
+        fprintf(fd, "regs[49]=0x%04X drain=%d cool_mode=%d pump=%d fan=%d fault=%d inlet=%d speed=%d fault_code=%d\n",
                 regs[49],
                 (regs[49] >> 0) & 0x01,
+                (regs[49] >> 1) & 0x01,
                 (regs[49] >> 1) & 0x01,
                 (regs[49] >> 2) & 0x01,
                 (regs[49] >> 3) & 0x01,
                 (regs[49] >> 4) & 0x01,
                 (regs[49] >> 8) & 0x0F,
                 (regs[49] >> 12) & 0x0F);
-        fprintf(fd, "regs[50]=0x%04X pump=%d drain_confirm=%d fan_confirmed=%d\n",
-                regs[50],
-                (regs[50] >> 0) & 0x01,
-                (regs[50] >> 4) & 0x01,
-                (regs[50] >> 8) & 0x0F);
+        fprintf(fd, "regs[50]=0x%04X drain_confirm=%d fan_confirmed=%d\n",
+        regs[50],
+        (regs[50] >> 4) & 0x01,
+        (regs[50] >> 8) & 0x0F);
         fprintf(fd, "regs[51]=0x%04X solenoid=%d fan_individual=%d\n",
                 regs[51],
                 (regs[51] >> 3) & 0x01,regs[51]);
@@ -86,9 +86,10 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     state->tank_drains = (regs[32]);
     state->avg_tank_fill = (regs[43]);
 
-    // offset 49 - r_40050 - bits de estado 
+    // offset 49 - r_40050 - bits de estado
     state->drain_valve_open = (regs[49] >> 0) & 0x01;               // drain valve open/close" (estado leído) 
     state->cool_mode_on = (regs[49] >> 1) & 0x01;
+    state->pump_on = state->cool_mode_on;                        // cool_mode_on = bomba activa
     state->fan_on = (regs[49] >> 2) & 0x01;
     state->fault_present = (regs[49] >> 3) & 0x01;
     state->inlet_valve_open = (regs[49] >> 4) & 0x01;
@@ -99,9 +100,7 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     state->extended_status = (regs[52]);
 
     // offset 50 - r_40051 - bits de estado 
-    state->pump_on = (regs[50] >> 0) & 0x01;
-    // state->solenoid_on = (regs[50] >> 3) & 0x01;
-    // state->pump_on = (regs[50] >> 1) & 0x01;
+    // state->pump_on = (regs[50] >> 0) & 0x01;
     state->solenoid_on = (regs[51] >> 3) & 0x01;
     state->drain_valve_confirm = (regs[50] >> 4) & 0x01;            // drain valve open/close" (comando/confirmación)
     state->fan_speed_confirmed = (regs[50] >> 8) & 0x0F;            // velocidad actual (post arranque)

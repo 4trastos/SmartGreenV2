@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react'
-
 import { API_URL } from '../config.js'
 
-function coolerStatus(c) {
+function coolerStatus(c, zone) {
   if (c.alarm_fault || c.fault_present) return 'fault'
   if (c.alarm_comms || c.disabled) return 'offline'
-  //if (c.alarm_water) return 'warning'
   if (c.alarm_water && c.salinity_us <= 10) return 'warning'
   if (c.alarm_warranty) return 'warranty'
-  if (c.fan_on ) return 'active'
+  if (zone?.on_off === 'ON' || c.fan_on || c.cool_mode_on) return 'active'
   return 'idle'
 }
 
@@ -34,14 +32,15 @@ function MiniChart({ value, status }) {
   )
 }
 
-function CoolerCard({ cooler, onClick }) {
-  const st = STATUS[coolerStatus(cooler)]
-  const s = coolerStatus(cooler)
+function CoolerCard({ cooler, onClick, toggleCooler, zone }) {
+  const st = STATUS[coolerStatus(cooler, zone)]
+  const s = coolerStatus(cooler, zone)
+  const isOn = cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON'
   const toggleOnOff = async (e) => {
     e.stopPropagation()
     await fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action: cooler.fan_on ? 'OFF' : 'ON'})
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: isOn ? 'OFF' : 'ON'})  // ← isOn no cooler.fan_on
     })
   }
 
@@ -58,8 +57,9 @@ function CoolerCard({ cooler, onClick }) {
           <span className={`text-xs font-bold tracking-wider ${st.lc}`}>{st.label}</span>
           <button onClick={toggleOnOff}
             className={`w-7 h-7 rounded-lg text-xs font-bold cursor-pointer transition-all
-              ${cooler.fan_on ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-[#004d89]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
+              ${isOn ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-[#004d89]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
             {cooler.fan_on ? '■' : '▶'}
+            {isOn ? '■' : '▶'}
           </button>
         </div>
       </div>
@@ -88,14 +88,15 @@ function CoolerCard({ cooler, onClick }) {
   )
 }
 
-function CoolerMini({ cooler, onClick }) {
-  const st = STATUS[coolerStatus(cooler)]
-  const s = coolerStatus(cooler)
+function CoolerMini({ cooler, onClick, toggleCooler, zone }) {
+  const st = STATUS[coolerStatus(cooler, zone)]
+  const s = coolerStatus(cooler, zone)
+  const isOn = cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON'
   const toggleOnOff = async (e) => {
     e.stopPropagation()
     await fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action: cooler.fan_on ? 'OFF' : 'ON'})
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: isOn ? 'OFF' : 'ON'})  // ← isOn
     })
   }
   return (
@@ -110,8 +111,8 @@ function CoolerMini({ cooler, onClick }) {
           <span className={`text-xs font-bold ${st.lc}`}>{st.label}</span>
           <button onClick={toggleOnOff}
             className={`w-6 h-6 rounded-lg text-xs font-bold cursor-pointer transition-all
-              ${cooler.fan_on ? 'bg-red-500/20 text-red-400' : 'bg-[#004d89]/40 text-[#088fc3]'}`}>
-            {cooler.fan_on ? '■' : '▶'}
+              ${isOn ? 'bg-red-500/20 text-red-400' : 'bg-[#004d89]/40 text-[#088fc3]'}`}>
+            {isOn ? '■' : '▶'}
           </button>
         </div>
       </div>
@@ -142,9 +143,10 @@ function CoolerNano({ cooler, onClick }) {
   )
 }
 
-function SingleHero({ cooler, onClick, toggleCooler }) {
-  const st = STATUS[coolerStatus(cooler)]
-  const s = coolerStatus(cooler)
+function SingleHero({ cooler, onClick, toggleCooler, zone }) {
+  const st = STATUS[coolerStatus(cooler, zone)]
+  const s = coolerStatus(cooler, zone)
+  const isOn = cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON'  // ← añadir
   return (
     <div onClick={() => onClick(cooler)}
       className={`flex-1 rounded-3xl border cursor-pointer overflow-hidden bg-gradient-to-br ${st.gradient} ${st.border} p-6 flex flex-col`}>
@@ -159,10 +161,10 @@ function SingleHero({ cooler, onClick, toggleCooler }) {
         </div>
         <div className="text-right">
           <span className={`text-sm font-bold px-3 py-1 rounded-full border ${st.lc} border-current bg-current/10`}>{st.label}</span>
-          <button onClick={(e) => { e.stopPropagation(); toggleCooler(cooler.zone_id, cooler.unit_id, cooler.fan_on) }}
+          <button onClick={(e) => { e.stopPropagation(); toggleCooler(cooler.zone_id, cooler.unit_id, isOn) }}
             className={`mt-2 px-4 py-1.5 rounded-xl font-bold text-xs cursor-pointer block ml-auto
-              ${cooler.fan_on ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30' : 'bg-[#004d89]/40 border border-[#088fc3]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
-            {cooler.fan_on ? '■ Apagar' : '▶ Encender'}
+              ${isOn ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30' : 'bg-[#004d89]/40 border border-[#088fc3]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
+            {isOn ? '■ Apagar' : '▶ Encender'}
           </button>
           <p className={`text-6xl font-black font-mono mt-3 leading-none ${st.lc}`}>{cooler.actual_fan_speed}<span className="text-2xl text-white/20">/10</span></p>
         </div>
@@ -190,14 +192,14 @@ function SingleHero({ cooler, onClick, toggleCooler }) {
   )
 }
 
-function CoolerDetail({ cooler, onClose }) {
+function CoolerDetail({ cooler, onClose, zone }) {
   const [speed, setSpeed] = useState(cooler.actual_fan_speed)
-  const [fanOn, setFanOn] = useState(cooler.fan_on)
+  const [fanOn, setFanOn] = useState(cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON')
 
   useEffect(() => {
-    setFanOn(cooler.fan_on)
+    setFanOn(cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON')
     setSpeed(cooler.actual_fan_speed)
-  }, [cooler.fan_on, cooler.actual_fan_speed])
+  }, [cooler.fan_on, cooler.cool_mode_on, cooler.actual_fan_speed, zone?.on_off])
 
   const st = STATUS[coolerStatus({...cooler, fan_on: fanOn})]
 
@@ -328,7 +330,7 @@ function PrewetLoading() {
 export default function Dashboard({ data, connected }) {
   const [selected, setSelected] = useState(null)
   const [coolerStates, setCoolerStates] = useState({})
-
+  const getZone = (cooler) => data.zones.find(z => z.zone_id === cooler.zone_id)  // ← aquí
   const hasData = connected && data.coolers.length > 0 && data.coolers.some(c => c.last_read > 0)
   const n = hasData ? data.coolers.length : 0
 
@@ -393,11 +395,11 @@ export default function Dashboard({ data, connected }) {
           <PrewetLoading />
         ) : n === 1 ? (
           <div className="flex-1 flex">
-            <SingleHero cooler={coolersWithState[0]} onClick={setSelected} toggleCooler={toggleCooler} />
+            <SingleHero cooler={coolersWithState[0]} onClick={setSelected} toggleCooler={toggleCooler} zone={getZone(coolersWithState[0])} />
           </div>
         ) : (
           <div className={`flex-1 overflow-y-auto grid ${gridClass} gap-3 content-start`}>
-            {coolersWithState.map(c => <Card key={c.unit_id} cooler={c} onClick={setSelected} toggleCooler={toggleCooler} />)}
+            {coolersWithState.map(c => <Card key={c.unit_id} cooler={c} onClick={setSelected} toggleCooler={toggleCooler} zone={getZone(c)} />)}
           </div>
         )}
 
@@ -454,7 +456,7 @@ export default function Dashboard({ data, connected }) {
         )}
       </div>
 
-      {selected && <CoolerDetail cooler={selected} onClose={()=>setSelected(null)} />}
+      {selected && <CoolerDetail cooler={selected} onClose={() => setSelected(null)} zone={getZone(selected)} />}
     </div>
   )
 }

@@ -95,20 +95,6 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (MHD_YES);
         }
 
-        // ctx = *con_cls;
-        // if (sscanf(url, "/api/zones/%d/%31s", &id, action) == 2)
-        // {
-        //     if (strcmp(action, "onoff") == 0)
-        //         ret = api_post_zone_onoff(smartgreen, connection, id, ctx->body, ctx->len);
-        //     else if(strcmp(action, "fanspeed") == 0)
-        //         ret = api_post_zone_fanspeed(smartgreen, connection, id, ctx->body, ctx->len);
-        //     else
-        //         ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown action\"}");
-        //     free(ctx);
-        //     *con_cls = NULL;
-        //     return(ret);
-        // }
-
         ctx = *con_cls;
         if (sscanf(url, "/api/zones/%d/%31s", &id, action) == 2)
         {

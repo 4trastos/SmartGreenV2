@@ -1,5 +1,15 @@
 #include "../incl/smartgreen.h"
 
+int cooler_need_prewet(t_smartgreen *smartgreen, int zone_idx)
+{
+    time_t now = get_timestamp();
+    if (smartgreen->zone_params[zone_idx].last_prewet == 0)
+        return (1);
+    if ((now - smartgreen->zone_params[zone_idx].last_prewet) >= (3 * 3600))
+        return (1);
+    return (0);
+}
+
 void    *prewet_thread(void *arg)
 {
     t_prewet_args   *args = (t_prewet_args *)arg;
@@ -7,8 +17,17 @@ void    *prewet_thread(void *arg)
     int             zone_id = args->zone_id;
     int             zone_idx = ft_find_zone(smartgreen, zone_id);
 
-    printf("PREWET THREAD ARRANCADO zone_id=%d zone_idx=%d\n", zone_id, zone_idx);
-    fflush(stdout);
+    if (!cooler_need_prewet(smartgreen, zone_idx))
+    {
+        printf("PREWET THREAD NO ARRANCA [Ya está humedo] zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
+        for (int i = 0; i < smartgreen->num_coolers; i++)
+        if (smartgreen->coolers[i].zone_id == zone_id)
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, 1, 0));
+        free(args);
+        return(NULL);
+    }
+
+    printf("PREWET THREAD ARRANCADO zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
 
     free(args);
     if (zone_idx == -1)
@@ -40,9 +59,9 @@ void    *prewet_thread(void *arg)
     pthread_mutex_unlock(&smartgreen->data_mutex);
 
     // Fan speed 3 — FUERA del mutex
-    for (int i = 0; i < smartgreen->num_coolers; i++)
-        if (smartgreen->coolers[i].zone_id == zone_id)
-            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, calculate_register_52(3));
+    // for (int i = 0; i < smartgreen->num_coolers; i++)
+    //     if (smartgreen->coolers[i].zone_id == zone_id)
+    //         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, calculate_register_52(3));
 
     return (NULL);
 }
@@ -99,7 +118,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
     {
         if (smartgreen->coolers[i].zone_id == zone_id)
         {
-            printf("ESTADO Cooler (unit=%d) comnezando: [PREWET]: pump=%d fan=%d cool=%d speed=%d\n", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].pump_on, smartgreen->coolers[i].fan_on, smartgreen->coolers[i].cool_mode_on, smartgreen->coolers[i].actual_fan_speed);
+            printf("ESTADO Cooler (unit=%d) comenzando: [PREWET]: pump=%d fan=%d cool=%d speed=%d\n", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].pump_on, smartgreen->coolers[i].fan_on, smartgreen->coolers[i].cool_mode_on, smartgreen->coolers[i].actual_fan_speed);
             fflush(stdout);
         }
     }
@@ -146,9 +165,14 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
 
     printf("PREWET esperando %ds con bomba encendida...\n", db_read_config(smartgreen, "prewet_delay_pump")); fflush(stdout);
     sleep(db_read_config(smartgreen, "prewet_delay_pump"));
-
+    
     printf("PREWET completado\n"); fflush(stdout);
-
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    smartgreen->zone_params[zone_idx].last_prewet = get_timestamp();
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
+    printf("PREWET GUARDADO last_prewet=%ld\n", (long)smartgreen->zone_params[zone_idx].last_prewet); fflush(stdout);
+    
     for (int i = 0; i < smartgreen->num_coolers; i++)
     {
         if (smartgreen->coolers[i].zone_id == zone_id)

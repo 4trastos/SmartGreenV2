@@ -1,5 +1,9 @@
 #include "../incl/smartgreen.h"
 
+volatile sig_atomic_t g_sigint_received = 0;
+volatile sig_atomic_t g_sigterm_received = 0;
+volatile sig_atomic_t g_alarm_modbus = 0;
+
 int main()
 {
     return (0);

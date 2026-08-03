@@ -348,9 +348,9 @@ enum MHD_Result     api_get_zones(t_smartgreen *smartgreen, struct MHD_Connectio
             "\"on_off\":\"%s\","
             "\"inmediate_drain\":\"%s\","
             "\"prewet_in_progress\":\"%s\","
-            "\"last_prewet\":%d,"
-            "\"last_drain\":%d,"
-            "\"last_pump_time\":%d"
+            "\"last_prewet\":%ld,"
+            "\"last_drain\":%ld,"
+            "\"last_pump_time\":%ld"
             "}",
             i > 0 ? "," : "",
             smartgreen->zone_params[i].zone_id,

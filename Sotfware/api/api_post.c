@@ -263,16 +263,47 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
     printf("db_update_zone_params ret=%d on_off=%s\n", ret, smartgreen->zone_params[zone_idx].on_off);
     fflush(stdout);
 
-    if (on && smartgreen->modbus_ctx && db_read_config(smartgreen, "prewet_selector") == 1)
+    // if (on && smartgreen->modbus_ctx && db_read_config(smartgreen, "prewet_selector") && cooler_need_prewet(smartgreen, zone_idx) == 1)
+    // {
+    //     args = malloc(sizeof(t_prewet_args));
+    //     if (args)
+    //     {
+    //         args->smartgreen = smartgreen;
+    //         args->zone_id = id;
+    //         pthread_t tid;
+    //         pthread_create(&tid, NULL, prewet_thread, args);
+    //         pthread_detach(tid);
+    //     }
+    // }
+    if (on && smartgreen->modbus_ctx)
     {
-        args = malloc(sizeof(t_prewet_args));
-        if (args)
+        int prewet_sel = db_read_config(smartgreen, "prewet_selector");
+        int need_prewet = cooler_need_prewet(smartgreen, zone_idx);
+        printf("DEBUG onoff: on=%d prewet_sel=%d need_prewet=%d last_prewet=%ld\n",
+            on, prewet_sel, need_prewet,
+            (long)smartgreen->zone_params[zone_idx].last_prewet);
+        fflush(stdout);
+
+        if (prewet_sel && need_prewet == 1)
         {
-            args->smartgreen = smartgreen;
-            args->zone_id = id;
-            pthread_t tid;
-            pthread_create(&tid, NULL, prewet_thread, args);
-            pthread_detach(tid);
+            args = malloc(sizeof(t_prewet_args));
+            if (args)
+            {
+                args->smartgreen = smartgreen;
+                args->zone_id = id;
+                pthread_t tid;
+                pthread_create(&tid, NULL, prewet_thread, args);
+                pthread_detach(tid);
+            }
+        }
+        else if (!need_prewet)
+        {
+            printf("DEBUG: sin prewet — encendiendo bomba directo\n"); fflush(stdout);
+            for (int i = 0; i < smartgreen->num_coolers; i++)
+                if (smartgreen->coolers[i].zone_id == id)
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE,
+                                    smartgreen->coolers[i].unit_id, 49,
+                                    calculate_register_50(0, 1, 0));
         }
     }
     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));

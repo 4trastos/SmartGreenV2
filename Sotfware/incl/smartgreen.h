@@ -124,10 +124,10 @@ typedef struct s_modbus_cmd
 
 typedef struct s_modbus_queue
 {
+    int                 stop;
+    int                 size;
     t_modbus_cmd        *head;
     t_modbus_cmd        *tail;
-    int                 size;
-    int                 stop;
     pthread_mutex_t     mutex;
     pthread_cond_t      cond;
 }   t_modbus_queue;
@@ -138,6 +138,7 @@ typedef struct  s_thread_ctrl
     pthread_mutex_t     mutex;
     t_thread_status     status;
     int                 unit_id;                    // qué cooler controla este hilo
+    int                 padding[2]; 
 }   t_thread_ctrl;
 
 typedef struct s_post_ctx
@@ -195,9 +196,9 @@ typedef struct s_zone_params
     char                on_off[4];
     char                inmediate_drain[8];
     char                prewet_in_progress[8];
-    int                 last_prewet;
-    int                 last_drain;
-    int                 last_pump_time;
+    time_t              last_prewet;
+    time_t              last_drain;
+    time_t              last_pump_time;
 }   t_zone_params;
 
 typedef struct  s_cooler_state
@@ -273,12 +274,6 @@ typedef struct  s_sensor_state
 
 typedef struct s_smartgreen
 {
-    int                 num_coolers;
-    int                 num_sensors;
-    int                 num_zones;
-    int                 num_schedulers;
-    int                 read_interval;
-    int                 ws_num_clients;
     modbus_t            *modbus_ctx;
     sqlite3             *db;
     t_cooler_state      *coolers;
@@ -290,9 +285,15 @@ typedef struct s_smartgreen
     struct lws_context  *ws_context;
     struct lws          *ws_clients[MAX_WS_CLIENTS];
     t_thread_ctrl       api_thread;
-    t_thread_ctrl       modbus_thread;                  // nuevo hilo worker
+    t_thread_ctrl       modbus_thread;
     t_modbus_queue      modbus_queue;
     pthread_mutex_t     data_mutex;
+    int                 num_coolers;
+    int                 num_sensors;
+    int                 num_zones;
+    int                 num_schedulers;
+    int                 read_interval;
+    int                 ws_num_clients;
 }   t_smartgreen;
 
 typedef struct s_prewet_args
@@ -369,10 +370,11 @@ int                 db_update_zone_params(t_smartgreen *smartgreen, t_zone_param
 /*  CONTROL */
 void                scheduler_run(t_smartgreen *smartgreen);
 int                 cooler_water_management(t_smartgreen *smartgreen);
-int                 cooler_prewet(t_smartgreen *smartgreen, int zone_id);
+int                 cooler_prewet(t_smartgreen *smartgreen, int zone_idx);
 int                 sensor_validate(t_sensor_state *sensor);
 int                 scheduler_is_active_today(t_scheduler_entry *scheduler, int day);
 int                 scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
+int                 cooler_need_prewet(t_smartgreen *smartgreen, int zone_id);
 void                ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on);
 void                ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on);
 void                ft_check_alarms(t_smartgreen *smartgreen);
