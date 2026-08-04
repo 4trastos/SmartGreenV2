@@ -58,10 +58,10 @@ void    *prewet_thread(void *arg)
     ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
     pthread_mutex_unlock(&smartgreen->data_mutex);
 
-    // Fan speed 3 — FUERA del mutex
-    // for (int i = 0; i < smartgreen->num_coolers; i++)
-    //     if (smartgreen->coolers[i].zone_id == zone_id)
-    //         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, calculate_register_52(3));
+   // Fan speed — usar fan_speed_cmd de la zona
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+        if (smartgreen->coolers[i].zone_id == zone_id)
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, calculate_register_52(smartgreen->zone_params[zone_idx].fan_speed_cmd));
 
     return (NULL);
 }

@@ -11,9 +11,9 @@ export default function Control({ data }) {
 
   // Sincronizar con datos WebSocket
   useEffect(() => {
-    if (data.zones.length > 0)
-      setLocalZones(data.zones)
-  }, [data.zones])
+      if (data.zones.length > 0)
+          setLocalZones([...data.zones])
+  }, [JSON.stringify(data.zones)])
 
   const toggle = async (zoneId) => {
     const zone = localZones.find(z => z.zone_id === zoneId)
