@@ -158,7 +158,8 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
     int                 last_closing = 0;
     int                 last_opening = 0;
     int                 last_legionella = 0;
-    //char              cooler_json[512];
+    int                 z = 0;
+    int                 fan_speed_display = 0;
 
     pthread_mutex_lock(&smartgreen->data_mutex);
 
@@ -175,6 +176,8 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
             last_opening = last_maint.timestamp;
         if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_LEGIONELLA, &last_maint) == 0)
             last_legionella = last_maint.timestamp;
+        z = ft_find_zone(smartgreen, smartgreen->coolers[i].zone_id);
+        fan_speed_display = (z != -1) ? smartgreen->zone_params[z].fan_speed_cmd : 0;
     
         offset += snprintf(responsed + offset, sizeof(responsed),
             "%s{"
@@ -187,7 +190,7 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
             "\"fan_on\":%d,"
             "\"fault_present\":%d,"
             "\"inlet_valve_open\":%d,"
-            "\"actual_fan_speed\":%d,"
+            "\"fan_speed_cmd\":%d,"
             "\"fan_speed_confirmed\":%d,"
             "\"most_recent_fault\":%d,"
             "\"water_present\":%d,"
@@ -225,7 +228,7 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
             smartgreen->coolers[i].fan_on,
             smartgreen->coolers[i].fault_present,
             smartgreen->coolers[i].inlet_valve_open,
-            smartgreen->coolers[i].actual_fan_speed,
+            fan_speed_display,
             smartgreen->coolers[i].fan_speed_confirmed,
             smartgreen->coolers[i].most_recent_fault,
             smartgreen->coolers[i].water_present,

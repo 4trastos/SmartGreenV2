@@ -74,7 +74,8 @@ void    ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on)
 void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 {
     int r0  = calculate_register_0(smartgreen);
-    int r50 = calculate_register_50(0, 0, on ? 3 : 0);
+    // int r50 = calculate_register_50(0, 0, on ? 3 : 0);
+    int r50 = calculate_register_50(0, 0, 0);
     int r51 = calculate_register_51(0, on ? 1 : 0);
 
     printf("ft_cooler_onoff(unit=%d, on=%d)\n", unit_id, on); fflush(stdout);
@@ -82,8 +83,13 @@ void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
     printf("Escribiendo R_0 primero = %d\n", r0); fflush(stdout);
     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 0, on ? r0 : 0);
 
-    printf("Escribiendo reg 49 = %d\n", r50); fflush(stdout);
-    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r50);
+    // printf("Escribiendo reg 49 = %d\n", r50); fflush(stdout);
+    // ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r50);
+    if (!on)  // solo mandar addr=49 cuando apagamos
+    {
+        printf("Escribiendo reg 49 = 0\n"); fflush(stdout);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, 0);
+    }
 
     printf("Escribiendo reg 50 = %d\n", r51); fflush(stdout);
     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, r51);
