@@ -260,23 +260,21 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
     pthread_mutex_unlock(&smartgreen->data_mutex);
 
     int ret = db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
-    printf("db_update_zone_params ret=%d on_off=%s\n", ret, smartgreen->zone_params[zone_idx].on_off);
+    printf("db_update_zone_params ret=%d on_off=%s pump=%d zone_id=%d\n", ret, smartgreen->zone_params[zone_idx].on_off, smartgreen->zone_params[zone_idx].pump_on, smartgreen->zone_params[zone_idx].zone_id);
     fflush(stdout);
 
     if (on && smartgreen->modbus_ctx)
     {
         int prewet_sel = db_read_config(smartgreen, "prewet_selector");
         int need_prewet = cooler_need_prewet(smartgreen, zone_idx);
-        printf("DEBUG onoff: on=%d prewet_sel=%d need_prewet=%d last_prewet=%ld\n",
-            on, prewet_sel, need_prewet,
-            (long)smartgreen->zone_params[zone_idx].last_prewet);
-        fflush(stdout);
+        printf("DEBUG onoff: on=%d prewet_sel=%d need_prewet=%d last_prewet=%ld\n", on, prewet_sel, need_prewet, (long)smartgreen->zone_params[zone_idx].last_prewet); fflush(stdout);
 
         args = malloc(sizeof(t_prewet_args));
         if (args)
         {
             args->smartgreen = smartgreen;
             args->zone_id = id;
+            args->need_prewet = (prewet_sel && need_prewet);
             pthread_t tid;
             pthread_create(&tid, NULL, prewet_thread, args);
             pthread_detach(tid);

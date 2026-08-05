@@ -10,6 +10,8 @@ function coolerStatus(c, zone) {
   return 'idle'
 }
 
+const fanSpeed = (zone) => zone?.on_off === 'ON' ? (zone?.fan_speed_cmd ?? 0) : 0
+
 const STATUS = {
   active:  { gradient: 'from-[#004d89]/40 to-[#088fc3]/10', border: 'border-[#088fc3]/35', dot: 'bg-[#088fc3] shadow-[0_0_10px_#088fc3]', label: 'ACTIVO',   lc: 'text-[#088fc3]' },
   idle:    { gradient: 'from-white/4 to-transparent',        border: 'border-white/8',       dot: 'bg-white/25',                              label: 'OFF',  lc: 'text-white/30' },
@@ -64,9 +66,9 @@ function CoolerCard({ cooler, onClick, toggleCooler, zone }) {
         </div>
       </div>
       <div className="flex items-end justify-between gap-3 mb-3">
-        <MiniChart value={cooler.fan_speed_cmd} status={s} />
+        <MiniChart value={fanSpeed(zone)} status={s} />
         <div className="text-right shrink-0">
-          <p className={`text-2xl font-black font-mono leading-none ${st.lc}`}>{cooler.fan_speed_cmd}</p>
+          <p className={`text-2xl font-black font-mono leading-none ${st.lc}`}>{fanSpeed(zone)}</p>
           <p className="text-white/20 text-xs">/10</p>
         </div>
       </div>
@@ -116,9 +118,9 @@ function CoolerMini({ cooler, onClick, toggleCooler, zone }) {
           </button>
         </div>
       </div>
-      <MiniChart value={cooler.fan_speed_cmd} status={s} />
+      <MiniChart value={fanSpeed(zone)} status={s} />
       <div className="flex justify-between mt-2 text-xs text-white/30">
-        <span>{cooler.fan_speed_cmd}/10</span>
+        <span>{fanSpeed(zone)}/10</span>
         <span className={cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'}>{cooler.alarm_water ? '○ Seco' : '● Agua'}</span>
         <span>{cooler.salinity_us.toFixed(0)}μS</span>
       </div>
@@ -135,10 +137,10 @@ function CoolerNano({ cooler, onClick }) {
       <span className="text-white text-xs font-mono font-bold">#{cooler.unit_id}</span>
       <div className="flex-1 flex gap-0.5 h-1">
         {Array.from({length:10}).map((_,i) => (
-          <div key={i} className={`flex-1 rounded-full ${i < cooler.fan_speed_cmd ? 'bg-[#088fc3]' : 'bg-white/10'}`} />
+          <div key={i} className={`flex-1 rounded-full ${i < fanSpeed(zone) ? 'bg-[#088fc3]' : 'bg-white/10'}`} />
         ))}
       </div>
-      <span className={`text-xs font-bold shrink-0 ${st.lc}`}>{cooler.fan_speed_cmd}</span>
+      <span className={`text-xs font-bold shrink-0 ${st.lc}`}>{fanSpeed(zone)}</span>
     </div>
   )
 }
@@ -166,11 +168,11 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
               ${isOn ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30' : 'bg-[#004d89]/40 border border-[#088fc3]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
             {isOn ? '■ Apagar' : '▶ Encender'}
           </button>
-          <p className={`text-6xl font-black font-mono mt-3 leading-none ${st.lc}`}>{cooler.fan_speed_cmd}<span className="text-2xl text-white/20">/10</span></p>
+          <p className={`text-6xl font-black font-mono mt-3 leading-none ${st.lc}`}>{fanSpeed(zone)}<span className="text-2xl text-white/20">/10</span></p>
         </div>
       </div>
       <div className="flex-1 flex items-end gap-1 mb-4">
-        {[3,5,4,6,5,7,6,8,cooler.fan_speed_cmd].map((v,i) => (
+        {[3,5,4,6,5,7,6,8,fanSpeed(zone)].map((v,i) => (
           <div key={i} className="flex-1 rounded-t-lg"
             style={{ height: `${Math.max(10,(v/10)*100)}%`, backgroundColor: i===8 ? (s==='active'?'#088fc3':s==='fault'?'#ef4444':'#eab308') : '#ffffff15' }} />
         ))}
@@ -193,13 +195,13 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
 }
 
 function CoolerDetail({ cooler, onClose, zone }) {
-  const [speed, setSpeed] = useState(cooler.fan_speed_cmd)
+  const [speed, setSpeed] = useState(fanSpeed(zone))
   const [fanOn, setFanOn] = useState(cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON')
 
   useEffect(() => {
     setFanOn(cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON')
-    setSpeed(cooler.fan_speed_cmd)
-  }, [cooler.fan_on, cooler.cool_mode_on, cooler.fan_speed_cmd, zone?.on_off])
+    setSpeed(fanSpeed(zone))
+  }, [cooler.fan_on, cooler.cool_mode_on, fanSpeed(zone), zone?.on_off])
 
   const st = STATUS[coolerStatus({...cooler, fan_on: fanOn})]
 

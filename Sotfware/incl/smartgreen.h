@@ -300,6 +300,7 @@ typedef struct s_prewet_args
 {
     t_smartgreen    *smartgreen;
     int             zone_id;
+    int             need_prewet;
     int             padding;
 }   t_prewet_args;
 

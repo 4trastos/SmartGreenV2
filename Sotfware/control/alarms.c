@@ -23,8 +23,7 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
         // 🔴 Fallo en el Cooler
         if (smartgreen->coolers[i].fault_present && !smartgreen->coolers[i].alarm_fault)
         {
-            snprintf(msg, sizeof(msg), "🔴 CRITICO: Fault cooler unit_id=%d code=%d", 
-                     smartgreen->coolers[i].unit_id, smartgreen->coolers[i].most_recent_fault);
+            snprintf(msg, sizeof(msg), "🔴 CRITICO: Fault cooler unit_id=%d code=%d", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].most_recent_fault);
             db_save_error(smartgreen, msg);
             smartgreen->coolers[i].alarm_fault = 1;
         }
@@ -33,11 +32,13 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
             smartgreen->coolers[i].alarm_fault = 0;
         }
 
+        // 🔴 Averia en el fan (motor)
+        if (smartgreen->coolers[i].cool_mode_on)
+
         // 🔴 Sin comunicación
         if (smartgreen->coolers[i].error_count >= MAX_COOLER_ERRORS && !smartgreen->coolers[i].alarm_comms)
         {
-            snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d sin comunicacion (errors=%d)", 
-                     smartgreen->coolers[i].unit_id, smartgreen->coolers[i].error_count);
+            snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d sin comunicacion (errors=%d)", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].error_count);
             db_save_error(smartgreen, msg);
             smartgreen->coolers[i].alarm_comms = 1;
         }

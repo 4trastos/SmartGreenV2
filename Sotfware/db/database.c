@@ -2,7 +2,7 @@
 
 int     db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone)
 {
-    printf("[DEBUG] DENTRO DE -> db_update_zone_params: zone_id=%d on_off=%s\n", zone->zone_id, zone->on_off);
+    printf("[DEBUG] DENTRO DE -> db_update_zone_params: zone_id=%d on_off=%s pump_on=%d prewet=%s cool_fan_mode=%s\n", zone->zone_id, zone->on_off, zone->pump_on, zone->prewet_in_progress, zone->cool_fan_mode);
     fflush(stdout);
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = "UPDATE zone_params SET "
