@@ -23,6 +23,12 @@ const KEY_LABELS = {
   auto_restart: 'Auto reinicio', temperature_unit: 'Unidad temp (0=C, 1=F)', tank_drain_delay: 'Delay drenaje tanque',
 }
 
+const formatVal = (key, val) => {
+  if (key === 'install_date' && val && val !== '—')
+    return new Date(parseInt(val) * 1000).toLocaleDateString('es-ES')
+  return val
+}
+
 function SettingsModal({ tile, config, onClose, onSave }) {
   const [editing, setEditing] = useState(null)
   const [editVal, setEditVal] = useState('')
@@ -68,7 +74,7 @@ function SettingsModal({ tile, config, onClose, onSave }) {
               ) : (
                 <button onClick={() => { setEditing(key); setEditVal(String(getVal(key))) }}
                   className={`font-mono font-bold text-sm shrink-0 cursor-pointer hover:text-[#088fc3] transition-colors ${saved === key ? 'text-green-400' : 'text-white'}`}>
-                  {saved === key ? '✓' : getVal(key)}
+                  {saved === key ? '✓' : formatVal(key, getVal(key))}
                 </button>
               )}
             </div>

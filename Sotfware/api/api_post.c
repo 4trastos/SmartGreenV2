@@ -230,8 +230,11 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
 {
     t_prewet_args   *args;
     char            action[8] = {0};
+    char            cool_fan_mode[8];
     int             zone_idx;
     int             on;
+    int             prewet_sel;
+    int             need_prewet;
 
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
@@ -262,24 +265,51 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
     int ret = db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
     printf("db_update_zone_params ret=%d on_off=%s pump=%d zone_id=%d\n", ret, smartgreen->zone_params[zone_idx].on_off, smartgreen->zone_params[zone_idx].pump_on, smartgreen->zone_params[zone_idx].zone_id);
     fflush(stdout);
-
+   
+    ft_strcpy(cool_fan_mode, smartgreen->zone_params[zone_idx].cool_fan_mode, sizeof(smartgreen->zone_params->cool_fan_mode));
     if (on && smartgreen->modbus_ctx)
     {
-        int prewet_sel = db_read_config(smartgreen, "prewet_selector");
-        int need_prewet = cooler_need_prewet(smartgreen, zone_idx);
-        printf("DEBUG onoff: on=%d prewet_sel=%d need_prewet=%d last_prewet=%ld\n", on, prewet_sel, need_prewet, (long)smartgreen->zone_params[zone_idx].last_prewet); fflush(stdout);
-
-        args = malloc(sizeof(t_prewet_args));
-        if (args)
+        // Modo FAN — solo ventilador sin agua ni prewet
+        if (strcmp(cool_fan_mode, "FAN") == 0)
         {
-            args->smartgreen = smartgreen;
-            args->zone_id = id;
-            args->need_prewet = (prewet_sel && need_prewet);
-            pthread_t tid;
-            pthread_create(&tid, NULL, prewet_thread, args);
-            pthread_detach(tid);
+            for (int i = 0; i < smartgreen->num_coolers; i++)
+                if (smartgreen->coolers[i].zone_id == id)
+                {
+                    int r50 = calculate_register_50(0, 0, 1);       // sin pump, fan speed 1
+                    int r52 = calculate_register_52(1);
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
+                }
+        }
+        else
+        {
+            prewet_sel = db_read_config(smartgreen, "prewet_selector");
+            need_prewet = cooler_need_prewet(smartgreen, zone_idx);
+            printf("DEBUG onoff: on=%d prewet_sel=%d need_prewet=%d last_prewet=%ld\n", on, prewet_sel, need_prewet, (long)smartgreen->zone_params[zone_idx].last_prewet); fflush(stdout);
+    
+            pthread_mutex_lock(&smartgreen->data_mutex);
+            int already_running = strcmp(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes") == 0;
+            if (!already_running && (prewet_sel && need_prewet))
+                ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes",
+                        sizeof(smartgreen->zone_params->prewet_in_progress));
+            pthread_mutex_unlock(&smartgreen->data_mutex);
+    
+            if (!already_running)
+            {
+                args = malloc(sizeof(t_prewet_args));
+                if (args)
+                {
+                    args->smartgreen = smartgreen;
+                    args->zone_id = id;
+                    args->need_prewet = (prewet_sel && need_prewet);
+                    pthread_t tid;
+                    pthread_create(&tid, NULL, prewet_thread, args);
+                    pthread_detach(tid);
+                }
+            }
         }
     }
+
     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
 
@@ -311,7 +341,7 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
                 r50 = calculate_register_50(0, 1, speed);
                 r52 = calculate_register_52(speed);
                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, r52);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
             }
         }
     }

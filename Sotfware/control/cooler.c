@@ -17,33 +17,28 @@ void    *prewet_thread(void *arg)
     int             zone_id = args->zone_id;
     int             zone_idx = ft_find_zone(smartgreen, zone_id);
 
-    // if (!cooler_need_prewet(smartgreen, zone_idx))
     if (!args->need_prewet)
     {
         printf("PREWET THREAD NO ARRANCA [Ya está humedo] zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
         for (int i = 0; i < smartgreen->num_coolers; i++)
             if (smartgreen->coolers[i].zone_id == zone_id)
-            {
-                // ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(0, 1));   // drain closed
-                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(1, 1));   // solenoid=ON, drain=closed
-            }
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(1, 1));  // solenoid=ON, drain=closed
         sleep(9);
         for (int i = 0; i < smartgreen->num_coolers; i++)
             if (smartgreen->coolers[i].zone_id == zone_id)
-            {    
-                int r50 = calculate_register_50(0, 1, 1);                                                                                   // pump=1 + fan_speed=1
-                int r52 = calculate_register_52(1);                                                                                         // arranque físico speed 1
+            {
+                int r50 = calculate_register_50(0, 1, 1);  // pump=1 + fan_speed=1
+                int r52 = calculate_register_52(1);         // arranque físico speed 1
                 printf("Escribiendo r50  = %d\n", r50); fflush(stdout);
                 printf("Escribiendo r52  = %d\n", r52); fflush(stdout);
                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, r52);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
             }
-        
         pthread_mutex_lock(&smartgreen->data_mutex);
         smartgreen->zone_params[zone_idx].fan_speed_cmd = 1;
         pthread_mutex_unlock(&smartgreen->data_mutex);
         free(args);
-        return(NULL);
+        return (NULL);
     }
 
     printf("PREWET THREAD ARRANCADO zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
@@ -52,14 +47,14 @@ void    *prewet_thread(void *arg)
     if (zone_idx == -1)
     {
         printf("PREWET ERROR: zone_idx=-1\n"); fflush(stdout);
-        return(NULL);
+        return (NULL);
     }
+
     pthread_mutex_lock(&smartgreen->data_mutex);
     ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes", sizeof(smartgreen->zone_params->prewet_in_progress));
     pthread_mutex_unlock(&smartgreen->data_mutex);
 
     printf("PREWET iniciando cooler_prewet...\n"); fflush(stdout);
-
     cooler_prewet(smartgreen, zone_id);
 
     pthread_mutex_lock(&smartgreen->data_mutex);
@@ -70,25 +65,23 @@ void    *prewet_thread(void *arg)
 
     ft_ws_broadcast_status(smartgreen);
 
-    sleep(3); 
-    printf("PREWET finalizado\n"); fflush(stdout);
-    
-    pthread_mutex_lock(&smartgreen->data_mutex);
-    ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
-    pthread_mutex_unlock(&smartgreen->data_mutex);
-
-   // Fan speed al terminar prewet
+    // Fan speed ANTES de quitar el flag de prewet
     for (int i = 0; i < smartgreen->num_coolers; i++)
     {
         if (smartgreen->coolers[i].zone_id == zone_id)
         {
-            int r50 = calculate_register_50(0, 1, 1);                                           // pump=1 + fan_speed=1
-            int r52 = calculate_register_52(1);                                                 // arranque físico speed 1
+            int r50 = calculate_register_50(0, 1, 1);                                                           // pump=1 + fan_speed=1
+            int r52 = calculate_register_52(1);                                                                 // arranque físico speed 1
             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, r52);
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
         }
     }
+
+    sleep(40);  // esperar que fan arranque físicamente antes de activar alarmas
+
+    printf("PREWET finalizado\n"); fflush(stdout);
     pthread_mutex_lock(&smartgreen->data_mutex);
+    ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
     smartgreen->zone_params[zone_idx].fan_speed_cmd = 1;
     pthread_mutex_unlock(&smartgreen->data_mutex);
     return (NULL);

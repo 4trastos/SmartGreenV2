@@ -1,6 +1,16 @@
 #include "../incl/smartgreen.h"
 
-int     db_save_error(t_smartgreen *smartgreen, const char *message)
+void    db_cleanup_error_log(t_smartgreen *smartgreen)
+{
+    char    *err_msg = NULL;
+    const char *sql = "DELETE FROM error_log WHERE timestamp < (strftime('%s','now') - 63072000);";
+    
+    sqlite3_exec(smartgreen->db, sql, NULL, NULL, &err_msg);
+    if (err_msg)
+        sqlite3_free(err_msg);
+}
+
+int     db_save_error(t_smartgreen *smartgreen, int unit_id, const char *message)
 {
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = SQL_SAVE_ERROR;
@@ -14,7 +24,7 @@ int     db_save_error(t_smartgreen *smartgreen, const char *message)
         return (-1);
     }
 
-    sqlite3_bind_int(stmt, 2, smartgreen->coolers->unit_id);
+    sqlite3_bind_int(stmt, 2, unit_id);
     sqlite3_bind_int(stmt, 3, get_timestamp());
     sqlite3_bind_text(stmt, 4, "ERROR", -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 5, message, -1, SQLITE_TRANSIENT);

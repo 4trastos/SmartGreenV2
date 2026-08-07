@@ -32,7 +32,7 @@ function getActiveAlarms(data) {
 
   for (const c of data.coolers || []) {
     if (c.alarm_fault)
-      alarms.push({ id: `fault_${c.unit_id}`, level: 'red', message: `Fallo cooler #${c.unit_id}`, unit_id: c.unit_id, timestamp: now })
+      alarms.push({ id: `fault_${c.unit_id}`, level: 'red', message: `Avería fan cooler #${c.unit_id}`, unit_id: c.unit_id, timestamp: now })
     if (c.alarm_comms)
       alarms.push({ id: `comms_${c.unit_id}`, level: 'red', message: `Sin comunicación cooler #${c.unit_id}`, unit_id: c.unit_id, timestamp: now })
     if (c.alarm_salinity)

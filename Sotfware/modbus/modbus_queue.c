@@ -126,8 +126,17 @@ void    *ft_modbus_worker(void *arg)
             case CMD_WRITE:
                 modbus_set_slave(smartgreen->modbus_ctx, cmd->unit_id);
                 printf("MODBUS WRITE -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
-                if (modbus_write_registers(smartgreen->modbus_ctx, cmd->addr, 1, (uint16_t[]){(uint16_t)cmd->value}) == -1)
-                    fprintf(stderr, "MODBUS WORKER write error: %s\n", modbus_strerror(errno));
+                if (cmd->addr == 52)            // FC6 para fan speed individual
+                {
+                    uint16_t val = (uint16_t)cmd->value;
+                    if (modbus_write_register(smartgreen->modbus_ctx, cmd->addr, val) == -1)
+                        printf("MODBUS WRITE error addr=%d: %s\n", cmd->addr, modbus_strerror(errno));
+                }
+                else
+                {
+                    if (modbus_write_registers(smartgreen->modbus_ctx, cmd->addr, 1, (uint16_t[]){(uint16_t)cmd->value}) == -1)
+                        fprintf(stderr, "MODBUS WORKER write error: %s\n", modbus_strerror(errno));
+                }
                 break;
 
             case CMD_READ_COOLER:

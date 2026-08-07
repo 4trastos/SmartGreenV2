@@ -3,8 +3,8 @@ import { API_URL } from '../config.js'
 
 export default function Control({ data }) {
   const zones = data.zones.length > 0 ? data.zones : [
-    { zone_id: 1, on_off: 'ON', fan_speed_cmd: 7, target_temp: 25.0, cool_fan_mode: 'COOL' },
-    { zone_id: 2, on_off: 'OFF', fan_speed_cmd: 3, target_temp: 22.0, cool_fan_mode: 'FAN' }
+    { zone_id: 1, on_off: 'ON', fan_speed_cmd: 7, target_temp: 25.0, cool_fan_mode: 'AUTO' },
+    { zone_id: 2, on_off: 'OFF', fan_speed_cmd: 3, target_temp: 22.0, cool_fan_mode: 'MANUAL' }
   ]
 
   const [localZones, setLocalZones] = useState(zones)
@@ -50,7 +50,7 @@ export default function Control({ data }) {
     })
   }
 
-  const MODES = ['COOL', 'FAN', 'AUTO', 'IMD']
+  const MODES = ['AUTO', 'MANUAL', 'FAN', 'IMD']
 
   return (
     <div className="h-full flex flex-col p-6 gap-4">

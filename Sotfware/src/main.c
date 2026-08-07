@@ -20,12 +20,14 @@ int ft_check_database(t_smartgreen *smartgreen)
 {
     if (db_init(smartgreen) == -1)
         return (-1);
-    
+    db_cleanup_error_log(smartgreen);
     ft_init_config(smartgreen);
     ft_init_users(smartgreen);
     ft_init_struct(smartgreen);
 
     if (ft_init_data(smartgreen) == -1)
+        return (-1);
+    if (db_load_zone_params(smartgreen) == -1)
         return (-1);
     return (0);
 }

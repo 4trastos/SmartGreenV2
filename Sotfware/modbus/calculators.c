@@ -59,6 +59,10 @@ int     calculate_register_0(t_smartgreen *smartgreen)
     int v_tu = tu ? 1024 : 0;
     int v_td = td * 4096;
 
+    printf("[DEBUG - calculate_register_0] wm=%d st=%d ws=%d ps=%d ar=%d tu=%d td=%d\n", wm, st, ws, ps, ar, tu, td);
+    printf("[DEBUG - calculate_register_0] calculate_register_0=%d\n", wm + v_st + v_ws + v_ps + v_ar + v_tu + v_td);
+    fflush(stdout);
+
     return(wm + v_st + v_ws + v_ps + v_ar + v_tu + v_td);
 }
 
@@ -84,7 +88,6 @@ void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 0, on ? r0 : 0);
 
     printf("Escribiendo reg 49 = %d\n", r50); fflush(stdout);
-    //ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r50);
     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, on ? r50 : 0);
 
     printf("Escribiendo reg 50 = %d\n", r51); fflush(stdout);

@@ -55,7 +55,7 @@ void    ft_maintenance_alarms(t_smartgreen *smartgreen)
             if (found == -1 || last_maint.timestamp < closing_date)
             {
                 snprintf(buffer, sizeof(buffer), "🟡 Mantenimiento cierre pendiente cooler unit_id=%d", smartgreen->coolers[i].unit_id);
-                db_save_error(smartgreen, buffer);
+                db_save_error(smartgreen, smartgreen->coolers[i].unit_id, buffer);
                 smartgreen->coolers[i].alarm_maint_closing = 1;
             }
             else
@@ -68,7 +68,7 @@ void    ft_maintenance_alarms(t_smartgreen *smartgreen)
             if (found == -1 || last_maint.timestamp < opening_date)
             {
                 snprintf(buffer, sizeof(buffer), "🟡 Mantenimiento apertura pendiente cooler unit_id=%d", smartgreen->coolers[i].unit_id);
-                db_save_error(smartgreen, buffer);
+                db_save_error(smartgreen, smartgreen->coolers[i].unit_id, buffer);
                 smartgreen->coolers[i].alarm_maint_opening = 1;
             }
             else
@@ -81,7 +81,7 @@ void    ft_maintenance_alarms(t_smartgreen *smartgreen)
             if (found == -1|| last_maint.timestamp < legio_date)
             {
                 snprintf(buffer, sizeof(buffer), "🟡 Tratamiento legionela pendiente cooler unit_id=%d", smartgreen->coolers[i].unit_id);
-                db_save_error(smartgreen, buffer);
+                db_save_error(smartgreen, smartgreen->coolers[i].unit_id, buffer);
                 smartgreen->coolers[i].alarm_maint_legionella = 1;
             }
             else

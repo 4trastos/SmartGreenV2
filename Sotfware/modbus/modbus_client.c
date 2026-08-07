@@ -49,7 +49,7 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
         {
             smartgreen->coolers[unit_idx].disabled = 1;
             smartgreen->coolers[unit_idx].alarm_comms = 1;
-            db_save_error(smartgreen, modbus_strerror(errno));
+            db_save_error(smartgreen, smartgreen->coolers[unit_idx].unit_id, modbus_strerror(errno));
         }
         pthread_mutex_unlock(&smartgreen->data_mutex); 
         return (-1);
@@ -96,7 +96,7 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
             smartgreen->sensors[unit_idx].valid = 0;          
             smartgreen->sensors[unit_idx].temperature = 0.0f; 
             smartgreen->sensors[unit_idx].humidity = 0.0f;  
-            db_save_error(smartgreen, modbus_strerror(errno));
+            db_save_error(smartgreen, smartgreen->coolers[unit_idx].unit_id, modbus_strerror(errno));
         }
         pthread_mutex_unlock(&smartgreen->data_mutex); 
         return (-1);

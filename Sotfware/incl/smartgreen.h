@@ -25,14 +25,14 @@
 # define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
 # define SQL_INSERT_COOLER      "INSERT OR REPLACE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, drain_valve_confirm, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, fan_speed_confirmed, most_recent_fault, " \
                                 "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod, alarm_fault, alarm_salinity, alarm_water, alarm_comms, alarm_warranty, alarm_maint_opening, alarm_maint_closing, alarm_maint_legionella, hours_running, " \
-                                "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config) " \
-                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                                "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config, prev_fan_starts, fan_zero_ticks, fan_running) " \
+                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 # define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, humidity_offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
 # define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
                                 "salinity_us, drain_open, solenoid_on, on_off, fault_code) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-# define SQL_SAVE_ZONE_PARAMS   "INSERT OR REPLACE INTO zone_params (zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, prewet_in_progress, last_prewet, last_drain, last_pump_time) "\
+# define SQL_SAVE_ZONE_PARAMS   "INSERT OR IGNORE INTO zone_params (zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, prewet_in_progress, last_prewet, last_drain, last_pump_time) "\
                                 " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_ERROR         "INSERT INTO error_log (id, unit_id, timestamp, level, message) VALUES(?, ?, ?, ?, ?)"
 # define SQL_SAVE_FAULT_LOG     "INSERT INTO fault_log (id, unit_id, fault_code, fault_present, time_created, time_cleared) VALUES(?, ?, ?, ?, ?, ?)"
@@ -43,7 +43,7 @@
 # define SQL_INIT_USER          "INSERT OR IGNORE INTO users (id, username, password, role, active) VALUES (?, ?, ?, ?, ?)"
 
 /*  MODBUS CONST   */
-# define MODBUS_PORT            "/dev/ttyUSB0"
+# define MODBUS_PORT            "/dev/ttyRS485"
 # define MODBUS_BAUD            9600
 # define MODBUS_PARITY          'N'
 # define MODBUS_DATA_BITS       8
@@ -245,6 +245,9 @@ typedef struct  s_cooler_state
     int                 extended_status;                // regs[52] — estado extendido bitmap
     int                 modbus_addr;                    // regs[8]  — dirección Modbus actual
     int                 r0_config;                      // regs[0]  — configuración global actual
+    int                 prev_fan_starts;                // para detectar avería al arrancar
+    int                 fan_zero_ticks;                 // contador de lecturas con fan_speed=0 estando ON
+    int                 fan_running;
     double              salinity_ppm;
     double              salinity_us;
     time_t              last_read;
@@ -356,7 +359,7 @@ int                 db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *coo
 int                 db_save_sensor(t_smartgreen *smartgreen, t_sensor_state *sensor);
 int                 db_save_zone_params(t_smartgreen *smartgreen, t_zone_params *zone_params);
 int                 db_save_history(t_smartgreen *smartgreen, const char *device_type, t_cooler_state *cooler, t_sensor_state *sensor);
-int                 db_save_error(t_smartgreen *smartgreen, const char *message);
+int                 db_save_error(t_smartgreen *smartgreen, int unit_id, const char *message);
 int                 db_save_fault(t_smartgreen *smartgreen, int unit_id, int fault_code);
 int                 db_save_config(t_smartgreen *smartgreen, const char *key, int value);
 int                 db_update_config(t_smartgreen *smartgreen, const char *key, int value);
@@ -367,6 +370,8 @@ int                 db_save_maintenance_log(t_smartgreen *smartgreen, t_maintena
 int                 db_get_last_maintenance(t_smartgreen *smartgreen, int unit_id, const char *type, t_maintenance_log *out);
 int                 db_save_users(t_smartgreen *smartgreen);
 int                 db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone);
+int                 db_load_zone_params(t_smartgreen *smartgreen);
+void                db_cleanup_error_log(t_smartgreen *smartgreen);
 
 /*  CONTROL */
 void                scheduler_run(t_smartgreen *smartgreen);

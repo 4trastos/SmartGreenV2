@@ -19,14 +19,18 @@ enum MHD_Result     api_get_alarms(t_smartgreen *smartgreen, struct MHD_Connecti
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = "SELECT id, unit_id, timestamp, level, message FROM error_log ORDER BY timestamp DESC LIMIT 50;";
     int             rc;
-    char            responsed[4096];
-    char            row[512];
+    char            responsed[16384];
+    char            row[1024];
     int             offset = 0;
     int             first = 1;
 
+    pthread_mutex_lock(&smartgreen->data_mutex);
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
+    {
+        pthread_mutex_unlock(&smartgreen->data_mutex);
         return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+    }
 
     offset += snprintf(responsed + offset, sizeof(responsed), "[");
     while (sqlite3_step(stmt) == SQLITE_ROW)
@@ -51,6 +55,7 @@ enum MHD_Result     api_get_alarms(t_smartgreen *smartgreen, struct MHD_Connecti
     }
     offset += snprintf(responsed + offset, sizeof(responsed), "]");
     sqlite3_finalize(stmt);
+    pthread_mutex_unlock(&smartgreen->data_mutex);
     return (api_send_response(connection, MHD_HTTP_OK, responsed));
 }
 

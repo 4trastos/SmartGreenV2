@@ -6,11 +6,11 @@ function coolerStatus(c, zone) {
   if (c.alarm_comms || c.disabled) return 'offline'
   if (c.alarm_water && c.salinity_us <= 10) return 'warning'
   if (c.alarm_warranty) return 'warranty'
-  if (zone?.on_off === 'ON' || c.fan_on || c.cool_mode_on) return 'active'
+  if (zone?.on_off === 'ON') return 'active'
   return 'idle'
 }
 
-const fanSpeed = (zone) => zone?.on_off === 'ON' ? (zone?.fan_speed_cmd ?? 0) : 0
+const fanSpeed = (cooler, zone) =>  zone?.on_off === 'ON' ? cooler.actual_fan_speed : 0
 
 const STATUS = {
   active:  { gradient: 'from-[#004d89]/40 to-[#088fc3]/10', border: 'border-[#088fc3]/35', dot: 'bg-[#088fc3] shadow-[0_0_10px_#088fc3]', label: 'ACTIVO',   lc: 'text-[#088fc3]' },
@@ -37,7 +37,7 @@ function MiniChart({ value, status }) {
 function CoolerCard({ cooler, onClick, toggleCooler, zone }) {
   const st = STATUS[coolerStatus(cooler, zone)]
   const s = coolerStatus(cooler, zone)
-  const isOn = cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON'
+  const isOn = zone?.on_off === 'ON'
   const toggleOnOff = async (e) => {
     e.stopPropagation()
     await fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
@@ -66,9 +66,9 @@ function CoolerCard({ cooler, onClick, toggleCooler, zone }) {
         </div>
       </div>
       <div className="flex items-end justify-between gap-3 mb-3">
-        <MiniChart value={fanSpeed(zone)} status={s} />
+        <MiniChart value={fanSpeed(cooler, zone)} status={s} />
         <div className="text-right shrink-0">
-          <p className={`text-2xl font-black font-mono leading-none ${st.lc}`}>{fanSpeed(zone)}</p>
+          <p className={`text-2xl font-black font-mono leading-none ${st.lc}`}>{fanSpeed(cooler, zone)}</p>
           <p className="text-white/20 text-xs">/10</p>
         </div>
       </div>
@@ -93,7 +93,7 @@ function CoolerCard({ cooler, onClick, toggleCooler, zone }) {
 function CoolerMini({ cooler, onClick, toggleCooler, zone }) {
   const st = STATUS[coolerStatus(cooler, zone)]
   const s = coolerStatus(cooler, zone)
-  const isOn = cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON'
+  const isOn = zone?.on_off === 'ON'
   const toggleOnOff = async (e) => {
     e.stopPropagation()
     await fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
@@ -118,9 +118,9 @@ function CoolerMini({ cooler, onClick, toggleCooler, zone }) {
           </button>
         </div>
       </div>
-      <MiniChart value={fanSpeed(zone)} status={s} />
+      <MiniChart value={fanSpeed(cooler, zone)} status={s} />
       <div className="flex justify-between mt-2 text-xs text-white/30">
-        <span>{fanSpeed(zone)}/10</span>
+        <span>{fanSpeed(cooler, zone)}/10</span>
         <span className={cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'}>{cooler.alarm_water ? '○ Seco' : '● Agua'}</span>
         <span>{cooler.salinity_us.toFixed(0)}μS</span>
       </div>
@@ -137,10 +137,10 @@ function CoolerNano({ cooler, onClick }) {
       <span className="text-white text-xs font-mono font-bold">#{cooler.unit_id}</span>
       <div className="flex-1 flex gap-0.5 h-1">
         {Array.from({length:10}).map((_,i) => (
-          <div key={i} className={`flex-1 rounded-full ${i < fanSpeed(zone) ? 'bg-[#088fc3]' : 'bg-white/10'}`} />
+          <div key={i} className={`flex-1 rounded-full ${i < fanSpeed(cooler, zone) ? 'bg-[#088fc3]' : 'bg-white/10'}`} />
         ))}
       </div>
-      <span className={`text-xs font-bold shrink-0 ${st.lc}`}>{fanSpeed(zone)}</span>
+      <span className={`text-xs font-bold shrink-0 ${st.lc}`}>{fanSpeed(cooler, zone)}</span>
     </div>
   )
 }
@@ -148,7 +148,7 @@ function CoolerNano({ cooler, onClick }) {
 function SingleHero({ cooler, onClick, toggleCooler, zone }) {
   const st = STATUS[coolerStatus(cooler, zone)]
   const s = coolerStatus(cooler, zone)
-  const isOn = cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON'  // ← añadir
+  const isOn = zone?.on_off === 'ON'  // ← añadir
   return (
     <div onClick={() => onClick(cooler)}
       className={`flex-1 rounded-3xl border cursor-pointer overflow-hidden bg-gradient-to-br ${st.gradient} ${st.border} p-6 flex flex-col`}>
@@ -168,11 +168,11 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
               ${isOn ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30' : 'bg-[#004d89]/40 border border-[#088fc3]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
             {isOn ? '■ Apagar' : '▶ Encender'}
           </button>
-          <p className={`text-6xl font-black font-mono mt-3 leading-none ${st.lc}`}>{fanSpeed(zone)}<span className="text-2xl text-white/20">/10</span></p>
+          <p className={`text-6xl font-black font-mono mt-3 leading-none ${st.lc}`}>{fanSpeed(cooler, zone)}<span className="text-2xl text-white/20">/10</span></p>
         </div>
       </div>
       <div className="flex-1 flex items-end gap-1 mb-4">
-        {[3,5,4,6,5,7,6,8,fanSpeed(zone)].map((v,i) => (
+        {[3,5,4,6,5,7,6,8,fanSpeed(cooler, zone)].map((v,i) => (
           <div key={i} className="flex-1 rounded-t-lg"
             style={{ height: `${Math.max(10,(v/10)*100)}%`, backgroundColor: i===8 ? (s==='active'?'#088fc3':s==='fault'?'#ef4444':'#eab308') : '#ffffff15' }} />
         ))}
@@ -195,13 +195,13 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
 }
 
 function CoolerDetail({ cooler, onClose, zone }) {
-  const [speed, setSpeed] = useState(fanSpeed(zone))
-  const [fanOn, setFanOn] = useState(cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON')
+  const [speed, setSpeed] = useState(fanSpeed(cooler, zone))
+  const [fanOn, setFanOn] = useState(zone?.on_off === 'ON')
 
   useEffect(() => {
-    setFanOn(cooler.fan_on || cooler.cool_mode_on || zone?.on_off === 'ON')
-    setSpeed(fanSpeed(zone))
-  }, [cooler.fan_on, cooler.cool_mode_on, fanSpeed(zone), zone?.on_off])
+    setFanOn(zone?.on_off === 'ON')
+    setSpeed(fanSpeed(cooler, zone))
+  }, [cooler.fan_on, cooler.cool_mode_on, fanSpeed(cooler, zone), zone?.on_off])
 
   const st = STATUS[coolerStatus({...cooler, fan_on: fanOn})]
 

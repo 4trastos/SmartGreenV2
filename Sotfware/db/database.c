@@ -1,5 +1,46 @@
 #include "../incl/smartgreen.h"
 
+int db_load_zone_params(t_smartgreen *smartgreen)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = "SELECT zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, "
+                           "pump_on, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, "
+                           "prewet_in_progress, last_prewet, last_drain, last_pump_time "
+                           "FROM zone_params;";
+    int             rc;
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        fprintf(stderr, "db_load_zone_params prepare error: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        return (-1);
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        int zone_id = sqlite3_column_int(stmt, 0);
+        int z = ft_find_zone(smartgreen, zone_id);
+        if (z == -1) continue;
+
+        smartgreen->zone_params[z].fan_speed_cmd = sqlite3_column_int(stmt, 1);
+        smartgreen->zone_params[z].target_temp   = sqlite3_column_double(stmt, 2);
+        smartgreen->zone_params[z].humidity_min  = sqlite3_column_double(stmt, 3);
+        smartgreen->zone_params[z].humidity_max  = sqlite3_column_double(stmt, 4);
+        smartgreen->zone_params[z].pump_on       = sqlite3_column_int(stmt, 5);
+        ft_strcpy(smartgreen->zone_params[z].cool_fan_mode,     (char*)sqlite3_column_text(stmt, 6),  sizeof(smartgreen->zone_params->cool_fan_mode));
+        ft_strcpy(smartgreen->zone_params[z].drain_valve,       (char*)sqlite3_column_text(stmt, 7),  sizeof(smartgreen->zone_params->drain_valve));
+        ft_strcpy(smartgreen->zone_params[z].solenoid,          (char*)sqlite3_column_text(stmt, 8),  sizeof(smartgreen->zone_params->solenoid));
+        ft_strcpy(smartgreen->zone_params[z].on_off,            (char*)sqlite3_column_text(stmt, 9),  sizeof(smartgreen->zone_params->on_off));
+        ft_strcpy(smartgreen->zone_params[z].inmediate_drain,   (char*)sqlite3_column_text(stmt, 10), sizeof(smartgreen->zone_params->inmediate_drain));
+        ft_strcpy(smartgreen->zone_params[z].prewet_in_progress,(char*)sqlite3_column_text(stmt, 11), sizeof(smartgreen->zone_params->prewet_in_progress));
+        smartgreen->zone_params[z].last_prewet      = sqlite3_column_int(stmt, 12);
+        smartgreen->zone_params[z].last_drain       = sqlite3_column_int(stmt, 13);
+        smartgreen->zone_params[z].last_pump_time   = sqlite3_column_int(stmt, 14);
+    }
+    sqlite3_finalize(stmt);
+    return (0);
+}
+
 int     db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone)
 {
     printf("[DEBUG] DENTRO DE -> db_update_zone_params: zone_id=%d on_off=%s pump_on=%d prewet=%s cool_fan_mode=%s\n", zone->zone_id, zone->on_off, zone->pump_on, zone->prewet_in_progress, zone->cool_fan_mode);
@@ -547,6 +588,9 @@ int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
     sqlite3_bind_int(stmt, 44, cooler->extended_status);
     sqlite3_bind_int(stmt, 45, cooler->modbus_addr);
     sqlite3_bind_int(stmt, 46, cooler->r0_config);
+    sqlite3_bind_int(stmt, 47, cooler->prev_fan_starts);
+    sqlite3_bind_int(stmt, 48, cooler->fan_zero_ticks);
+    sqlite3_bind_int(stmt, 49, cooler->fan_running);
 
     while (attemps < DB_MAX_RETRIES)
     {
