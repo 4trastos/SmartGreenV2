@@ -22,9 +22,9 @@ typedef struct s_update_info
 
 /*  FUNCTIONS   */
 int         ft_check_for_updates(t_update_info *update);
-int         ft_download_update(const char *url, const char *dest);
-int         ft_verify_checksum(const char *file, const char *expected);
-int         ft_apply_update(const char *new_binary);
+int         ft_download_update(char *url, char *dest);
+int         ft_verify_checksum(char *file, char *expected);
+int         ft_apply_update(char *new_binary);
 size_t      ft_write_callback(void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 #endif

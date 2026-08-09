@@ -70,7 +70,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
         history_interval = HISTORY_INTERVAL;
     smartgreen->read_interval = read_interval;
 
-    while (!g_sigint_received && !g_sigterm_received)
+    while (!g_sigint_received && !g_sigterm_received && !g_update_pending)
     {
         now = get_timestamp();
 
@@ -153,6 +153,10 @@ void    scheduler_run(t_smartgreen *smartgreen)
 
         sleep(1);
     }
+
+    // Si hay update pendiente, guardar estado
+    if (g_update_pending)
+        printf("[SCHEDULER] Update pending, exiting scheduler loop...\n");
 }
 
 int     db_read_scheduler(t_smartgreen *smartgreen)

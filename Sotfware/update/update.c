@@ -69,7 +69,7 @@ int ft_check_for_updates(t_update_info *update)
 }
 
 // Descargar update
-int ft_download_update(const char *url, const char *dest)
+int ft_download_update(char *url, char *dest)
 {
     CURL        *curl;
     CURLcode    res;
@@ -100,7 +100,7 @@ int ft_download_update(const char *url, const char *dest)
 }
 
 // Verificar checksum SHA-256
-int ft_verify_checksum(const char *file, const char *expected)
+int ft_verify_checksum(char *file, char *expected)
 {
     SHA256_CTX      sha256;
     unsigned char   hash[SHA256_DIGEST_LENGTH];
@@ -129,7 +129,7 @@ int ft_verify_checksum(const char *file, const char *expected)
 }
 
 // Aplicar actualización
-int ft_apply_update(const char *new_binary)
+int ft_apply_update(char *new_binary)
 {
     char    backup_path[256];
     char    current_path[256];
@@ -160,3 +160,75 @@ int ft_apply_update(const char *new_binary)
     return (0);
 }
 
+void    *ft_update_checker_thread(void *arg)
+{
+    t_smartgreen    *smartgreen = (t_smartgreen *)arg;
+    t_update_info   update;
+    char            *temp_path = NULL;
+    int             fd;
+    int             ret;
+
+    while (1)
+    {
+        sleep(UPDATE_CHECK_INTERVAL);
+
+        ret = ft_check_for_updates(&update);
+        if (ret == -1)
+        {
+            printf("[UPDATE] Error checking for updates\n");
+            continue;
+        }
+        else if (ret == 0)
+        {
+            printf("[UPDATE] No updates available\n");
+            continue;
+        }
+
+        printf("[UPDATE] New version %s available\n", update.version);
+        printf("[UPDATE] Release date: %s\n", update.release_date);
+
+        // Descargar
+        temp_path = "/tmp/smartgreen_new.XXXXXX";
+        fd = mkstemp(temp_path);
+        if (fd < 0)
+        {
+            printf("[UPDATE] ❌ Cannot create temp file\n");
+            continue;
+        }
+        close(fd);
+
+        if (ft_download_update(update.url, temp_path) == 0)
+        {
+            if (ft_verify_checksum(temp_path, update.cheksum) == 0)
+            {
+                printf("[UPDATE] Checksum verified, applying...\n");
+                if (ft_apply_update(temp_path) == 0)
+                {
+                    printf("[UPDATE] ✅ Update applied successfully\n");
+                    printf("[UPDATE] Restarting service...\n");
+                    update.requires_restart = 1;
+                    g_update_pending = 1;
+                    ft_ws_stop(smartgreen);
+                    ft_modbus_queue_stop(&smartgreen->modbus_queue);
+                    unlink(temp_path);
+                    break;
+                }
+                else
+                {
+                    printf("[UPDATE] ❌ Apply update failed\n");
+                    unlink(temp_path);
+                }
+            }
+            else
+                printf("[UPDATE] ❌ Checksum verification failed\n");
+        }
+        else
+        {
+            printf("[UPDATE] ❌ Download failed\n");
+            unlink(temp_path);
+            continue;
+        }
+        unlink(temp_path);
+    }
+    return (NULL);
+}

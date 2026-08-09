@@ -3,6 +3,7 @@
 volatile sig_atomic_t g_sigint_received = 0;
 volatile sig_atomic_t g_sigterm_received = 0;
 volatile sig_atomic_t g_alarm_modbus = 0;
+volatile sig_atomic_t g_update_pending = 0;
 
 int ft_modbus(t_smartgreen *smartgreen)
 {
@@ -36,16 +37,27 @@ int main(int argc, char **argv)
 {
     t_smartgreen    *smartgreen;
 
-    if (argc == 2 && (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0))
+    if (argc == 2)
     {
-        printf("%s v%d.%d.%d\n", SG_PRODUCT, SG_VERSION_MAJOR, SG_VERSION_MINOR, SG_VERSION_PATCH);
-        printf("Relase: %s\n", SG_RELEASE);
-        printf("Build: %s %s \n", SG_BUILD_DATE, SG_BUILD_TIME);
-        printf("%s\n", SG_COPYRIGHT);
-        printf("by %s\n", SG_AUTHOR);
-        printf("%s\n", SG_URL);
-        printf("All rights reserved. Unauthorized reproduction or distribution is prohibited.\n");
-        return (0);
+        if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0)
+        {
+            printf("%s v%d.%d.%d\n", SG_PRODUCT, SG_VERSION_MAJOR, SG_VERSION_MINOR, SG_VERSION_PATCH);
+            printf("Relase: %s\n", SG_RELEASE);
+            printf("Build: %s %s \n", SG_BUILD_DATE, SG_BUILD_TIME);
+            printf("%s\n", SG_COPYRIGHT);
+            printf("by %s\n", SG_AUTHOR);
+            printf("%s\n", SG_URL);
+            printf("All rights reserved. Unauthorized reproduction or distribution is prohibited.\n");
+            return (0);
+        }
+        else if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
+        {
+            printf("Usage: %s [OPTIONS]\n", argv[0]);
+            printf("  -v, --version    Show version information\n");
+            printf("  -h, --help       Show this help message\n");
+            printf("  -c, --config     Specify config file (default: /opt/smartgreen/config/smartgreen.conf)\n");
+            return (0);
+        }
     }
 
     smartgreen = malloc(sizeof(t_smartgreen));
@@ -88,12 +100,11 @@ int main(int argc, char **argv)
     }
     
     scheduler_run(smartgreen);          // bucle principal
-    ft_ws_stop(smartgreen);
 
+    ft_ws_stop(smartgreen);
     ft_modbus_queue_stop(&smartgreen->modbus_queue);
     pthread_join(smartgreen->modbus_thread.tid, NULL);
     ft_modbus_queue_destroy(&smartgreen->modbus_queue);
-
     api_stop(smartgreen);
 
     if (smartgreen->db)
@@ -105,6 +116,15 @@ int main(int argc, char **argv)
     pthread_mutex_destroy(&smartgreen->data_mutex);
     ft_free_modbus(smartgreen);
     ft_free_structs(smartgreen);
+
+    if (g_update_pending)
+    {
+        printf("[MAIN] Restarting with new version...\n");
+        fflush(stdout);
+        execv("/opt/smartgreen/smartgreen", argv);
+        perror("[MAIN] ❌ execv failed");
+        return (1);
+    }
     return (0);
 }
 

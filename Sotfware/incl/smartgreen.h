@@ -24,7 +24,16 @@
 # include <libwebsockets.h>
 
 /*  PATHS   */
-# define DB_PATH                "/var/lib/smartgreen/smartgreen.db"
+# define INSTALL_DIR            "/opt/smartgreen"
+# define DATA_DIR               "/var/lib/smartgreen"
+# define LOG_DIR                "var/log/smartgreen"
+# define CONFIG_DIR             INSTALL_DIR "/config"
+# define BACKUP_DIR             INSTALL_DIR "/backups"
+# define LOG_PATH               LOG_DIR "/smartgreen.log"
+# define CONFIG_PATH            CONFIG_DIR "/smartgreen.conf"
+# define DB_PATh                DATA_DIR "/smartgreen.db"
+
+/*  SQL */
 # define SQL_INSERT_COOLER      "INSERT OR REPLACE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, drain_valve_confirm, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, fan_speed_confirmed, most_recent_fault, " \
                                 "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod, alarm_fault, alarm_salinity, alarm_water, alarm_comms, alarm_warranty, alarm_maint_opening, alarm_maint_closing, alarm_maint_legionella, hours_running, " \
                                 "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config, prev_fan_starts, fan_zero_ticks, fan_running) " \
@@ -312,6 +321,7 @@ typedef struct s_prewet_args
 extern volatile sig_atomic_t g_sigint_received;
 extern volatile sig_atomic_t g_sigterm_received;
 extern volatile sig_atomic_t g_alarm_modbus;
+extern volatile sig_atomic_t g_update_pending; 
 
 /*  FUNCTIONS   */
 int                 main(int argc, char **argv);
@@ -377,6 +387,7 @@ void                db_cleanup_error_log(t_smartgreen *smartgreen);
 
 /*  CONTROL */
 void                scheduler_run(t_smartgreen *smartgreen);
+void                scheduler_stop(t_smartgreen *smartgreen); 
 int                 cooler_water_management(t_smartgreen *smartgreen);
 int                 cooler_prewet(t_smartgreen *smartgreen, int zone_idx);
 int                 sensor_validate(t_sensor_state *sensor);
@@ -427,5 +438,8 @@ int                 ft_ws_init(t_smartgreen *smartgreen);
 void                ft_ws_stop(t_smartgreen *smartgreen);
 void                ft_ws_broadcast(t_smartgreen *smartgreen, const char *message);
 void                ft_ws_broadcast_status(t_smartgreen *smartgreen);
+
+/*  UPDATE  */
+void                *ft_update_checker_thread(void *arg);
 
 #endif
