@@ -22,6 +22,7 @@ COMMON_SRC = api/api_server.c api/api_connect.c api/api_response.c api/api_post.
 		db/database.c db/schema.c db/config.c  db/error.c \
 		modbus/modbus_client.c modbus/registers.c modbus/calculators.c modbus/modbus_queue.c \
 		utils/utils.c
+		update/update.c
 
 SRC = src/main.c \
 		$(COMMON_SRC)
