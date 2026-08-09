@@ -30,49 +30,40 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
         else if (!smartgreen->coolers[i].fault_present && smartgreen->coolers[i].alarm_fault)
             smartgreen->coolers[i].alarm_fault = 0;
 
-        // // 🔴 Avería en el fan (motor)
-        // int z = ft_find_zone(smartgreen, smartgreen->coolers[i].zone_id);
-        // if (z != -1 && strcmp(smartgreen->zone_params[z].prewet_in_progress, "no") == 0)
-        // {
-        //     printf("[ALARM DEBUG] cooler=%d cool_mode=%d fan_running=%d\n",
-        //         smartgreen->coolers[i].unit_id,
-        //         smartgreen->coolers[i].cool_mode_on,
-        //         smartgreen->coolers[i].fan_running);
-        //     fflush(stdout);
+        // 🔴 Avería en el fan (motor) — basada en fan_on (regs[49] bit 2)
+        int z = ft_find_zone(smartgreen, smartgreen->coolers[i].zone_id);
+        if (z != -1 && strcmp(smartgreen->zone_params[z].prewet_in_progress, "no") == 0 && strcmp(smartgreen->zone_params[z].on_off,"ON") == 0)
+        {
+            printf("[ALARM DEBUG FAN] cooler=%d cool_mode=%d fan_on=%d\n", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].cool_mode_on, smartgreen->coolers[i].fan_on);
+            fflush(stdout);
 
-        //     if (smartgreen->coolers[i].cool_mode_on && !smartgreen->coolers[i].fan_running)
-        //     {
-        //         smartgreen->coolers[i].fan_zero_ticks++;
-        //         if (smartgreen->coolers[i].fan_zero_ticks >= 3 && !smartgreen->coolers[i].alarm_fault)
-        //         {
-        //             snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d averia fan",
-        //                     smartgreen->coolers[i].unit_id);
-        //             db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
-        //             smartgreen->coolers[i].alarm_fault = 1;
+            if (smartgreen->coolers[i].cool_mode_on && !smartgreen->coolers[i].fan_on)
+            {
+                smartgreen->coolers[i].fan_zero_ticks++;
+                if (smartgreen->coolers[i].fan_zero_ticks >= 5 && !smartgreen->coolers[i].alarm_fault)
+                {
+                    snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d averia fan", smartgreen->coolers[i].unit_id);
+                    db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
+                    smartgreen->coolers[i].alarm_fault = 1;
 
-        //             // Apagar cooler por seguridad
-        //             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE,
-        //                             smartgreen->coolers[i].unit_id, 49, 0);
-        //             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE,
-        //                             smartgreen->coolers[i].unit_id, 50, 0);
-        //         }
-        //     }
-        //     else
-        //     {
-        //         smartgreen->coolers[i].fan_zero_ticks = 0;
+                    // Apagar cooler por seguridad
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, 0);
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, 0);
+                }
+            }
+            else
+            {
+                smartgreen->coolers[i].fan_zero_ticks = 0;
 
-        //         if (smartgreen->coolers[i].alarm_fault == 1 &&
-        //             smartgreen->coolers[i].fan_running &&
-        //             smartgreen->coolers[i].cool_mode_on &&  // ← solo si el cooler está encendido
-        //             strcmp(smartgreen->zone_params[z].on_off, "ON") == 0)
-        //         {
-        //             smartgreen->coolers[i].alarm_fault = 0;
-        //             ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, 1);
-        //         }
-        //         else if (!smartgreen->coolers[i].cool_mode_on)
-        //             smartgreen->coolers[i].alarm_fault = 0;  // limpiar alarma si está apagado
-        //     }
-        // }
+                if (smartgreen->coolers[i].alarm_fault == 1 && smartgreen->coolers[i].fan_on)
+                {
+                    smartgreen->coolers[i].alarm_fault = 0;
+                    ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, 1);
+                }
+                else if (!smartgreen->coolers[i].cool_mode_on)
+                    smartgreen->coolers[i].alarm_fault = 0;
+            }
+        }
 
         // 🔴 Sin comunicación
         if (smartgreen->coolers[i].error_count >= MAX_COOLER_ERRORS && !smartgreen->coolers[i].alarm_comms)
@@ -106,7 +97,7 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
             smartgreen->coolers[i].alarm_water = 0;
 
         // 🔴 Garantía vencida
-        if (now > warranty_end && !smartgreen->coolers[i].alarm_warranty)
+        if (now > warranty_end)
         {
             snprintf(msg, sizeof(msg), "🔴 CRITICO: Garantía vencida unit_id=%d", smartgreen->coolers[i].unit_id);
             db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
@@ -120,7 +111,7 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
             db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
             smartgreen->coolers[i].alarm_warranty = 1;
         }
-        else if (now <= warranty_end)
+        else if (now <= warranty_end && !smartgreen->coolers[i].alarm_warranty)
             smartgreen->coolers[i].alarm_warranty = 0;
     }
 
