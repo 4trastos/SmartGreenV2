@@ -1,10 +1,11 @@
 #ifndef UPDATE_H
 # define UPDATE_H
 
+# include "../incl/smartgreen.h"
 # include <curl/curl.h>
 # include <json-c/json.h>
-# include <openssl/sha.h>
-# include <unistd.h>
+# include <openssl/evp.h>
+# include <sys/stat.h>
 
 # define UPDATE_SERVER          "https://smartgreen.australair.com/updates"
 # define UPDATE_CHECK_INTERVAL  86400             // 24 horas

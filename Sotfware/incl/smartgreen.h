@@ -31,7 +31,7 @@
 # define BACKUP_DIR             INSTALL_DIR "/backups"
 # define LOG_PATH               LOG_DIR "/smartgreen.log"
 # define CONFIG_PATH            CONFIG_DIR "/smartgreen.conf"
-# define DB_PATh                DATA_DIR "/smartgreen.db"
+# define DB_PATH                DATA_DIR "/smartgreen.db"
 
 /*  SQL */
 # define SQL_INSERT_COOLER      "INSERT OR REPLACE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, drain_valve_confirm, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, fan_speed_confirmed, most_recent_fault, " \

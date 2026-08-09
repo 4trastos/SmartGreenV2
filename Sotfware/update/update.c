@@ -45,8 +45,9 @@ int ft_check_for_updates(t_update_info *update)
     // Obtener versión remota como string del JSON
     json_object_object_get_ex(json, "version", &version_obj);
     remote_version_str = json_object_get_string(version_obj);
-    ft_strcpy(update->version, json_object_get_string(version_obj), sizeof(update->version));
-    
+    strncpy(update->version, remote_version_str, sizeof(update->version) - 1);
+    update->version[sizeof(update->version) - 1] = '\0';
+
     sscanf(remote_version_str, "%d.%d.%d", &r_major, &r_minor, &r_patch);
     local_ver = (SG_VERSION_MAJOR * 1000) + (SG_VERSION_MINOR * 100) + SG_VERSION_PATCH;
     remote_ver = (r_major * 1000) + (r_minor * 100) + r_patch;
@@ -58,11 +59,16 @@ int ft_check_for_updates(t_update_info *update)
     }
 
     json_object_object_get_ex(json, "download_url", &url_obj);
-    ft_strcpy(update->url, json_object_get_string(url_obj), sizeof(update->url));
+    strncpy(update->url, json_object_get_string(url_obj), sizeof(update->url) - 1);
+    update->url[sizeof(update->url) - 1] = '\0';
+
     json_object_object_get_ex(json, "checksum", &checksum_obj);
-    ft_strcpy(update->cheksum, json_object_get_string(checksum_obj), sizeof(update->cheksum));
+    strncpy(update->cheksum, json_object_get_string(checksum_obj), sizeof(update->cheksum) - 1);
+    update->cheksum[sizeof(update->cheksum) - 1] = '\0';
+
     json_object_object_get_ex(json, "release_date", &date_obj);
-    ft_strcpy(update->release_date, json_object_get_string(date_obj), sizeof(update->release_date));
+    strncpy(update->release_date, json_object_get_string(date_obj), sizeof(update->release_date) - 1);
+    update->release_date[sizeof(update->release_date) - 1] = '\0';
 
     json_object_put(json);
     return (1);
@@ -82,7 +88,7 @@ int ft_download_update(char *url, char *dest)
     curl = curl_easy_init();
     if (!curl)
     {
-        fclose(dest);
+        fclose(fd);
         return (-1);
     }
 
@@ -99,32 +105,59 @@ int ft_download_update(char *url, char *dest)
     return (res == CURLE_OK) ? 0 : -1;
 }
 
-// Verificar checksum SHA-256
+// Verificar checksum
 int ft_verify_checksum(char *file, char *expected)
 {
-    SHA256_CTX      sha256;
-    unsigned char   hash[SHA256_DIGEST_LENGTH];
+    EVP_MD_CTX     *mdctx = NULL;
+    unsigned char   hash[EVP_MAX_MD_SIZE];
     unsigned char   buffer[4096];
     char            checksum_str[65];
     size_t          bytes;
-    FILE *fp;
-    
+    unsigned int    hash_len = 0;
+    FILE            *fp;
+
     fp = fopen(file, "rb");
-    
     if (!fp)
         return (-1);
-    
-    SHA256_Init(&sha256);
+
+    mdctx = EVP_MD_CTX_new();
+    if (!mdctx)
+    {
+        fclose(fp);
+        return (-1);
+    }
+
+    if (EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL) != 1)
+    {
+        EVP_MD_CTX_free(mdctx);
+        fclose(fp);
+        return (-1);
+    }
+
     while ((bytes = fread(buffer, 1, sizeof(buffer), fp)) > 0)
-        SHA256_Update(&sha256, buffer, bytes);
-    SHA256_Final(hash, &sha256);
+    {
+        if (EVP_DigestUpdate(mdctx, buffer, bytes) != 1) {
+            EVP_MD_CTX_free(mdctx);
+            fclose(fp);
+            return (-1);
+        }
+    }
+
+    if (EVP_DigestFinal_ex(mdctx, hash, &hash_len) != 1)
+    {
+        EVP_MD_CTX_free(mdctx);
+        fclose(fp);
+        return (-1);
+    }
+
+    EVP_MD_CTX_free(mdctx);
     fclose(fp);
-    
+
     // Convertir a string hexadecimal
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+    for (unsigned int i = 0; i < hash_len; i++)
         sprintf(checksum_str + (i * 2), "%02x", hash[i]);
     checksum_str[64] = '\0';
-    
+
     return (strcasecmp(checksum_str, expected) == 0) ? 0 : -1;
 }
 
