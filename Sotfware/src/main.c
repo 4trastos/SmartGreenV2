@@ -37,6 +37,12 @@ int main(int argc, char **argv)
 {
     t_smartgreen    *smartgreen;
 
+    if (ptrace(PTRACE_TRACEME, 0, 0, 0) == -1)
+    {
+        fprintf(stderr, "Debugger detected. Exiting.\n");
+        exit (1);
+    }
+
     if (argc == 2)
     {
         if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0)
@@ -55,7 +61,12 @@ int main(int argc, char **argv)
             printf("Usage: %s [OPTIONS]\n", argv[0]);
             printf("  -v, --version    Show version information\n");
             printf("  -h, --help       Show this help message\n");
-            printf("  -c, --config     Specify config file (default: /opt/smartgreen/config/smartgreen.conf)\n");
+            printf("  -c, --config     Specify config file\n");
+            return (0);
+        }
+        else if (strcmp(argv[1], "--config") == 0 || strcmp(argv[1], "-c") == 0)
+        {
+            printf("Config file: /opt/smartgreen/config/smartgreen.conf\n");
             return (0);
         }
     }

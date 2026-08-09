@@ -22,6 +22,7 @@
 # include <signal.h>
 # include <microhttpd.h>
 # include <libwebsockets.h>
+# include <sys/ptrace.h>
 
 /*  PATHS   */
 # define INSTALL_DIR            "/opt/smartgreen"
