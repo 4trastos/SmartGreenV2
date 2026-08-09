@@ -32,9 +32,21 @@ int ft_check_database(t_smartgreen *smartgreen)
     return (0);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     t_smartgreen    *smartgreen;
+
+    if (argc == 2 && (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0))
+    {
+        printf("%s v%d.%d.%d\n", SG_PRODUCT, SG_VERSION_MAJOR, SG_VERSION_MINOR, SG_VERSION_PATCH);
+        printf("Relase: %s\n", SG_RELEASE);
+        printf("Build: %s %s \n", SG_BUILD_DATE, SG_BUILD_TIME);
+        printf("%s\n", SG_COPYRIGHT);
+        printf("by %s\n", SG_AUTHOR);
+        printf("%s\n", SG_URL);
+        printf("All rights reserved. Unauthorized reproduction or distribution is prohibited.\n");
+        return (0);
+    }
 
     smartgreen = malloc(sizeof(t_smartgreen));
     if (!smartgreen)
@@ -69,6 +81,7 @@ int main(void)
         ft_modbus_queue_stop(&smartgreen->modbus_queue);
         pthread_join(smartgreen->modbus_thread.tid, NULL);
         sqlite3_close(smartgreen->db);
+        smartgreen->db = NULL;
         ft_free_modbus(smartgreen);
         ft_free_structs(smartgreen);
         return(1);
@@ -84,7 +97,10 @@ int main(void)
     api_stop(smartgreen);
 
     if (smartgreen->db)
+    {
         sqlite3_close(smartgreen->db);
+        smartgreen->db = NULL;
+    }
     
     pthread_mutex_destroy(&smartgreen->data_mutex);
     ft_free_modbus(smartgreen);

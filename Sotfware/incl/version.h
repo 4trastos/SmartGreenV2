@@ -22,6 +22,13 @@
 # define TEST_VERSION_PATCH 0
 
 /*----------------------------------------------------------*/
+/* RELEASE                                                   */
+/*----------------------------------------------------------*/
+
+# define SG_RELEASE         "2026-10-01"
+
+
+/*----------------------------------------------------------*/
 /* BUILD                                                    */
 /*----------------------------------------------------------*/
 
@@ -32,7 +39,8 @@
 /* AUTHOR                                                   */
 /*----------------------------------------------------------*/
 
-# define SG_AUTHOR          "David Gallego"
-# define SG_COPYRIGHT       "(C) 2026 Australair S.L."
+# define SG_AUTHOR          "David Gallego Gómez"
+# define SG_COPYRIGHT       "(C) 2026 Australair Distribución Ibérica S.L."
+# define SG_URL             "https://australair.com"
 
 #endif

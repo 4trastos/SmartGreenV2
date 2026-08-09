@@ -1,6 +1,8 @@
 #ifndef SMARTGREEN_H
 # define SMARTGREEN_H
 
+# include "version.h"
+# include "update.h"
 # include <string.h>
 # include <stdio.h>
 # include <stdlib.h>
@@ -48,7 +50,7 @@
 # define MODBUS_PARITY          'N'
 # define MODBUS_DATA_BITS       8
 # define MODBUS_STOP_BITS       1
-# define MODBUS_COOLER_REGS     59
+# define MODBUS_COOLER_REGS     100
 # define MODBUS_SENSOR_REGS     4
 # define MODBUS_SENSOR_ADDR     299
 # define MODBUS_CMD_ADDR        400
@@ -312,7 +314,7 @@ extern volatile sig_atomic_t g_sigterm_received;
 extern volatile sig_atomic_t g_alarm_modbus;
 
 /*  FUNCTIONS   */
-int                 main(void);
+int                 main(int argc, char **argv);
 int                 ft_check_database(t_smartgreen *smartgreen);
 int                 ft_init_data(t_smartgreen *smartgreen);
 int                 ft_find_zone(t_smartgreen *smartgreen, int id);
