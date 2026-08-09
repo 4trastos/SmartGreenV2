@@ -6,6 +6,16 @@ size_t  ft_write_callback(void *ptr, size_t size, size_t nmemb, FILE *stream)
     return (fwrite(ptr, size, nmemb, stream));
 }
 
+size_t ft_write_memory_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
+{
+    t_response_buffer   *buf = (t_response_buffer *)userdata;
+    size_t              realsize = size * nmemb;
+    memcpy(buf->data + buf->size, ptr, realsize);
+    buf->size += realsize;
+    buf->data[buf->size] = '\0';
+    return (realsize);
+}
+
 // Verificar si hay actualizaciones
 int ft_check_for_updates(t_update_info *update)
 {
@@ -18,6 +28,7 @@ int ft_check_for_updates(t_update_info *update)
     CURLcode            res;
     char                url[256];
     char                response[4096] = {0};
+    t_response_buffer   buff = {response, 0};
     const char          *remote_version_str = NULL;
     int                 r_major = 0, r_minor = 0, r_patch = 0;
     int                 local_ver = 0, remote_ver = 0;
@@ -30,8 +41,8 @@ int ft_check_for_updates(t_update_info *update)
         return (-1);
     
     curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ft_write_callback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, response);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ft_write_memory_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buff);
 
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
@@ -166,29 +177,20 @@ int ft_apply_update(char *new_binary)
 {
     char    backup_path[256];
     char    current_path[256];
-    char    cmd[512];
     
     snprintf(current_path, sizeof(current_path), "/opt/smartgreen/smartgreen");
     snprintf(backup_path, sizeof(backup_path), "/opt/smartgreen/smartgreen.old");
     
-    // 1. Backup del actual
-    if (rename(current_path, backup_path) != 0) {
+    if (rename(current_path, backup_path) != 0)
         return (-1);
-    }
     
-    // 2. Mover nuevo binario
-    if (rename(new_binary, current_path) != 0) {
-        // Restaurar backup si falla
+    if (rename(new_binary, current_path) != 0)
+    {
         rename(backup_path, current_path);
         return (-1);
     }
-    
-    // 3. Asegurar permisos
+
     chmod(current_path, 0755);
-    
-    // 4. Eliminar símbolos (por seguridad)
-    snprintf(cmd, sizeof(cmd), "strip --strip-all %s 2>/dev/null", current_path);
-    system(cmd);
     
     return (0);
 }
@@ -197,7 +199,7 @@ void    *ft_update_checker_thread(void *arg)
 {
     t_smartgreen    *smartgreen = (t_smartgreen *)arg;
     t_update_info   update;
-    char            *temp_path = NULL;
+    char            temp_path[64];
     int             fd;
     int             ret;
 
@@ -221,7 +223,7 @@ void    *ft_update_checker_thread(void *arg)
         printf("[UPDATE] Release date: %s\n", update.release_date);
 
         // Descargar
-        temp_path = "/tmp/smartgreen_new.XXXXXX";
+        ft_strcpy(temp_path, "/tmp/smartgreen_new.XXXXXX", sizeof(temp_path));
         fd = mkstemp(temp_path);
         if (fd < 0)
         {
