@@ -54,8 +54,10 @@ void    scheduler_run(t_smartgreen *smartgreen)
     time_t      last_read = get_timestamp();
     time_t      last_history = get_timestamp();
     time_t      last_scheduler = get_timestamp();
+    time_t      last_sensor_read = get_timestamp();
     time_t      now;
     int         read_interval = db_read_config(smartgreen, "refresh_interval");
+    int         sensor_interval = db_read_config(smartgreen, "refresh_sensor_interval");
     int         history_interval = db_read_config(smartgreen, "history_interval");
     int         current_day;
     int         current_hour;
@@ -68,6 +70,8 @@ void    scheduler_run(t_smartgreen *smartgreen)
         read_interval = SCHEDULER_READ_MIN;
     if (history_interval < 0)
         history_interval = HISTORY_INTERVAL;
+    if (sensor_interval < 0)
+        sensor_interval = 30;
     smartgreen->read_interval = read_interval;
 
     while (!g_sigint_received && !g_sigterm_received && !g_update_pending)
@@ -83,13 +87,19 @@ void    scheduler_run(t_smartgreen *smartgreen)
             {
                 for (int i = 0; i < smartgreen->num_coolers; i++)
                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
-                for (int i = 0; i < smartgreen->num_sensors; i++)
-                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_SENSOR, smartgreen->sensors[i].sensor_id, 0, 0);
             }
             ft_ws_broadcast_status(smartgreen);
             ft_check_alarms(smartgreen);
             ft_maintenance_alarms(smartgreen);
             last_read = now;
+        }
+
+        // Lectura periódica sensores - encolar lecturas
+        if (now - last_sensor_read >= sensor_interval)
+        {
+            for (int i = 0; i < smartgreen->num_sensors; i++)
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_SENSOR, smartgreen->sensors[i].sensor_id, 0, 0);
+            last_sensor_read = now;
         }
 
         // Historial periódico

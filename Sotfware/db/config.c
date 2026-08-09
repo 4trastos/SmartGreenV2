@@ -13,6 +13,7 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "temperature_unit",          0);                     // 0=C, 1=F (1024=F)
     db_save_config(smartgreen, "tank_drain_delay",          3);                     // 0=instant,1=3Hrs(4096=3Hrs),2=12Hrs(8192=12Hrs),3=3Days(12288=3Days)
     db_save_config(smartgreen, "refresh_interval",          5);
+    db_save_config(smartgreen, "refresh_sensor_interval",   30); 
     db_save_config(smartgreen, "refresh_coolers",           30);
     db_save_config(smartgreen, "history_interval",          300);
     db_save_config(smartgreen, "salinity_drain_delay",      120);                   // tiempo total

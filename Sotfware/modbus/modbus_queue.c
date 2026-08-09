@@ -113,7 +113,7 @@ void    *ft_modbus_worker(void *arg)
         if (!smartgreen->modbus_ctx)
         {
             ft_modbus_init(smartgreen);
-            if (!smartgreen)
+            if (!smartgreen->modbus_ctx)
             {
                 free(cmd);
                 continue;
