@@ -104,24 +104,22 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     //     fclose(fd);
     // }
 
-    // FILE *f = fopen("/tmp/cooler_regs.log", "a");
-    // if (f)
-    // {
-    //     fprintf(f, "\n===============================\n");
-    //     fprintf(f, "timestamp=%ld unit=%d\n", (long)time(NULL), state->unit_id);
+    FILE *f = fopen("/tmp/cooler_regs.log", "a");
+    if (f)
+    {
+        fprintf(f, "\n===============================\n");
+        fprintf(f, "timestamp=%ld unit=%d\n", (long)time(NULL), state->unit_id);
+        for (int i = 0; i < MODBUS_COOLER_REGS; i++)
+            fprintf(f, "R%-2d : 0x%04X (%5d)\n", i, regs[i], regs[i]);
+        fclose(f);
+    }
 
-    //     for (int i = 0; i < MODBUS_COOLER_REGS; i++)
-    //         fprintf(f, "R%-2d : 0x%04X (%5d)\n", i, regs[i], regs[i]);
-
-    //     fclose(f);
-    // }
-
-    FILE    *fd = fopen("/tmp/debug_cooler.log", "a");
-    fprintf(fd, "========= REGISTROS EXTENDIDOS (57 - 100) =========\n");
-    for (int i = 57; i < 101; i++)
-        if (regs[i] != 0)
-            fprintf(fd, "regs[%d]=0x%04X  val=%d\n", i, regs[i], regs[i]);
-    
+    // FILE    *fd = fopen("/tmp/debug_cooler.log", "a");
+    // fprintf(fd, "========= REGISTROS EXTENDIDOS (57 - 100) =========\n");
+    // for (int i = 57; i < 101; i++)
+    //     if (regs[i] != 0)
+    //         fprintf(fd, "regs[%d]=0x%04X  val=%d\n", i, regs[i], regs[i]);
+    // fclose(fd);
 
     // offset 0 - 8
     state->r0_config = (regs[0]);
