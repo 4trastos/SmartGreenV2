@@ -41,4 +41,5 @@ void    ft_init_users(t_smartgreen *smartgreen)
         printf("Users initialized correctly\n");
     else
         fprintf(stderr, "Error users inserting ( %s )\n", sqlite3_errmsg(smartgreen->db));
+    sqlite3_finalize(stmt);
 }
