@@ -10,11 +10,21 @@ enum MHD_Result     api_get_history(t_smartgreen *smartgreen, struct MHD_Connect
     int             rc = 0;
     int             first = 1;
     int             bind_idx = 1;
+    int             history_limit = 100;
     
     pthread_mutex_lock(&smartgreen->data_mutex);
     
     const char      *zone = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "zone_id");
     const char      *limit = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "limit");
+    if (limit)
+    {
+        history_limit = atoi(limit);
+        if (history_limit < 1)
+            history_limit = 1;
+        if (history_limit > 1000)
+            history_limit = 1000;
+    }
+
     const char      *from = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "from");
     const char      *to = MHD_lookup_connection_value(connection, MHD_GET_ARGUMENT_KIND, "to");
 
@@ -27,7 +37,7 @@ enum MHD_Result     api_get_history(t_smartgreen *smartgreen, struct MHD_Connect
         zone  ? "AND zone_id = ?"       : "",
         from  ? "AND timestamp >= ?"    : "",
         to    ? "AND timestamp <= ?"    : "",
-        limit ? atoi(limit) : 100
+        history_limit
     );
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql_dynamic, -1, &stmt, NULL);
@@ -97,7 +107,7 @@ enum MHD_Result     api_get_status(t_smartgreen *smartgreen, struct MHD_Connecti
 
     for (int i = 0; i < smartgreen->num_coolers; i++)
     {
-        if (smartgreen->coolers[i].fault_present || smartgreen->coolers[i].alarm_comms)
+        if (smartgreen->coolers[i].fault_present || smartgreen->coolers[i].alarm_comms || smartgreen->coolers[i].alarm_fault)
         {
             if (alarm_level < ALARM_RED)
             {

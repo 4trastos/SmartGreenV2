@@ -23,6 +23,10 @@
 # include <microhttpd.h>
 # include <libwebsockets.h>
 # include <sys/ptrace.h>
+# include <curl/curl.h>
+# include <json-c/json.h>
+# include <openssl/evp.h>
+# include <sys/stat.h>
 
 /*  PATHS   */
 # define INSTALL_DIR            "/opt/smartgreen"

@@ -150,7 +150,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
     { alarm_level = ALARM_RED; alarm_text = "🔴 CRITICO"; }
     for (int i = 0; i < smartgreen->num_coolers; i++)
     {
-        if (smartgreen->coolers[i].alarm_fault || smartgreen->coolers[i].alarm_comms)
+        if (smartgreen->coolers[i].alarm_fault || smartgreen->coolers[i].alarm_comms || smartgreen->coolers[i].fault_present)
         { alarm_level = ALARM_RED; alarm_text = "🔴 CRITICO"; break; }
         if ((smartgreen->coolers[i].alarm_salinity || smartgreen->coolers[i].alarm_water)
             && alarm_level < ALARM_RED)

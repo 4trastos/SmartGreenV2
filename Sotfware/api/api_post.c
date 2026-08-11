@@ -15,6 +15,8 @@ enum MHD_Result     api_post_zone_drain(t_smartgreen *smartgreen, struct MHD_Con
     zone_idx = ft_find_zone(smartgreen, id);
     if (zone_idx == -1)
         return api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}");
+    if (strcmp(action, "ON") != 0 && strcmp(action, "OFF") != 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"action must be ON or OFF\"}"));
 
     on = (strcmp(action, "ON") == 0) ? 1 : 0;
 
@@ -54,7 +56,7 @@ enum MHD_Result     api_post_zone_mode(t_smartgreen *smartgreen, struct MHD_Conn
         return(api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
     }
     pthread_mutex_unlock(&smartgreen->data_mutex);
-    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true\"}"));
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
 
 enum MHD_Result     api_post_reboot(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
@@ -93,7 +95,10 @@ enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connecti
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
+    {
+        pthread_mutex_unlock(&smartgreen->data_mutex);
         return(api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+    }
     
     sqlite3_bind_text(stmt, 1, username, -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 2, password, -1, SQLITE_TRANSIENT);
@@ -172,15 +177,16 @@ enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connect
 {
     char    key[64] = {0};
     int     value = 0;
+    int     parsed;
 
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
     
-    sscanf(body, "{\"key\":\"%63[^\"]\",\"value\":%d}", key, &value);
+    parsed = sscanf(body, "{\"key\":\"%63[^\"]\",\"value\":%d}", key, &value);
     if (key[0] == '\0')
         return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"key required\"}"));
-    if (value == 0)
-        return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"value required\"}"));
+    if (value == 0 || parsed < 2)
+        return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"key and value required\"}"));
     
     pthread_mutex_lock(&smartgreen->data_mutex);
     if (db_update_config(smartgreen, key, value) == -1)
@@ -239,13 +245,14 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
 
-    // Extraer el valor de "action"
     if (sscanf(body, "{\"action\":\"%7[^\"]\"}", action) != 1)
         return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON ONOFF\"}"));
     
     zone_idx = ft_find_zone(smartgreen, id);
     if (zone_idx == -1)
         return(api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
+    if (strcmp(action, "ON") != 0 && strcmp(action, "OFF") != 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"action must be ON or OFF\"}"));
 
     on = (strcmp(action, "ON") == 0) ? 1 :0;
 
@@ -260,11 +267,13 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
                 ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, on);
         }
     }
-    pthread_mutex_unlock(&smartgreen->data_mutex);
+    // pthread_mutex_unlock(&smartgreen->data_mutex);
 
     int ret = db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
     printf("db_update_zone_params ret=%d on_off=%s pump=%d zone_id=%d\n", ret, smartgreen->zone_params[zone_idx].on_off, smartgreen->zone_params[zone_idx].pump_on, smartgreen->zone_params[zone_idx].zone_id);
     fflush(stdout);
+
+    pthread_mutex_unlock(&smartgreen->data_mutex);
    
     ft_strcpy(cool_fan_mode, smartgreen->zone_params[zone_idx].cool_fan_mode, sizeof(smartgreen->zone_params->cool_fan_mode));
     if (on && smartgreen->modbus_ctx)
@@ -324,12 +333,15 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
     if (sscanf(body, "{\"speed\":%d}", &speed) != 1)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON SPEED\"}"));
+    if (speed < 0 || speed > 10)
+        return (api_send_response(connection,  MHD_HTTP_BAD_REQUEST, "{\"error\":\"speed must be between 0 and 10\"}"));
     zone_idx = ft_find_zone(smartgreen, id);
     if (zone_idx == -1)
         return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
 
     pthread_mutex_lock(&smartgreen->data_mutex);
     smartgreen->zone_params[zone_idx].fan_speed_cmd = speed;
+    db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);              // Nuevo -> posible error??
     pthread_mutex_unlock(&smartgreen->data_mutex);
 
     if (smartgreen->modbus_ctx)
