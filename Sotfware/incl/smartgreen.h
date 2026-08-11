@@ -27,6 +27,7 @@
 # include <json-c/json.h>
 # include <openssl/evp.h>
 # include <sys/stat.h>
+# include <openssl/rand.h>
 
 /*  PATHS   */
 # define INSTALL_DIR            "/opt/smartgreen"
@@ -313,6 +314,8 @@ typedef struct s_smartgreen
     int                 num_schedulers;
     int                 read_interval;
     int                 ws_num_clients;
+    char                active_token[65];   // token activo
+    time_t              token_expiry;       // timestamp expiración
 }   t_smartgreen;
 
 typedef struct s_prewet_args
@@ -408,11 +411,11 @@ void                *prewet_thread(void *arg);
 /*  UTILS   */
 void                log_error(const char *message);
 void                log_info(const char *message);
+void                ft_sha256(const char *input, char *output);
 time_t              get_timestamp(void);
-
-/*  AUXILIARS   */
 int                 ft_strlen(char *str);
 char                *ft_strcpy(char *dst, char *src, int max_len);
+int                 ft_validate_token(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 
 /*  API */
 int                 api_start(t_smartgreen *smartgreen);

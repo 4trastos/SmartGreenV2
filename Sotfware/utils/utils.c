@@ -1,5 +1,24 @@
 #include "../incl/smartgreen.h"
 
+int ft_validate_token(t_smartgreen *smartgreen, struct MHD_Connection *connection)
+{
+    const char *token = NULL;
+    const char  *auth = NULL;
+    int         valid = 0;
+    
+    auth = MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "Authorization");
+    if (!auth || strncmp(auth, "Bearer ", 7) != 0)
+        return (0);
+
+    token = auth + 7;
+    if (strcmp(token, smartgreen->active_token) != 0)
+        return (0);
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    valid = (strcmp(token, smartgreen->active_token) == 0 && get_timestamp() < smartgreen->token_expiry);
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    return (valid); 
+}
+
 time_t  get_timestamp(void)
 {
     return (time(NULL));

@@ -61,14 +61,15 @@ enum MHD_Result     api_post_zone_mode(t_smartgreen *smartgreen, struct MHD_Conn
 
 enum MHD_Result     api_post_reboot(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
 {
+    enum MHD_Result ret;
     (void)smartgreen;
     (void)body;
     (void)body_size;
 
-    api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+    ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+    sleep(1);  // dar tiempo a que llegue la respuesta
     system("sudo reboot");
-
-    return MHD_YES;
+    return (ret);
 }
 
 enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
@@ -76,11 +77,13 @@ enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connecti
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = "SELECT id, role FROM users WHERE username = ? AND password = ? AND active = 1";
     int             rc;
-    char    username[64] = {0};
-    char    password[64] = {0};
-    char    token[128];
-    char    role[32];
-    char    response[256];
+    char            username[64] = {0};
+    char            password[64] = {0};
+    char            token[128];
+    char            role[32];
+    char            response[256];
+    unsigned char   rand_bytes[32];
+    char            hashed_pw[65];
 
     if (!body || body_size == 0)
         return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
@@ -91,6 +94,7 @@ enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connecti
     if (password[0] == '\0')
         return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"password requiered\"}"));
     
+    ft_sha256(password, hashed_pw);    
     pthread_mutex_lock(&smartgreen->data_mutex);
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
@@ -101,12 +105,19 @@ enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connecti
     }
     
     sqlite3_bind_text(stmt, 1, username, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, password, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, hashed_pw, -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt) == SQLITE_ROW)
     {
         ft_strcpy(role, (char *)sqlite3_column_text(stmt, 1), sizeof(role));
-        snprintf(token, sizeof(token), "sg_%s_%ld", username, get_timestamp());
+        // snprintf(token, sizeof(token), "sg_%s_%ld", username, get_timestamp());
+        RAND_bytes(rand_bytes, sizeof(rand_bytes));
+        for (int i = 0; i < 32; i++)
+            snprintf(token + (i * 2), 3, "%02x", rand_bytes[i]);
+        token[64] = '\0';
+
+        ft_strcpy(smartgreen->active_token, token, sizeof(smartgreen->active_token));
+        smartgreen->token_expiry = get_timestamp() + 3600;  // 1 hora
         snprintf(response, sizeof(response), "{\"ok\":true,\"token\":\"%s\",\"role\":\"%s\"}", token, role);
 
         sqlite3_finalize(stmt);
@@ -116,7 +127,7 @@ enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connecti
 
     sqlite3_finalize(stmt);
     pthread_mutex_unlock(&smartgreen->data_mutex);
-    return(api_send_response(connection, MHD_HTTP_OK, "{\"error\":\"Invalid credentials\"}"));
+    return(api_send_response(connection, MHD_HTTP_UNAUTHORIZED, "{\"error\":\"Invalid credentials\"}"));
 }
 
 enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
