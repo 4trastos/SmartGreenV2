@@ -434,6 +434,7 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
 enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
 enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
+enum MHD_Result     api_put_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_post_login(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 enum MHD_Result     api_serve_file(struct MHD_Connection *connection, const char *filepath, const char *mime);
 enum MHD_Result     api_post_reboot(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);

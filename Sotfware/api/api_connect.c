@@ -1,5 +1,50 @@
 #include "../incl/smartgreen.h"
 
+enum MHD_Result api_get_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection)
+{
+    sqlite3_stmt        *stmt = NULL;
+    const char          *sql =  "SELECT id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun FROM scheduler ORDER BY id ASC;";
+    struct json_object  *array = json_object_new_array();
+    struct json_object  *obj;
+    enum MHD_Result     result;
+    const char          *json_str;
+    int                 rc = 0;
+
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+        json_object_put(array);
+        return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        obj = json_object_new_object();
+        json_object_object_add(obj, "id",      json_object_new_int(sqlite3_column_int(stmt, 0)));
+        json_object_object_add(obj, "name",    json_object_new_string((const char *)sqlite3_column_text(stmt, 1)));
+        json_object_object_add(obj, "zone_id", json_object_new_int(sqlite3_column_int(stmt, 2)));
+        json_object_object_add(obj, "active",  json_object_new_int(sqlite3_column_int(stmt, 3)));
+        json_object_object_add(obj, "action",  json_object_new_string((const char *)sqlite3_column_text(stmt, 4)));
+        json_object_object_add(obj, "hour",    json_object_new_string((const char *)sqlite3_column_text(stmt, 5)));
+        json_object_object_add(obj, "mon",     json_object_new_int(sqlite3_column_int(stmt, 6)));
+        json_object_object_add(obj, "tue",     json_object_new_int(sqlite3_column_int(stmt, 7)));
+        json_object_object_add(obj, "wed",     json_object_new_int(sqlite3_column_int(stmt, 8)));
+        json_object_object_add(obj, "thu",     json_object_new_int(sqlite3_column_int(stmt, 9)));
+        json_object_object_add(obj, "fri",     json_object_new_int(sqlite3_column_int(stmt, 10)));
+        json_object_object_add(obj, "sat",     json_object_new_int(sqlite3_column_int(stmt, 11)));
+        json_object_object_add(obj, "sun",     json_object_new_int(sqlite3_column_int(stmt, 12)));
+        json_object_array_add(array, obj);
+    }
+    sqlite3_finalize(stmt);
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    json_str = json_object_to_json_string(array);
+    result = api_send_response(connection, MHD_HTTP_OK, json_str);
+    json_object_put(array);
+    return(result);
+}
+
 enum MHD_Result     api_get_history(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {
     sqlite3_stmt    *stmt = NULL;

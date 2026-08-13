@@ -60,6 +60,8 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (api_get_history(smartgreen, connection));
         if (strcmp(url, "/api/config") == 0)
             return (api_get_config(smartgreen, connection));
+        if (strcmp(url, "/api/scheduler") == 0)
+            return (api_get_scheduler(smartgreen, connection));
         if (strcmp(url, "/api/reboot") == 0)
         {
             if (!ft_validate_token(smartgreen, connection))
@@ -75,6 +77,7 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
         if (strstr(url, ".png") || strstr(url, ".jpg") || strstr(url, ".svg"))
             return api_serve_file(connection, url, "image/png");
     }
+
     if (strcmp(method, "POST") == 0)
     {
         id = 0;
@@ -166,6 +169,24 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
         }
 
         free(ctx);
+    }
+
+    if (strcmp(method, "DELETE") == 0)
+    {
+        if (strncmp(url, "/api/scheduler/", 15) == 0)
+            return (api_delete_scheduler(smartgreen, connection, atoi(url + 15)));
+    }
+
+    if (strcmp(method, "PUT") == 0)
+    {
+        ctx = *con_cls;
+        if (strncmp(url, "/api/scheduler/", 15) == 0)
+        {
+            ret = api_put_scheduler(smartgreen, connection, atoi(url + 15), ctx->body, ctx->len);
+            free(ctx);
+            *con_cls = NULL;
+            return (ret);
+        }
     }
 
     return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\": \"Not found\"}"));
