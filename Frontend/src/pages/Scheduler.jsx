@@ -13,6 +13,84 @@ const DAYS = [
 
 const EMPTY = { name: '', zone_id: 1, action: 'ON', hour: '08:00', mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 }
 
+function SchedulerModal({ editing, form, setForm, zones, onSave, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}
+        className="w-[420px] rounded-3xl border border-[#088fc3]/30 p-6 bg-[#060c12] shadow-2xl bg-gradient-to-br from-[#004d89]/20 to-transparent">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <p className="text-white/30 text-xs tracking-widest uppercase mb-1">Programación</p>
+            <p className="text-white text-2xl font-black">{editing ? 'Editar' : 'Nueva'}</p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white cursor-pointer">✕</button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Nombre</label>
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="Ej: Encendido mañana"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60" />
+          </div>
+
+          <div>
+            <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Zona</label>
+            <select value={form.zone_id} onChange={e => setForm(f => ({ ...f, zone_id: parseInt(e.target.value) }))}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
+              style={{ backgroundColor: '#0d1a26' }}>
+              {zones.map(z => (
+                <option key={z.zone_id} value={z.zone_id} style={{ backgroundColor: '#0d1a26' }}>{z.name || `Zona ${z.zone_id}`}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Acción</label>
+              <select value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
+                style={{ backgroundColor: '#0d1a26' }}>
+                <option value="ON" style={{ backgroundColor: '#0d1a26' }}>▶ Encender</option>
+                <option value="OFF" style={{ backgroundColor: '#0d1a26' }}>■ Apagar</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Hora</label>
+              <input type="time" value={form.hour} onChange={e => setForm(f => ({ ...f, hour: e.target.value }))}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Días</label>
+            <div className="flex gap-2 justify-between">
+              {DAYS.map(d => (
+                <button key={d.key} onClick={() => setForm(f => ({ ...f, [d.key]: f[d.key] ? 0 : 1 }))}
+                  className={`flex-1 h-10 rounded-xl text-sm font-bold cursor-pointer transition-all
+                    ${form[d.key] ? 'bg-[#088fc3] text-white' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose}
+            className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold cursor-pointer hover:bg-white/10">
+            Cancelar
+          </button>
+          <button onClick={onSave}
+            className="flex-1 py-3 rounded-xl bg-[#088fc3]/20 border border-[#088fc3]/40 text-[#088fc3] font-bold cursor-pointer hover:bg-[#088fc3]/30">
+            {editing ? 'Guardar' : 'Crear'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Scheduler({ data }) {
   const [schedulers, setSchedulers] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -22,9 +100,11 @@ export default function Scheduler({ data }) {
   const zones = data?.zones || []
 
   const load = async () => {
-    const res = await fetch(`${API_URL}/scheduler`)
-    const json = await res.json()
-    setSchedulers(json)
+    try {
+      const res = await fetch(`${API_URL}/scheduler`)
+      const json = await res.json()
+      setSchedulers(Array.isArray(json) ? json : [])
+    } catch { setSchedulers([]) }
   }
 
   useEffect(() => { load() }, [])
@@ -85,126 +165,83 @@ export default function Scheduler({ data }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
-        {schedulers.map(s => {
-          const zone = zones.find(z => z.zone_id === s.zone_id)
-          return (
-            <div key={s.id}
-              className={`rounded-2xl border p-4 flex items-center gap-4 transition-all
-                ${s.active ? 'bg-[#004d89]/20 border-[#088fc3]/25' : 'bg-white/3 border-white/8 opacity-50'}`}>
-              {/* Toggle activo */}
-              <button onClick={() => toggle(s)}
-                className={`w-10 h-6 rounded-full transition-all cursor-pointer shrink-0
-                  ${s.active ? 'bg-[#088fc3]' : 'bg-white/10'}`}>
-                <div className={`w-4 h-4 bg-white rounded-full mx-1 transition-all ${s.active ? 'translate-x-4' : ''}`} />
-              </button>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-bold text-sm">{s.name}</p>
-                <p className="text-white/40 text-xs">{zone?.name || `Zona ${s.zone_id}`}</p>
-              </div>
-
-              {/* Hora y acción */}
-              <div className="text-center shrink-0">
-                <p className="text-white font-mono font-bold">{s.hour}</p>
-                <p className={`text-xs font-bold ${s.action === 'ON' ? 'text-[#088fc3]' : 'text-red-400'}`}>{s.action}</p>
-              </div>
-
-              {/* Días */}
-              <div className="flex gap-1 shrink-0">
-                {DAYS.map(d => (
-                  <span key={d.key}
-                    className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-bold
-                      ${s[d.key] ? 'bg-[#088fc3]/30 text-[#088fc3]' : 'bg-white/5 text-white/20'}`}>
-                    {d.label}
-                  </span>
-                ))}
-              </div>
-
-              {/* Acciones */}
-              <div className="flex gap-2 shrink-0">
-                <button onClick={() => openEdit(s)}
-                  className="text-white/30 hover:text-white transition-colors cursor-pointer">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                </button>
-                <button onClick={() => del(s.id)}
-                  className="text-white/30 hover:text-red-400 transition-colors cursor-pointer">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                    <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )
-        })}
-
-        {schedulers.length === 0 && (
-        <div className="text-center py-16">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="w-24 h-24 mx-auto mb-4 text-[#088fc3] opacity-20">
+      {schedulers.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="w-24 h-24 mb-4 text-[#088fc3] opacity-20">
             <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            <p className="text-white/25 text-sm">Crea una nueva programación</p>
+          </svg>
+          <p className="text-white/25 text-sm">Crea una nueva programación</p>
         </div>
-        )}
-      </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-4">
+          {schedulers.map(s => {
+            const zone = zones.find(z => z.zone_id === s.zone_id)
+            const activeDays = DAYS.filter(d => s[d.key]).map(d => d.label)
+            return (
+              <div key={s.id}
+                className={`relative rounded-2xl border p-5 flex flex-col gap-3 cursor-pointer transition-all hover:scale-[1.02]
+                  ${s.active
+                    ? 'bg-gradient-to-br from-[#004d89]/40 to-[#088fc3]/10 border-[#088fc3]/30'
+                    : 'bg-gradient-to-br from-white/3 to-transparent border-white/8 opacity-60'}`}>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg"
-          onClick={() => setShowModal(false)}>
-          <div onClick={e => e.stopPropagation()}
-            className="w-[420px] rounded-3xl border border-[#088fc3]/30 p-6 bg-[#060c12] shadow-2xl bg-gradient-to-br from-[#004d89]/20 to-transparent">
-            <p className="text-white font-black text-lg mb-5">{editing ? 'Editar programación' : 'Nueva programación'}</p>
-
-            <div className="flex flex-col gap-3">
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                placeholder="Nombre"
-                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#088fc3]/50" />
-
-              <select value={form.zone_id} onChange={e => setForm(f => ({ ...f, zone_id: parseInt(e.target.value) }))}
-                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#088fc3]/50">
-                {zones.map(z => <option key={z.zone_id} value={z.zone_id}>{z.name}</option>)}
-              </select>
-
-              <div className="flex gap-3">
-                <select value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#088fc3]/50">
-                  <option value="ON">Encender</option>
-                  <option value="OFF">Apagar</option>
-                </select>
-                <input type="time" value={form.hour} onChange={e => setForm(f => ({ ...f, hour: e.target.value }))}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#088fc3]/50" />
-              </div>
-
-              {/* Días */}
-              <div className="flex gap-2 justify-center mt-1">
-                {DAYS.map(d => (
-                  <button key={d.key} onClick={() => setForm(f => ({ ...f, [d.key]: f[d.key] ? 0 : 1 }))}
-                    className={`w-9 h-9 rounded-full text-sm font-bold cursor-pointer transition-all
-                      ${form[d.key] ? 'bg-[#088fc3] text-white' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
-                    {d.label}
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div className={`text-3xl font-black ${s.action === 'ON' ? 'text-[#088fc3]' : 'text-red-400'}`}>
+                    {s.action === 'ON' ? '▶' : '■'}
+                  </div>
+                  <button onClick={() => toggle(s)}
+                    className={`w-9 h-5 rounded-full transition-all cursor-pointer relative shrink-0
+                      ${s.active ? 'bg-[#088fc3]' : 'bg-white/15'}`}>
+                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${s.active ? 'left-4' : 'left-0.5'}`} />
                   </button>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setShowModal(false)}
-                className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold cursor-pointer hover:bg-white/10">
-                Cancelar
-              </button>
-              <button onClick={save}
-                className="flex-1 py-3 rounded-xl bg-[#088fc3]/20 border border-[#088fc3]/40 text-[#088fc3] font-bold cursor-pointer hover:bg-[#088fc3]/30">
-                {editing ? 'Guardar' : 'Crear'}
-              </button>
-            </div>
-          </div>
+                {/* Info */}
+                <div className="flex-1">
+                  <p className="text-white font-black text-lg leading-tight">{s.name}</p>
+                  <p className="text-white/40 text-xs mt-1">{zone?.name || `Zona ${s.zone_id}`}</p>
+                </div>
+
+                {/* Hora */}
+                <p className="text-white font-mono text-2xl font-bold">{s.hour}</p>
+
+                {/* Días */}
+                <div className="flex gap-1">
+                  {DAYS.map(d => (
+                    <span key={d.key}
+                      className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-bold
+                        ${s[d.key] ? 'bg-[#088fc3]/30 text-[#088fc3]' : 'bg-white/5 text-white/20'}`}>
+                      {d.label}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Acciones */}
+                <div className="flex gap-2 pt-1 border-t border-white/5">
+                  <button onClick={() => openEdit(s)}
+                    className="flex-1 py-1.5 rounded-lg bg-white/5 text-white/40 hover:text-white hover:bg-white/10 text-xs cursor-pointer transition-colors">
+                    Editar
+                  </button>
+                  <button onClick={() => del(s.id)}
+                    className="flex-1 py-1.5 rounded-lg bg-white/5 text-white/40 hover:text-red-400 hover:bg-red-500/10 text-xs cursor-pointer transition-colors">
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            )
+          })}
         </div>
+      )}
+
+      {showModal && (
+        <SchedulerModal
+          editing={editing}
+          form={form}
+          setForm={setForm}
+          zones={zones}
+          onSave={save}
+          onClose={() => { setShowModal(false); setEditing(null); setForm(EMPTY) }}
+        />
       )}
     </div>
   )

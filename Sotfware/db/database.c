@@ -591,6 +591,7 @@ int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
     sqlite3_bind_int(stmt, 47, cooler->prev_fan_starts);
     sqlite3_bind_int(stmt, 48, cooler->fan_zero_ticks);
     sqlite3_bind_int(stmt, 49, cooler->fan_running);
+    sqlite3_bind_int(stmt, 50, cooler->last_off);
 
     while (attemps < DB_MAX_RETRIES)
     {

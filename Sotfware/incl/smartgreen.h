@@ -42,7 +42,7 @@
 /*  SQL */
 # define SQL_INSERT_COOLER      "INSERT OR REPLACE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, drain_valve_confirm, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, fan_speed_confirmed, most_recent_fault, " \
                                 "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod, alarm_fault, alarm_salinity, alarm_water, alarm_comms, alarm_warranty, alarm_maint_opening, alarm_maint_closing, alarm_maint_legionella, hours_running, " \
-                                "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config, prev_fan_starts, fan_zero_ticks, fan_running) " \
+                                "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config, prev_fan_starts, fan_zero_ticks, fan_running, last_off) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 # define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, humidity_offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -269,6 +269,7 @@ typedef struct  s_cooler_state
     double              salinity_us;
     time_t              last_read;
     time_t              last_mod;
+    time_t              last_off;
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
@@ -320,11 +321,19 @@ typedef struct s_smartgreen
 
 typedef struct s_prewet_args
 {
-    t_smartgreen    *smartgreen;
-    int             zone_id;
-    int             need_prewet;
-    int             padding;
+    t_smartgreen        *smartgreen;
+    int                 zone_id;
+    int                 need_prewet;
+    int                 padding;
 }   t_prewet_args;
+
+typedef struct s_drain_args
+{
+    t_smartgreen        *smartgreen;
+    int                 zone_id;
+    int                 unit_id;
+    int                 padding;
+}   t_drain_args;
 
 extern volatile sig_atomic_t g_sigint_received;
 extern volatile sig_atomic_t g_sigterm_received;
@@ -343,6 +352,7 @@ void                ft_free_modbus(t_smartgreen *smartgreen);
 void                ft_init_struct(t_smartgreen *smartgreen);
 void                ft_init_config(t_smartgreen *smartgreen);
 void                ft_init_users(t_smartgreen *smartgreen);
+void                *ft_drain_thread(void *arg);
 void                sigint_handler(int sig);
 void                sigterm_handler(int sig);
 void                init_signal();
@@ -401,7 +411,7 @@ int                 cooler_prewet(t_smartgreen *smartgreen, int zone_idx);
 int                 sensor_validate(t_sensor_state *sensor);
 int                 scheduler_is_active_today(t_scheduler_entry *scheduler, int day);
 int                 scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
-int                 cooler_need_prewet(t_smartgreen *smartgreen, int zone_id);
+int                 cooler_need_prewet(t_smartgreen *smartgreen, int zone_id, int id);
 void                ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on);
 void                ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on);
 void                ft_check_alarms(t_smartgreen *smartgreen);

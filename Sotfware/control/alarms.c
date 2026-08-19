@@ -5,6 +5,7 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
     time_t              warranty_end;
     time_t              now = get_timestamp();
     char                msg[256];
+    t_drain_args        *drain_args = NULL;
 
     // Alarma Modbus
     if (!smartgreen->modbus_ctx && !g_alarm_modbus)
@@ -78,10 +79,20 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
         // 🟡 salinidad alta
         if (smartgreen->coolers[i].water_present && smartgreen->coolers[i].salinity_us >= db_read_config(smartgreen, "salinity_trigger") && !smartgreen->coolers[i].alarm_salinity)
         {
-            snprintf(msg, sizeof(msg), "🟡 AVISO: Salinidad alta cooler unit_id=%d (%.1f uS)", 
-                     smartgreen->coolers[i].unit_id, smartgreen->coolers[i].salinity_us);
+            snprintf(msg, sizeof(msg), "🟡 AVISO: Salinidad alta cooler unit_id=%d (%.1f uS)", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].salinity_us);
             db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
             smartgreen->coolers[i].alarm_salinity = 1;
+            drain_args = malloc(sizeof(t_drain_args));
+            if (drain_args)
+            {
+                drain_args->smartgreen = smartgreen;
+                drain_args->unit_id = smartgreen->coolers[i].unit_id;
+                drain_args->zone_id = smartgreen->coolers[i].zone_id;
+                pthread_t   tid;
+                pthread_create(&tid, NULL, ft_drain_thread, drain_args);
+                pthread_detach(tid);
+            }
+            
         }
         else if ((!smartgreen->coolers[i].water_present || smartgreen->coolers[i].salinity_us < db_read_config(smartgreen, "salinity_trigger")) && smartgreen->coolers[i].alarm_salinity)
             smartgreen->coolers[i].alarm_salinity = 0;

@@ -117,6 +117,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].prev_fan_starts = -1;
             smartgreen->coolers[i].fan_zero_ticks  = 0;
             smartgreen->coolers[i].fan_running  = 0;
+            smartgreen->coolers[i].last_off = 0;
 
             if (db_save_cooler(smartgreen, &smartgreen->coolers[i]) == -1)
                 return (-1);

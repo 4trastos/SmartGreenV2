@@ -79,7 +79,6 @@ void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 {
     int r0  = calculate_register_0(smartgreen);
     int r50 = calculate_register_50(0, 0, on ? 3 : 0);
-    // int r50 = calculate_register_50(0, 0, 0);
     int r51 = calculate_register_51(0, on ? 1 : 0);
 
     printf("[DEBUG] ft_cooler_onoff(unit=%d, on=%d)\n", unit_id, on); fflush(stdout);
