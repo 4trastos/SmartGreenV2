@@ -47,10 +47,10 @@
 # define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, humidity_offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
-# define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
-                                "salinity_us, drain_open, solenoid_on, on_off, fault_code) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-# define SQL_SAVE_ZONE_PARAMS   "INSERT OR IGNORE INTO zone_params (zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, pump_on, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, prewet_in_progress, last_prewet, last_drain, last_pump_time) "\
-                                " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+# define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, integral, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
+                                "salinity_us, drain_open, solenoid_on, on_off, fault_code) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+# define SQL_SAVE_ZONE_PARAMS   "INSERT OR IGNORE INTO zone_params (zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, integral, pump_on, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, prewet_in_progress, last_prewet, last_drain, last_pump_time) "\
+                                " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_ERROR         "INSERT INTO error_log (id, unit_id, timestamp, level, message) VALUES(?, ?, ?, ?, ?)"
 # define SQL_SAVE_FAULT_LOG     "INSERT INTO fault_log (id, unit_id, fault_code, fault_present, time_created, time_cleared) VALUES(?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_ZONES         "INSERT OR REPLACE INTO zones (id, name, enabled) VALUES(?, ?, ?)"
@@ -203,10 +203,11 @@ typedef struct s_zone_params
 {
     int                 zone_id;
     int                 fan_speed_cmd;
+    int                 pump_on;
     float               target_temp;
     float               humidity_min;
     float               humidity_max;
-    int                 pump_on;
+    float               integral;
     char                cool_fan_mode[8];
     char                drain_valve[8];
     char                solenoid[8];
@@ -402,21 +403,24 @@ int                 db_save_users(t_smartgreen *smartgreen);
 int                 db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone);
 int                 db_load_zone_params(t_smartgreen *smartgreen);
 void                db_cleanup_error_log(t_smartgreen *smartgreen);
+void                db_load_coolers_last_off(t_smartgreen *smartgreen);
 
 /*  CONTROL */
-void                scheduler_run(t_smartgreen *smartgreen);
-void                scheduler_stop(t_smartgreen *smartgreen); 
 int                 cooler_water_management(t_smartgreen *smartgreen);
 int                 cooler_prewet(t_smartgreen *smartgreen, int zone_idx);
 int                 sensor_validate(t_sensor_state *sensor);
 int                 scheduler_is_active_today(t_scheduler_entry *scheduler, int day);
 int                 scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
 int                 cooler_need_prewet(t_smartgreen *smartgreen, int zone_id, int id);
+int                 ft_auto_fan_speed(t_smartgreen *smartgreen, int zone_idx);
 void                ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on);
 void                ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on);
 void                ft_check_alarms(t_smartgreen *smartgreen);
 void                ft_maintenance_alarms(t_smartgreen *smartgreen);
 void                *prewet_thread(void *arg);
+void                scheduler_run(t_smartgreen *smartgreen);
+void                scheduler_stop(t_smartgreen *smartgreen); 
+void                ft_auto_humidity_control(t_smartgreen *smartgreen, int zone_idx);
 
 /*  UTILS   */
 void                log_error(const char *message);

@@ -191,6 +191,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->zone_params[i].target_temp = 25.0;
             smartgreen->zone_params[i].humidity_min = 60.0;
             smartgreen->zone_params[i].humidity_max = 70.0;
+            smartgreen->zone_params[i].integral = 00.0;
             smartgreen->zone_params[i].pump_on = 0;
             ft_strcpy(smartgreen->zone_params[i].cool_fan_mode, "AUTO", sizeof(smartgreen->zone_params->cool_fan_mode));
             ft_strcpy(smartgreen->zone_params[i].drain_valve, "close", sizeof(smartgreen->zone_params->drain_valve));

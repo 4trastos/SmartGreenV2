@@ -403,6 +403,7 @@ enum MHD_Result     api_get_zones(t_smartgreen *smartgreen, struct MHD_Connectio
             "\"target_temp\":%.2f,"
             "\"humidity_min\":%.2f,"
             "\"humidity_max\":%.2f,"
+            "\"integral\":%.2f,"
             "\"pump_on\":%d,"
             "\"cool_fan_mode\":\"%s\","
             "\"drain_valve\":\"%s\","
@@ -420,6 +421,7 @@ enum MHD_Result     api_get_zones(t_smartgreen *smartgreen, struct MHD_Connectio
             smartgreen->zone_params[i].target_temp,
             smartgreen->zone_params[i].humidity_min,
             smartgreen->zone_params[i].humidity_max,
+            smartgreen->zone_params[i].integral,
             smartgreen->zone_params[i].pump_on,
             smartgreen->zone_params[i].cool_fan_mode,
             smartgreen->zone_params[i].drain_valve,

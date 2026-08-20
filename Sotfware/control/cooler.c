@@ -1,15 +1,64 @@
 #include "../incl/smartgreen.h"
 
+int ft_auto_fan_speed(t_smartgreen *smartgreen, int zone_idx)
+{
+    float   temp_actual;
+    float   target_temp;
+    float   error;
+    float   p_term;
+    float   speed;
+    int     min_speed;
+    int     max_speed;
+    int     sensor_idx;
+
+    // Buscar sensor INT de la zona
+    sensor_idx = -1;
+    for (int i = 0; i < smartgreen->num_sensors; i++)
+        if (smartgreen->sensors[i].zone_id == smartgreen->zone_params[zone_idx].zone_id && strcmp(smartgreen->sensors[i].type, "INT") == 0)
+            { sensor_idx = i; break; }
+    if (sensor_idx == -1 || !smartgreen->sensors[sensor_idx].valid)
+        return(3);                                                   // Velocidad por defecto si no hay sensor
+
+    temp_actual = smartgreen->sensors[sensor_idx].temperature;
+    target_temp = smartgreen->zone_params[zone_idx].target_temp;
+    min_speed = db_read_config(smartgreen, "min_setpoint_fan");
+    max_speed = db_read_config(smartgreen, "max_setpoint_fan");
+
+    // Control proporcional
+    error = temp_actual - target_temp;
+    p_term = error * 1.5f;      // Kp = 1.5
+
+    // Integral acumulada en zone_params
+    smartgreen->zone_params[zone_idx].integral += error * 0.1f;     // Ki = 0.1
+
+    // Anti-windup — limitar integral
+    if (smartgreen->zone_params[zone_idx].integral > 5.0f)
+        smartgreen->zone_params[zone_idx].integral = 5.0f;
+    if (smartgreen->zone_params[zone_idx].integral < -5.0f)
+        smartgreen->zone_params[zone_idx].integral = -5.0f;
+    
+    speed = 3.0f + p_term + smartgreen->zone_params[zone_idx].integral;
+
+    // Clamp 1-10
+    if (speed < min_speed)
+        speed = min_speed < 1 ? 1 : min_speed;
+    if (speed > max_speed)
+        speed = max_speed > 10 ? 10 : max_speed;
+    
+    return ((int)speed);
+}
+
 int cooler_need_prewet(t_smartgreen *smartgreen, int zone_idx, int  id)
 {
     time_t  now = get_timestamp();
+    int     cooler_idx = ft_find_cooler(smartgreen, id);
 
     if (smartgreen->zone_params[zone_idx].last_prewet == 0)
         return (1);
-    if ((now - smartgreen->coolers[id].last_off) >= (3 *3600))
+    if (cooler_idx == -1)
         return (1);
-    // if ((now - smartgreen->zone_params[zone_idx].last_prewet) >= (3 * 3600))
-    //     return (1);
+    if ((now - smartgreen->coolers[cooler_idx].last_off) >= (3 *3600))
+        return (1);
     return (0);
 }
 

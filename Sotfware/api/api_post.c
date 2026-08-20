@@ -252,6 +252,8 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
     int             on;
     int             prewet_sel;
     int             need_prewet;
+    int             unit_id;
+    int             already_running;
 
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
@@ -304,16 +306,16 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
         else
         {
             prewet_sel = db_read_config(smartgreen, "prewet_selector");
-            int unit_id = -1;
+            unit_id = -1;
             for (int i = 0; i < smartgreen->num_coolers; i++)
-                if (smartgreen->coolers[i].unit_id == id)
+                if (smartgreen->coolers[i].zone_id == id)
                     { unit_id = smartgreen->coolers[i].unit_id; break; }
             
             need_prewet = cooler_need_prewet(smartgreen, zone_idx, unit_id);
             printf("DEBUG onoff: on=%d prewet_sel=%d need_prewet=%d last_prewet=%ld\n", on, prewet_sel, need_prewet, (long)smartgreen->zone_params[zone_idx].last_prewet); fflush(stdout);
     
             pthread_mutex_lock(&smartgreen->data_mutex);
-            int already_running = strcmp(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes") == 0;
+            already_running = strcmp(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes") == 0;
             if (!already_running && (prewet_sel && need_prewet))
                 ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes",
                         sizeof(smartgreen->zone_params->prewet_in_progress));
@@ -339,7 +341,10 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
         pthread_mutex_lock(&smartgreen->data_mutex);
         for (int i = 0; i < smartgreen->num_coolers; i++)
             if (smartgreen->coolers[i].zone_id == id)
+            {
                 smartgreen->coolers[i].last_off = get_timestamp();
+                db_save_cooler(smartgreen, &smartgreen->coolers[i]);
+            }
         pthread_mutex_unlock(&smartgreen->data_mutex);
     }
 

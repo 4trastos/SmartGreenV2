@@ -30,6 +30,7 @@ int ft_check_database(t_smartgreen *smartgreen)
         return (-1);
     if (db_load_zone_params(smartgreen) == -1)
         return (-1);
+    db_load_coolers_last_off(smartgreen);
     return (0);
 }
 
