@@ -55,6 +55,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
     time_t      last_history = get_timestamp();
     time_t      last_scheduler = get_timestamp();
     time_t      last_sensor_read = get_timestamp();
+    time_t      last_drain_check = get_timestamp();
     time_t      now;
     int         read_interval = db_read_config(smartgreen, "refresh_interval");
     int         sensor_interval = db_read_config(smartgreen, "refresh_sensor_interval");
@@ -67,6 +68,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
     int         new_speed = 0;
     int         r50 = 0;
     int         r52 = 0;
+    int         startup_drain_done = 0;
     static int  heartbeat_tick = 0;
 
     if (read_interval < 0)
@@ -91,6 +93,34 @@ void    scheduler_run(t_smartgreen *smartgreen)
                 for (int i = 0; i < smartgreen->num_coolers; i++)
                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
                 
+                if (!startup_drain_done && smartgreen->modbus_ctx)
+                {
+                    for (int h = 0; h < smartgreen->num_zones; h++)
+                    {
+                        // Solo si la zona estaba ON antes del corte
+                        if (strcmp(smartgreen->zone_params[h].on_off, "ON") == 0)
+                        {
+                            for (int i = 0; i < smartgreen->num_coolers; i++)
+                            {
+                                if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[h].zone_id)
+                                {
+                                    t_drain_args *drain_args = malloc(sizeof(t_drain_args));
+                                    if (drain_args)
+                                    {
+                                        drain_args->smartgreen = smartgreen;
+                                        drain_args->zone_id    = smartgreen->zone_params[h].zone_id;
+                                        drain_args->unit_id    = smartgreen->coolers[i].unit_id;
+                                        pthread_t tid;
+                                        pthread_create(&tid, NULL, ft_drain_thread, drain_args);
+                                        pthread_detach(tid);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    startup_drain_done = 1;
+                }
+
                 // ← Control AUTO por zona
                 for (int z = 0; z < smartgreen->num_zones; z++)
                 {
@@ -125,6 +155,33 @@ void    scheduler_run(t_smartgreen *smartgreen)
             for (int i = 0; i < smartgreen->num_sensors; i++)
                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_SENSOR, smartgreen->sensors[i].sensor_id, 0, 0);
             last_sensor_read = now;
+        }
+
+        // Drenaje periódico — cada 6 horas
+        if (now - last_drain_check >= (6 * 3600))
+        {
+            for (int h = 0; h < smartgreen->num_zones; h++)
+            {
+                if (strcmp(smartgreen->zone_params[h].on_off, "ON") == 0)
+                {
+                    // Buscar coolers de esta zona
+                    for (int i = 0; i < smartgreen->num_coolers; i++)
+                        if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[h].zone_id)
+                        {  
+                            t_drain_args *drain_args = malloc(sizeof(t_drain_args));
+                            if (drain_args)
+                            {
+                                drain_args->smartgreen = smartgreen;
+                                drain_args->zone_id = smartgreen->zone_params[h].zone_id;
+                                drain_args->unit_id= smartgreen->coolers[i].unit_id;
+                                pthread_t tid;
+                                pthread_create(&tid, NULL, ft_drain_thread, drain_args);
+                                pthread_detach(tid);
+                            }
+                        }
+                }
+            }
+            last_drain_check = now;
         }
 
         // Historial periódico
