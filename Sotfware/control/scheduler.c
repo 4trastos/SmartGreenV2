@@ -64,6 +64,9 @@ void    scheduler_run(t_smartgreen *smartgreen)
     int         current_min;
     int         zone_idx;
     int         on = 0;
+    int         new_speed = 0;
+    int         r50 = 0;
+    int         r52 = 0;
     static int  heartbeat_tick = 0;
 
     if (read_interval < 0)
@@ -87,6 +90,28 @@ void    scheduler_run(t_smartgreen *smartgreen)
             {
                 for (int i = 0; i < smartgreen->num_coolers; i++)
                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
+                
+                // ← Control AUTO por zona
+                for (int z = 0; z < smartgreen->num_zones; z++)
+                {
+                    if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "AUTO") == 0)
+                    {
+                        new_speed = ft_auto_fan_speed(smartgreen, z);
+                        if (new_speed != smartgreen->zone_params[z].fan_speed_cmd)
+                        {
+                            smartgreen->zone_params[z].fan_speed_cmd = new_speed;
+                            for (int i = 0; i < smartgreen->num_coolers; i++)
+                                if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
+                                {
+                                    r50 = calculate_register_50(0, smartgreen->zone_params[z].pump_on, new_speed);
+                                    r52 = calculate_register_52(new_speed);
+                                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
+                                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
+                                }
+                        }
+                        ft_auto_humidity_control(smartgreen, z);
+                    }
+                }
             }
             ft_ws_broadcast_status(smartgreen);
             ft_check_alarms(smartgreen);
