@@ -1,5 +1,35 @@
 #include "../incl/smartgreen.h"
 
+enum MHD_Result api_post_zone_humidity(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size)
+{
+    char    type[8] = {0};
+    float   value = 0.0f;
+    int     zone_idx;
+
+    if (!body || body_size == 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
+    if (sscanf(body, "{\"type\":\"%7[^\"]\",\"value\":%f}", type, &value) != 2)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
+    if (strcmp(type, "min") != 0 && strcmp(type, "max") != 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"type must be min or max\"}"));
+    if (value < 0 || value > 100)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"value must be 0-100\"}"));
+
+    zone_idx = ft_find_zone(smartgreen, id);
+    if (zone_idx == -1)
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
+    
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    if (strcmp(type, "min") == 0)
+        smartgreen->zone_params[zone_idx].humidity_min = value;
+    else
+        smartgreen->zone_params[zone_idx].humidity_max = value;
+    db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
+
 enum MHD_Result     api_post_zone_drain(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size)
 {
     char    action[8] = {0};
@@ -7,14 +37,14 @@ enum MHD_Result     api_post_zone_drain(t_smartgreen *smartgreen, struct MHD_Con
     int     on;
 
     if (!body || body_size == 0)
-        return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}");
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
 
     if (sscanf(body, "{\"action\":\"%7[^\"]\"}", action) != 1)
-        return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}");
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
 
     zone_idx = ft_find_zone(smartgreen, id);
     if (zone_idx == -1)
-        return api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}");
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
     if (strcmp(action, "ON") != 0 && strcmp(action, "OFF") != 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"action must be ON or OFF\"}"));
 

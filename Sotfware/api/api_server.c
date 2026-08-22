@@ -116,6 +116,8 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
                 ret = api_post_zone_drain(smartgreen, connection, id, ctx->body, ctx->len);
             else if (strcmp(action, "mode") == 0)
                 ret = api_post_zone_mode(smartgreen, connection, id, ctx->body, ctx->len);
+            else if (strcmp(action, "humidity") == 0)
+                ret = api_post_zone_humidity(smartgreen, connection, id, ctx->body, ctx->len);
             else
                 ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown action\"}");
             free(ctx);
@@ -156,7 +158,7 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             ret = api_post_login(smartgreen, connection, ctx->body, ctx->len);
             free(ctx);
             *con_cls = NULL;
-            return(ret);
+            return (ret);
         }
 
         ctx = *con_cls;
@@ -165,7 +167,7 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             ret = api_post_reboot(smartgreen, connection, ctx->body, ctx->len);
             free(ctx);
             *con_cls = NULL;
-            return ret;
+            return (ret);
         }
 
         free(ctx);

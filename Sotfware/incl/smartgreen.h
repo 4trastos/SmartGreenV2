@@ -454,6 +454,7 @@ enum MHD_Result     api_serve_file(struct MHD_Connection *connection, const char
 enum MHD_Result     api_post_reboot(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 enum MHD_Result     api_post_zone_mode(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_post_zone_drain(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
+enum MHD_Result     api_post_zone_humidity(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 
 /*  WEBSOCKET   */
 int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
