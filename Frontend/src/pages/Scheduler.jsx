@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { API_URL } from '../config.js'
+import Keyboard from '../components/Keyboard'
 
 const DAYS = [
   { key: 'mon', label: 'L' },
@@ -12,6 +13,7 @@ const DAYS = [
 ]
 
 const EMPTY = { name: '', zone_id: 1, action: 'ON', hour: '08:00', mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 }
+const [showKeyboard, setShowKeyboard] = useState(false)
 
 function SchedulerModal({ editing, form, setForm, zones, onSave, onClose }) {
   return (
@@ -29,9 +31,22 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, onClose }) {
         <div className="flex flex-col gap-3">
           <div>
             <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Nombre</label>
-            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            <input value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              onFocus={() => setShowKeyboard(true)}
+              onTouchStart={e => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
+              readOnly
               placeholder="Ej: Encendido mañana"
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60" />
+
+            {showKeyboard && (
+              <Keyboard
+                value={form.name}
+                onChange={val => setForm(f => ({ ...f, name: val }))}
+                onClose={() => setShowKeyboard(false)}
+              />
+            )}
           </div>
 
           <div>

@@ -51,10 +51,10 @@ export default function Control({ data }) {
   }
 
   const setHumidity = async (zoneId, type, delta) => {
-  const zone = localZones.find(z => z.zone_id === zoneId)
-  const key = type === 'min' ? 'humidity_min' : 'humidity_max'
-  const current = zone[key]
-  const newVal = Math.min(100, Math.max(0, current + delta))
+    const zone = localZones.find(z => z.zone_id === zoneId)
+    const key = type === 'min' ? 'humidity_min' : 'humidity_max'
+    const current = parseFloat(zone[key]) || (type === 'min' ? 60 : 70)  // ← default si undefined
+    const newVal = Math.min(100, Math.max(0, current + delta))
     setLocalZones(prev => prev.map(z => z.zone_id === zoneId ? { ...z, [key]: newVal } : z))
     await fetch(`${API_URL}/zones/${zoneId}/humidity`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

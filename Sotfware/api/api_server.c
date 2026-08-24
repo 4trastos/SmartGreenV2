@@ -172,6 +172,24 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (ret);
         }
 
+        ctx = *con_cls;
+        if (strcmp(url, "/api/keyboard") == 0)
+        {
+            system("DISPLAY=:0 matchbox-keyboard &");
+            free(ctx);
+            *con_cls = NULL;
+            return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+        }
+
+        ctx = *con_cls;
+        if (strcmp(url, "/api/keyboard/hide") == 0)
+        {
+            system("pkill matchbox-keyboard");
+            free(ctx);
+            *con_cls = NULL;
+            return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+        }
+        
         free(ctx);
     }
 

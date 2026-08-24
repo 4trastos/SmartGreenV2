@@ -44,8 +44,6 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     state->cool_mode_on      = (regs[49] >> 1) & 0x01;
     state->pump_on           = state->cool_mode_on;                               // cool_mode_on = bomba activa
     state->fault_present     = (regs[49] >> 3) & 0x01;
-    //state->actual_fan_speed = (regs[49] >> 8) & 0x0F;
-    // state->fan_on           = (regs[49] >> 2) & 0x01;                // bit 2
     state->actual_fan_speed  = (regs[49] >> 4) & 0x0F;                  // ← fuente de verdad
     state->fan_on            = state->actual_fan_speed > 0 ? 1 : 0;     // ← derivado
     state->fan_running       = state->fan_on;                           // ← alias, misma fuente
@@ -57,14 +55,13 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     state->extended_status  = (regs[52]);
 
     // offset 50 - r_40051 - bits de estado 
-    // state->fan_running = !((regs[50] >> 3) & 0x01);                 // TODO: Verificar con pruebas reales. Sospecha: 1=funcionando, 0=avería.
-    // state->fan_running = ((regs[50] >> 8) & 0x0F) > 0 ? 1 : 0;
     printf("[DEBUG FAN] reg49=0x%04X reg50=0x%04X bit3=%d fan_running=%d fan_speed=%d cool_mode=%d\n",
        regs[49], regs[50], (regs[50] >> 3) & 0x01, state->fan_running, state->actual_fan_speed, state->cool_mode_on); fflush(stdout);
     
     state->drain_valve_confirm = (regs[50] >> 4) & 0x01;            // drain valve open/close" (comando/confirmación)
     state->fan_speed_confirmed = (regs[50] >> 8) & 0x0F;            // siempre 0, no fiable
-    state->solenoid_on         = (regs[51] >> 3) & 0x01;
+    // state->solenoid_on         = (regs[51] >> 3) & 0x01;
+    state->solenoid_on         = (regs[50] >> 3) & 0x01;
 
     // offset 53 - r_40054 - water present (nibbles por zona)
     state->water_present = decode_water_present_zone(regs[53], state->zone_id);

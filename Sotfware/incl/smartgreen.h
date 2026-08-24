@@ -28,6 +28,7 @@
 # include <openssl/evp.h>
 # include <sys/stat.h>
 # include <openssl/rand.h>
+# include <sys/reboot.h>
 
 /*  PATHS   */
 # define INSTALL_DIR            "/opt/smartgreen"

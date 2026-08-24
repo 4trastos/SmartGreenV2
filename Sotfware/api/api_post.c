@@ -122,7 +122,8 @@ enum MHD_Result     api_post_reboot(t_smartgreen *smartgreen, struct MHD_Connect
 
     ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
     sleep(1);  // dar tiempo a que llegue la respuesta
-    system("sudo reboot");
+    sync();
+    reboot(RB_AUTOBOOT);
     return (ret);
 }
 
@@ -190,7 +191,10 @@ enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Conn
     char                name[64] = {0};
     char                action[8] = {0};
     char                hour[8] = {0};
+    char                *ptr = NULL;
+    char                *end = NULL;
     int                 zone_id = 0;
+    int                 len = 0;
     int                 mon = 0;
     int                 tue = 0;
     int                 wed = 0;
@@ -202,18 +206,53 @@ enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Conn
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
 
-    sscanf(body, "{\"name\":\"%63[^\"]\",\"zone_id\":%d,\"action\":\"%7[^\"]\",\"hour\":\"%7[^\"]\"", name, &zone_id, action, hour);
+    ptr = strstr(body, "\"name\":\"");
+    if (ptr)
+    {
+        ptr += 8;
+        end = strchr(ptr, '"');
+        if (end)
+        {
+            len = end - ptr;
+            if (len > 63) len = 63;
+            strncpy(name, ptr, len);
+            name[len] = '\0';
+        }
+    }
+
+    ptr = strstr(body, "\"hour\":\"");
+    if (ptr)
+    {
+        ptr += 8;
+        end = strchr(ptr, '"');
+        if (end)
+        {
+            len = end - ptr;
+            if (len > 7) len = 7;
+            strncpy(hour, ptr, len);
+            hour[len] = '\0';
+        }
+    }
+
+    ptr = strstr(body, "\"action\":\"");
+    if (ptr)
+        sscanf(ptr, "\"action\":\"%7[^\"]\"", action);
+
+    ptr = strstr(body, "\"zone_id\":");
+    if (ptr)
+        sscanf(ptr + 10, "%d", &zone_id);
 
     if (name[0] == '\0')
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"name required\"}"));
+
     mon = strstr(body, "\"mon\":1") ? 1 : 0;
     tue = strstr(body, "\"tue\":1") ? 1 : 0;
     wed = strstr(body, "\"wed\":1") ? 1 : 0;
     thu = strstr(body, "\"thu\":1") ? 1 : 0;
     fri = strstr(body, "\"fri\":1") ? 1 : 0;
     sat = strstr(body, "\"sat\":1") ? 1 : 0;
-    sun = strstr(body, "\"sun\":1") ? 1 : 0;    
-    
+    sun = strstr(body, "\"sun\":1") ? 1 : 0;
+
     pthread_mutex_lock(&smartgreen->data_mutex);
     memset(&schedul, 0, sizeof(t_scheduler_entry));
     ft_strcpy(schedul.name, name, sizeof(schedul.name));
@@ -228,11 +267,10 @@ enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Conn
     schedul.sat = sat;
     schedul.sun = sun;
     schedul.active = 1;
-    
     if (db_save_scheduler(smartgreen, &schedul) == -1)
     {
         pthread_mutex_unlock(&smartgreen->data_mutex);
-        return(api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+        return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
     }
     pthread_mutex_unlock(&smartgreen->data_mutex);
     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
