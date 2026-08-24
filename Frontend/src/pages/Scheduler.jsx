@@ -13,9 +13,9 @@ const DAYS = [
 ]
 
 const EMPTY = { name: '', zone_id: 1, action: 'ON', hour: '08:00', mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 }
-const [showKeyboard, setShowKeyboard] = useState(false)
 
 function SchedulerModal({ editing, form, setForm, zones, onSave, onClose }) {
+  const [showKeyboard, setShowKeyboard] = useState(false)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
