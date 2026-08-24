@@ -99,7 +99,7 @@ void    *ft_drain_thread(void *arg)
                 smartgreen->coolers->alarm_salinity = 0;
         
         ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
-        if (cooler_need_prewet)
+        if (cooler_need_prewet(smartgreen, zone_idx, unit_id))
             smartgreen->zone_params[zone_idx].last_prewet = 0;
     }
     pthread_mutex_unlock(&smartgreen->data_mutex);

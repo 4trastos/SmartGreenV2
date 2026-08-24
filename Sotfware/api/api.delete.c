@@ -1,5 +1,48 @@
 #include "../incl/smartgreen.h"
 
+enum MHD_Result     api_delete_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id)
+{
+    sqlite3_stmt    *stmt = NULL;
+    const char      *sql = "UPDATE scheduler SET active = 0 WHERE id = ?;";
+    int             rc;
+
+    if (id <= 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid scheduler id\"}"));
+
+    pthread_mutex_lock(&smartgreen->data_mutex);
+
+    rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+        return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+    }
+
+    sqlite3_bind_int(stmt, 1, id);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE)
+    {
+        sqlite3_finalize(stmt);
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+        return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"DB error\"}"));
+    }
+
+    sqlite3_finalize(stmt);
+
+    /* Recargar la lista de schedulers activos en memoria. */
+    if (db_read_scheduler(smartgreen) == -1)
+    {
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+        return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"Scheduler reload error\"}"));
+    }
+
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
+
 enum MHD_Result     api_put_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size)
 {
     char    name[64] = {0};

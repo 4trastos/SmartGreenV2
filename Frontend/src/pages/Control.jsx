@@ -100,6 +100,7 @@ export default function Control({ data }) {
               </div>
 
               {/* Fan speed */}
+              {(zone.cool_fan_mode === 'MANUAL' ||  zone.cool_fan_mode === 'FAN') && (
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <span className="text-white/40 text-xs uppercase tracking-wider">Velocidad</span>
@@ -119,6 +120,7 @@ export default function Control({ data }) {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Target temp — solo en modo AUTO */}
               {zone.cool_fan_mode === 'AUTO' && (

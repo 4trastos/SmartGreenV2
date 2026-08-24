@@ -62,12 +62,6 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (api_get_config(smartgreen, connection));
         if (strcmp(url, "/api/scheduler") == 0)
             return (api_get_scheduler(smartgreen, connection));
-        if (strcmp(url, "/api/reboot") == 0)
-        {
-            if (!ft_validate_token(smartgreen, connection))
-                return (api_send_response(connection, MHD_HTTP_UNAUTHORIZED, "{\"error\":\"Unauthorized\"}"));
-            ret = api_post_reboot(smartgreen, connection, ctx->body, ctx->len);
-        }
         if (strcmp(url, "/") == 0 || strcmp(url, "/index.html") == 0)
             return api_serve_file(connection, "/index.html", "text/html");
         if (strstr(url, ".js"))
@@ -166,6 +160,12 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
         ctx = *con_cls;
         if (strcmp(url, "/api/reboot") == 0)
         {
+            if (!ft_validate_token(smartgreen, connection))
+            {
+                free(ctx);
+                *con_cls = NULL;
+                return (api_send_response(connection, MHD_HTTP_UNAUTHORIZED, "{\"error\":\"Unauthorized\"}"));
+            }
             ret = api_post_reboot(smartgreen, connection, ctx->body, ctx->len);
             free(ctx);
             *con_cls = NULL;
