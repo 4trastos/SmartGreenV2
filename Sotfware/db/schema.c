@@ -24,6 +24,7 @@ const char *SCHEMA_SQL =
     "    humidity_max        REAL    DEFAULT 70.0,\n"
     "    integral            REAL    DEFAULT 00.0,\n"
     "    pump_on             INTEGER DEFAULT 0,\n"
+    "    humidity_control    INTEGER DEFAULT 0,\n"
     "    cool_fan_mode       TEXT    DEFAULT 'AUTO',\n"
     "    drain_valve         TEXT    DEFAULT 'close',\n"
     "    solenoid            TEXT    DEFAULT 'on',\n"

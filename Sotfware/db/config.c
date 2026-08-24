@@ -84,8 +84,6 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].solenoid_on = 0;
             smartgreen->coolers[i].salinity_ppm = 0.00;
             smartgreen->coolers[i].salinity_us = 0.00;
-            // smartgreen->coolers[i].last_read = get_timestamp();
-            // smartgreen->coolers[i].last_mod = get_timestamp();
             smartgreen->coolers[i].last_read = 0;
             smartgreen->coolers[i].last_mod = 0;
             smartgreen->coolers[i].alarm_fault = 0;
@@ -193,6 +191,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->zone_params[i].humidity_max = 70.0;
             smartgreen->zone_params[i].integral = 00.0;
             smartgreen->zone_params[i].pump_on = 0;
+            smartgreen->zone_params[i].humidity_control = 0;
             ft_strcpy(smartgreen->zone_params[i].cool_fan_mode, "AUTO", sizeof(smartgreen->zone_params->cool_fan_mode));
             ft_strcpy(smartgreen->zone_params[i].drain_valve, "close", sizeof(smartgreen->zone_params->drain_valve));
             ft_strcpy(smartgreen->zone_params[i].solenoid, "on", sizeof(smartgreen->zone_params->solenoid));
