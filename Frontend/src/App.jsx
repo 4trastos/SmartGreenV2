@@ -83,6 +83,7 @@ export default function App() {
     s.alarm_signal || s.alarm_temp
   ).length
 
+  const isPrewet = data.zones.some(z => z.prewet_in_progress === 'yes')
   const pages = { dashboard: Dashboard, control: Control, alarms: Alarms, maint: Maintenance, settings: Settings, scheduler: Scheduler }
   const PageComponent = pages[page]
 
@@ -90,10 +91,10 @@ export default function App() {
     <div className="flex h-screen w-screen bg-[#060c12] overflow-hidden text-white"
       style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
 
-      <div className="fixed inset-0 pointer-events-none z-0">
+      {/* <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[20%] w-[500px] h-[500px] bg-[#004d89]/8 rounded-full blur-[100px]" />
         <div className="absolute bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-[#088fc3]/5 rounded-full blur-[80px]" />
-      </div>
+      </div> */}
 
       {/* SIDEBAR */}
       <nav className="relative z-20 flex flex-col items-center py-5 w-16 border-r border-white/5 bg-[#07111a]/90 backdrop-blur-xl shrink-0">
@@ -102,9 +103,9 @@ export default function App() {
             const isActive = page === item.id
             const hasAlert = item.id === 'alarms' && alarmCount > 0
             return (
-              <button key={item.id} onClick={() => setPage(item.id)} title={item.label}
-                className={`relative group w-full h-11 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer
-                  ${isActive ? 'bg-[#088fc3]/20 text-white shadow-[inset_0_0_0_1px_rgba(8,143,195,0.3)]' : 'text-white/40 hover:text-white hover:bg-white/6'}`}>
+              <button key={item.id} onClick={() => !isPrewet && setPage(item.id)} title={item.label}
+                className={`relative group w-full h-11 rounded-xl flex items-center justify-center transition-all duration-200
+                  ${isPrewet ? 'opacity-30 cursor-not-allowed text-white/20' : isActive ? 'bg-[#088fc3]/20 text-white shadow-[inset_0_0_0_1px_rgba(8,143,195,0.3)] cursor-pointer' : 'text-white/40 hover:text-white hover:bg-white/6 cursor-pointer'}`}>
                 {item.icon}
                 {hasAlert && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_6px_#ef4444]" />}
                 <span className="absolute left-14 bg-[#0d1a26] text-white text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/10 shadow-xl z-50">
@@ -118,8 +119,9 @@ export default function App() {
         {/* Separador + botón reboot */}
         <div className="w-full px-2 mb-3">
           <div className="border-t border-white/8 mb-3" />
-          <button onClick={() => setShowReboot(true)} title="Reiniciar sistema"
-            className="relative group w-full h-11 rounded-xl flex items-center justify-center cursor-pointer text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200">
+          <button onClick={() => !isPrewet && setShowReboot(true)} title="Reiniciar sistema"
+            className={`relative group w-full h-11 rounded-xl flex items-center justify-center transition-all duration-200
+              ${isPrewet ? 'opacity-30 cursor-not-allowed text-white/20' : 'cursor-pointer text-white/25 hover:text-red-400 hover:bg-red-500/10'}`}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5">
               <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
             </svg>

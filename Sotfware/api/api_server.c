@@ -114,6 +114,8 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
                 ret = api_post_zone_humidity(smartgreen, connection, id, ctx->body, ctx->len);
             else if (strcmp(action, "humiditycontrol") == 0)
                 ret = api_post_zone_humidity_control(smartgreen, connection, id, ctx->body, ctx->len);
+            else if (strcmp(action, "targettemp") == 0)
+                ret = api_post_zone_targettemp(smartgreen, connection, id, ctx->body, ctx->len);
             else
                 ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown action\"}");
             free(ctx);
@@ -201,6 +203,24 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
 
     if (strcmp(method, "PUT") == 0)
     {
+        if (*con_cls == NULL)
+        {
+            ctx = malloc(sizeof(t_post_ctx));
+            if (!ctx) return (MHD_NO);
+            memset(ctx, 0, sizeof(t_post_ctx));
+            *con_cls = ctx;
+            return (MHD_YES);
+        }
+        ctx = *con_cls;
+        if (*upload_data_size != 0)
+        {
+            if (ctx->len + *upload_data_size >= sizeof(ctx->body)) return (MHD_NO);
+            memcpy(ctx->body + ctx->len, upload_data, *upload_data_size);
+            ctx->len += *upload_data_size;
+            ctx->body[ctx->len] = '\0';
+            *upload_data_size = 0;
+            return (MHD_YES);
+        }
         ctx = *con_cls;
         if (strncmp(url, "/api/scheduler/", 15) == 0)
         {

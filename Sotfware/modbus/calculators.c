@@ -79,7 +79,8 @@ void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 {
     int r0  = calculate_register_0(smartgreen);
     int r50 = calculate_register_50(0, 0, on ? 3 : 0);
-    int r51 = calculate_register_51(0, on ? 1 : 0);
+    int r51 = calculate_register_51(on ? 1 : 0, 1);  // solenoid=ON cuando encendido, drain siempre CLOSED
+    // int r51 = calculate_register_51(0, on ? 1 : 0);
 
     printf("[DEBUG] ft_cooler_onoff(unit=%d, on=%d)\n", unit_id, on); fflush(stdout);
 
@@ -89,8 +90,16 @@ void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
     printf("Escribiendo reg 49 = %d\n", r50); fflush(stdout);
     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, on ? r50 : 0);
 
-    printf("Escribiendo reg 50 = %d\n", r51); fflush(stdout);
-    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, r51);
+    if (!on)
+    {
+        printf("Escribiendo reg 50 = %d\n", calculate_register_51(0, 1)); fflush(stdout);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, calculate_register_51(0, 1));
+    }
+    else
+    {
+        printf("Escribiendo reg 50 = %d\n", r51); fflush(stdout);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, r51);
+    }
 
     printf("Escribiendo reg 400 = 300\n"); fflush(stdout);
     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_HEARTBEAT, unit_id, 400, 300);

@@ -405,18 +405,29 @@ export default function Dashboard({ data, connected }) {
           </div>
         )}
 
-        {/* Action bar — solo si hay datos */}
         {hasData && (
           <div className="flex gap-2 shrink-0">
-            <button onClick={() => toggleAll('ON')}
-              className="flex-1 py-2 rounded-xl bg-[#004d89]/40 border border-[#088fc3]/30 text-[#088fc3] text-sm font-bold cursor-pointer hover:bg-[#004d89]/60 transition-all">
+            <button onClick={() => !isPrewet && toggleAll('ON')}
+              disabled={isPrewet}
+              className={`flex-1 py-2 rounded-xl border text-sm font-bold transition-all
+                ${isPrewet 
+                  ? 'bg-white/2 border-white/5 text-white/20 cursor-not-allowed'
+                  : 'bg-[#004d89]/40 border-[#088fc3]/30 text-[#088fc3] cursor-pointer hover:bg-[#004d89]/60'}`}>
               ▶ Encender todo
             </button>
-            <button onClick={() => toggleAll('OFF')}
-              className="flex-1 py-2 rounded-xl bg-white/4 border border-white/10 text-white/40 text-sm font-bold cursor-pointer hover:bg-white/8 transition-all">
+            <button onClick={() => !isPrewet && toggleAll('OFF')}
+              disabled={isPrewet}
+              className={`flex-1 py-2 rounded-xl border text-sm font-bold transition-all
+                ${isPrewet
+                  ? 'bg-white/2 border-white/5 text-white/20 cursor-not-allowed'
+                  : 'bg-white/4 border-white/10 text-white/40 cursor-pointer hover:bg-white/8'}`}>
               ■ Apagar todo
             </button>
-            <button className="flex-1 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/25 text-yellow-400 text-sm font-bold cursor-pointer hover:bg-yellow-500/15 transition-all">
+            <button disabled={isPrewet}
+              className={`flex-1 py-2 rounded-xl border text-sm font-bold transition-all
+                ${isPrewet
+                  ? 'bg-white/2 border-white/5 text-white/20 cursor-not-allowed'
+                  : 'bg-yellow-500/10 border-yellow-500/25 text-yellow-400 cursor-pointer hover:bg-yellow-500/15'}`}>
               ◈ Modo test
             </button>
           </div>

@@ -32,9 +32,9 @@ int db_load_zone_params(t_smartgreen *smartgreen)
 {
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = "SELECT zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, integral,"
-                           "pump_on, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, "
-                           "prewet_in_progress, last_prewet, last_drain, last_pump_time "
-                           "FROM zone_params;";
+                            "pump_on, humidity_control, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, "
+                            "prewet_in_progress, last_prewet, last_drain, last_pump_time "
+                            "FROM zone_params;";
     int             rc;
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
@@ -73,15 +73,15 @@ int db_load_zone_params(t_smartgreen *smartgreen)
 
 int     db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone)
 {
-    printf("[DEBUG] DENTRO DE -> db_update_zone_params: zone_id=%d on_off=%s pump_on=%d prewet=%s cool_fan_mode=%s\n", zone->zone_id, zone->on_off, zone->pump_on, zone->prewet_in_progress, zone->cool_fan_mode);
+    printf("[DEBUG] DENTRO DE -> db_update_zone_params: zone_id=%d on_off=%s pump_on=%d prewet=%s cool_fan_mode=%s target_temp=%.1f\n", zone->zone_id, zone->on_off, zone->pump_on, zone->prewet_in_progress, zone->cool_fan_mode, zone->target_temp);
     fflush(stdout);
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = "UPDATE zone_params SET "
-                           "fan_speed_cmd=?, target_temp=?, humidity_min=?, humidity_max=?, integral=?, "
-                           "pump_on=?, cool_fan_mode=?, drain_valve=?, solenoid=?, "
-                           "on_off=?, inmediate_drain=?, prewet_in_progress=?, "
-                           "last_prewet=?, last_drain=?, last_pump_time=? "
-                           "WHERE zone_id=?";
+                        "fan_speed_cmd=?, target_temp=?, humidity_min=?, humidity_max=?, integral=?, "
+                        "pump_on=?, humidity_control=?, cool_fan_mode=?, drain_valve=?, solenoid=?, "
+                        "on_off=?, inmediate_drain=?, prewet_in_progress=?, "
+                        "last_prewet=?, last_drain=?, last_pump_time=? "
+                        "WHERE zone_id=?";
     int             rc;
     int             attemps = 0;
 
@@ -232,18 +232,18 @@ int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler
         return (-1);
     }
 
-    sqlite3_bind_text(stmt, 2, scheduler->name, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 3, scheduler->zone_id);
-    sqlite3_bind_int(stmt, 4, scheduler->active);
-    sqlite3_bind_text(stmt, 5, scheduler->action, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 6, scheduler->hour, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 7, scheduler->mon);
-    sqlite3_bind_int(stmt, 8, scheduler->tue);
-    sqlite3_bind_int(stmt, 9, scheduler->wed);
-    sqlite3_bind_int(stmt, 10, scheduler->thu);
-    sqlite3_bind_int(stmt, 11, scheduler->fri);
-    sqlite3_bind_int(stmt, 12, scheduler->sat);
-    sqlite3_bind_int(stmt, 13, scheduler->sun);
+    sqlite3_bind_text(stmt, 1, scheduler->name, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, scheduler->zone_id);
+    sqlite3_bind_int(stmt, 3, scheduler->active);
+    sqlite3_bind_text(stmt, 4, scheduler->action, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, scheduler->hour, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 6, scheduler->mon);
+    sqlite3_bind_int(stmt, 7, scheduler->tue);
+    sqlite3_bind_int(stmt, 8, scheduler->wed);
+    sqlite3_bind_int(stmt, 9, scheduler->thu);
+    sqlite3_bind_int(stmt, 10, scheduler->fri);
+    sqlite3_bind_int(stmt, 11, scheduler->sat);
+    sqlite3_bind_int(stmt, 12, scheduler->sun);
 
     while (attemps < DB_MAX_RETRIES)
     {

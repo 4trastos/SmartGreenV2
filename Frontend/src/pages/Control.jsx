@@ -32,13 +32,23 @@ export default function Control({ data }) {
     })
   }
 
+  // const setTemp = async (zoneId, delta) => {
+  //   const zone = localZones.find(z => z.zone_id === zoneId)
+  //   const newTemp = Math.min(35, Math.max(15, zone.target_temp + delta))
+  //   setLocalZones(prev => prev.map(z => z.zone_id === zoneId ? { ...z, target_temp: newTemp } : z))
+  //   await fetch(`${API_URL}/config`, {
+  //     method: 'POST', headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({ key: `target_temp_zone_${zoneId}`, value: newTemp })
+  //   })
+  // }
+
   const setTemp = async (zoneId, delta) => {
     const zone = localZones.find(z => z.zone_id === zoneId)
     const newTemp = Math.min(35, Math.max(15, zone.target_temp + delta))
     setLocalZones(prev => prev.map(z => z.zone_id === zoneId ? { ...z, target_temp: newTemp } : z))
-    await fetch(`${API_URL}/config`, {
+    await fetch(`${API_URL}/zones/${zoneId}/targettemp`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: `target_temp_zone_${zoneId}`, value: newTemp })
+      body: JSON.stringify({ value: newTemp })
     })
   }
 

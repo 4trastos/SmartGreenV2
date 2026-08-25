@@ -104,15 +104,19 @@ void    scheduler_run(t_smartgreen *smartgreen)
                             {
                                 if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[h].zone_id)
                                 {
-                                    t_drain_args *drain_args = malloc(sizeof(t_drain_args));
-                                    if (drain_args)
+                                    // Solo drenar si lleva más de 3 horas apagado
+                                    if (smartgreen->coolers[i].last_off > 0 && (now - smartgreen->coolers[i].last_off) >= (3 * 3600))
                                     {
-                                        drain_args->smartgreen = smartgreen;
-                                        drain_args->zone_id    = smartgreen->zone_params[h].zone_id;
-                                        drain_args->unit_id    = smartgreen->coolers[i].unit_id;
-                                        pthread_t tid;
-                                        pthread_create(&tid, NULL, ft_drain_thread, drain_args);
-                                        pthread_detach(tid);
+                                        t_drain_args *drain_args = malloc(sizeof(t_drain_args));
+                                        if (drain_args)
+                                        {
+                                            drain_args->smartgreen = smartgreen;
+                                            drain_args->zone_id    = smartgreen->zone_params[h].zone_id;
+                                            drain_args->unit_id    = smartgreen->coolers[i].unit_id;
+                                            pthread_t tid;
+                                            pthread_create(&tid, NULL, ft_drain_thread, drain_args);
+                                            pthread_detach(tid);
+                                        }
                                     }
                                 }
                             }
@@ -221,6 +225,16 @@ void    scheduler_run(t_smartgreen *smartgreen)
                         for (int j = 0; j < smartgreen->num_coolers; j++)
                             if (smartgreen->coolers[j].zone_id == smartgreen->scheduler[i].zone_id)
                                 ft_cooler_onoff(smartgreen, smartgreen->coolers[j].unit_id, on);
+                        
+                        // Si es ON, forzar AUTO y 24°
+                        if (on && zone_idx != -1)
+                        {
+                            pthread_mutex_lock(&smartgreen->data_mutex);
+                            ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, "AUTO", sizeof(smartgreen->zone_params->cool_fan_mode));
+                            smartgreen->zone_params[zone_idx].target_temp = 24.0f;
+                            db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
+                            pthread_mutex_unlock(&smartgreen->data_mutex);
+                        }
                     }
                 }
             }

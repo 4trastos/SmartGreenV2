@@ -228,7 +228,7 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->scheduler[i].zone_id = i + 1;
             smartgreen->scheduler[i].active = 1;
             ft_strcpy(smartgreen->scheduler[i].action, "ON", sizeof(smartgreen->scheduler->action));
-            ft_strcpy(smartgreen->scheduler[i].hour, "AM", sizeof(smartgreen->scheduler->hour));
+            ft_strcpy(smartgreen->scheduler[i].hour, "08:00", sizeof(smartgreen->scheduler->hour));
             smartgreen->scheduler[i].mon = 0;
             smartgreen->scheduler[i].tue = 0;
             smartgreen->scheduler[i].wed = 0;

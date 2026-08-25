@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { API_URL } from '../config.js'
 import Keyboard from '../components/Keyboard'
+import HourPicker from '../components/HourPicker'
+
 
 const DAYS = [
   { key: 'mon', label: 'L' },
@@ -12,10 +14,11 @@ const DAYS = [
   { key: 'sun', label: 'D' },
 ]
 
-const EMPTY = { name: '', zone_id: 1, action: 'ON', hour: '08:00', mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 }
+const EMPTY = { name: '', zone_id: 1, active: 1, action: 'ON', hour: '08:00', mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 }
 
-function SchedulerModal({ editing, form, setForm, zones, onSave, onClose }) {
+function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose }) {
   const [showKeyboard, setShowKeyboard] = useState(false)
+  const [showHourKeyboard, setShowHourKeyboard] = useState(false)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
@@ -39,7 +42,6 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, onClose }) {
               readOnly
               placeholder="Ej: Encendido mañana"
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60" />
-
             {showKeyboard && (
               <Keyboard
                 value={form.name}
@@ -70,11 +72,23 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, onClose }) {
                 <option value="OFF" style={{ backgroundColor: '#0d1a26' }}>■ Apagar</option>
               </select>
             </div>
-            <div className="flex-1">
-              <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Hora</label>
-              <input type="time" value={form.hour} onChange={e => setForm(f => ({ ...f, hour: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60" />
-            </div>
+           <div className="flex-1">
+            <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Hora</label>
+            <input value={form.hour}
+              onFocus={() => setShowHourKeyboard(true)}
+              onTouchStart={e => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
+              readOnly
+              placeholder="08:00"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60" />
+            {showHourKeyboard && (
+              <HourPicker
+                value={form.hour}
+                onChange={val => setForm(f => ({ ...f, hour: val }))}
+                onClose={() => setShowHourKeyboard(false)}
+              />
+            )}
+          </div>
           </div>
 
           <div>
@@ -96,9 +110,11 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, onClose }) {
             className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold cursor-pointer hover:bg-white/10">
             Cancelar
           </button>
-          <button onClick={onSave}
-            className="flex-1 py-3 rounded-xl bg-[#088fc3]/20 border border-[#088fc3]/40 text-[#088fc3] font-bold cursor-pointer hover:bg-[#088fc3]/30">
-            {editing ? 'Guardar' : 'Crear'}
+          <button onClick={onSave} disabled={saving}
+            className={`flex-1 py-3 rounded-xl border font-bold cursor-pointer
+              ${saving ? 'opacity-50 cursor-not-allowed bg-white/5 border-white/10 text-white/40' :
+                'bg-[#088fc3]/20 border-[#088fc3]/40 text-[#088fc3] hover:bg-[#088fc3]/30'}`}>
+            {saving ? 'Guardando...' : editing ? 'Guardar' : 'Crear'}
           </button>
         </div>
       </div>
@@ -111,6 +127,7 @@ export default function Scheduler({ data }) {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY)
+  const [saving, setSaving] = useState(false)
 
   const zones = data?.zones || []
 
@@ -125,23 +142,31 @@ export default function Scheduler({ data }) {
   useEffect(() => { load() }, [])
 
   const save = async () => {
-    if (editing) {
-      await fetch(`${API_URL}/scheduler/${editing.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      })
-    } else {
-      await fetch(`${API_URL}/scheduler`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      })
+    if (saving) return
+    setSaving(true)
+    try {
+      if (editing) {
+        await fetch(`${API_URL}/scheduler/${editing.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form)
+        })
+      } else {
+        await fetch(`${API_URL}/scheduler`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form)
+        })
+      }
+      setShowModal(false)
+      setEditing(null)
+      setForm(EMPTY)
+      load()
+    } catch(e) {
+      console.error('Save error:', e)
+    } finally {
+      setSaving(false)
     }
-    setShowModal(false)
-    setEditing(null)
-    setForm(EMPTY)
-    load()
   }
 
   const del = async (id) => {
@@ -191,15 +216,12 @@ export default function Scheduler({ data }) {
         <div className="grid grid-cols-3 gap-4">
           {schedulers.map(s => {
             const zone = zones.find(z => z.zone_id === s.zone_id)
-            const activeDays = DAYS.filter(d => s[d.key]).map(d => d.label)
             return (
               <div key={s.id}
-                className={`relative rounded-2xl border p-5 flex flex-col gap-3 cursor-pointer transition-all hover:scale-[1.02]
+                className={`relative rounded-2xl border p-5 flex flex-col gap-3 transition-all hover:scale-[1.02]
                   ${s.active
                     ? 'bg-gradient-to-br from-[#004d89]/40 to-[#088fc3]/10 border-[#088fc3]/30'
                     : 'bg-gradient-to-br from-white/3 to-transparent border-white/8 opacity-60'}`}>
-
-                {/* Header */}
                 <div className="flex items-start justify-between">
                   <div className={`text-3xl font-black ${s.action === 'ON' ? 'text-[#088fc3]' : 'text-red-400'}`}>
                     {s.action === 'ON' ? '▶' : '■'}
@@ -210,17 +232,11 @@ export default function Scheduler({ data }) {
                     <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${s.active ? 'left-4' : 'left-0.5'}`} />
                   </button>
                 </div>
-
-                {/* Info */}
                 <div className="flex-1">
                   <p className="text-white font-black text-lg leading-tight">{s.name}</p>
                   <p className="text-white/40 text-xs mt-1">{zone?.name || `Zona ${s.zone_id}`}</p>
                 </div>
-
-                {/* Hora */}
                 <p className="text-white font-mono text-2xl font-bold">{s.hour}</p>
-
-                {/* Días */}
                 <div className="flex gap-1">
                   {DAYS.map(d => (
                     <span key={d.key}
@@ -230,8 +246,6 @@ export default function Scheduler({ data }) {
                     </span>
                   ))}
                 </div>
-
-                {/* Acciones */}
                 <div className="flex gap-2 pt-1 border-t border-white/5">
                   <button onClick={() => openEdit(s)}
                     className="flex-1 py-1.5 rounded-lg bg-white/5 text-white/40 hover:text-white hover:bg-white/10 text-xs cursor-pointer transition-colors">
@@ -255,6 +269,7 @@ export default function Scheduler({ data }) {
           setForm={setForm}
           zones={zones}
           onSave={save}
+          saving={saving}
           onClose={() => { setShowModal(false); setEditing(null); setForm(EMPTY) }}
         />
       )}
