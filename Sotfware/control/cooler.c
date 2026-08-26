@@ -1,10 +1,9 @@
 #include "../incl/smartgreen.h"
 
-int ft_auto_fan_speed(t_smartgreen *smartgreen, int zone_idx)
+int ft_auto_fan_speed(t_smartgreen *smartgreen, int zone_idx, float *error)
 {
     float   temp_actual;
     float   target_temp;
-    float   error;
     float   p_term;
     float   speed;
     int     min_speed;
@@ -25,25 +24,31 @@ int ft_auto_fan_speed(t_smartgreen *smartgreen, int zone_idx)
     max_speed = db_read_config(smartgreen, "max_setpoint_fan");
 
     // Control proporcional
-    error = temp_actual - target_temp;
-    p_term = error * 1.5f;      // Kp = 1.5
+    *error = temp_actual - target_temp;
 
-    // Integral acumulada en zone_params
-    smartgreen->zone_params[zone_idx].integral += error * 0.1f;     // Ki = 0.1
-
-    // Anti-windup — limitar integral
-    if (smartgreen->zone_params[zone_idx].integral > 5.0f)
-        smartgreen->zone_params[zone_idx].integral = 5.0f;
-    if (smartgreen->zone_params[zone_idx].integral < -5.0f)
-        smartgreen->zone_params[zone_idx].integral = -5.0f;
+    if (*error <= 0.0f)
+        smartgreen->zone_params[zone_idx].integral = 0.0f;
+    else
+    {
+        smartgreen->zone_params[zone_idx].integral += *error * 0.05f;
     
-    speed = 3.0f + p_term + smartgreen->zone_params[zone_idx].integral;
+        // Anti-windup 
+        if (smartgreen->zone_params[zone_idx].integral > 3.0f)
+            smartgreen->zone_params[zone_idx].integral = 3.0f;
+        if (smartgreen->zone_params[zone_idx].integral < 0.0f)
+            smartgreen->zone_params[zone_idx].integral = 0.0f;
+    }
+
+    p_term = *error * 0.8f;      // Kp = 1.5
+    speed = 1.0f + p_term + smartgreen->zone_params[zone_idx].integral;
 
     // Clamp 1-10
     if (speed < min_speed)
-        speed = min_speed < 1 ? 1 : min_speed;
+        speed = min_speed;
     if (speed > max_speed)
-        speed = max_speed > 10 ? 10 : max_speed;
+        speed = max_speed;
+
+    printf("[AUTO] temp=%.1f target=%.1f error=%.1f speed=%d\n", temp_actual, target_temp, *error, (int)speed); fflush(stdout);
     
     return ((int)speed);
 }

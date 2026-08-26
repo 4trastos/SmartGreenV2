@@ -25,6 +25,14 @@ function MaintenanceModal({ type, coolers, onClose }) {
     setTimeout(() => { setSent(false); onClose() }, 2000)
   }
 
+  const formatHours = (seconds) => {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    if (h === 0) return `${m}m`
+    if (m === 0) return `${h}h`
+    return `${h}h ${m}m`
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
@@ -107,7 +115,7 @@ function StatusModal({ coolers, onClose }) {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="bg-white/3 rounded-lg p-2">
                   <p className="text-white/30 mb-1">Horas funcionamiento</p>
-                  <p className="text-white font-mono font-bold">{c.hours_running?.toFixed ? c.hours_running.toFixed(0) : c.hours_running} h</p>
+                  <p className="text-white font-mono font-bold">{formatHours(c.hours_running)}</p>
                 </div>
                 <div className="bg-white/3 rounded-lg p-2">
                   <p className="text-white/30 mb-1">Último cierre</p>

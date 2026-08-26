@@ -248,7 +248,7 @@ typedef struct  s_cooler_state
     int                 alarm_maint_opening;            // 1=alarma activa, 0=resuelta
     int                 alarm_maint_closing;            // 1=alarma activa, 0=resuelta
     int                 alarm_maint_legionella;         // 1=alarma activa, 0=resuelta
-    int                 hours_running;                  // horas totales fan_on=1
+    float               hours_running;                  // horas totales fan_on=1
     int                 install_date;                   // timestamp instalación
     int                 warranty_months;                // meses de garantía
     int                 disabled;                       // 0=activo, 1=deshabilitado temporalmente
@@ -406,7 +406,7 @@ int                 db_save_users(t_smartgreen *smartgreen);
 int                 db_update_zone_params(t_smartgreen *smartgreen, t_zone_params *zone);
 int                 db_load_zone_params(t_smartgreen *smartgreen);
 void                db_cleanup_error_log(t_smartgreen *smartgreen);
-void                db_load_coolers_last_off(t_smartgreen *smartgreen);
+void                db_load_coolers_state(t_smartgreen *smartgreen);
 
 /*  CONTROL */
 int                 cooler_water_management(t_smartgreen *smartgreen);
@@ -415,7 +415,7 @@ int                 sensor_validate(t_sensor_state *sensor);
 int                 scheduler_is_active_today(t_scheduler_entry *scheduler, int day);
 int                 scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min);
 int                 cooler_need_prewet(t_smartgreen *smartgreen, int zone_id, int id);
-int                 ft_auto_fan_speed(t_smartgreen *smartgreen, int zone_idx);
+int                 ft_auto_fan_speed(t_smartgreen *smartgreen, int zone_idx, float *error);
 void                ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on);
 void                ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on);
 void                ft_check_alarms(t_smartgreen *smartgreen);

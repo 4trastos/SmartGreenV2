@@ -1,18 +1,19 @@
 #include "../incl/smartgreen.h"
 
-void    db_load_coolers_last_off(t_smartgreen *smartgreen)
+void    db_load_coolers_state(t_smartgreen *smartgreen)
 {
     sqlite3_stmt    *stmt = NULL;
-    const char      *sql = "SELECT unit_id, last_off FROM cooler_state;";
+    const char      *sql = "SELECT unit_id, last_off, hours_running FROM cooler_state;";
     int             rc;
     int             unit_id = 0;
     int             last_off = 0;
     int             idx = 0;
+    int             hours_running = 0;
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK)
     {
-        fprintf(stderr, "db_load_coolers_last_off prepare error: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        fprintf(stderr, "db_load_coolers_state prepare error: ( %s )\n", sqlite3_errmsg(smartgreen->db));
         return;
     }
 
@@ -20,9 +21,13 @@ void    db_load_coolers_last_off(t_smartgreen *smartgreen)
     {
         unit_id = sqlite3_column_int(stmt, 0);
         last_off = sqlite3_column_int(stmt, 1);
+        hours_running = sqlite3_column_int(stmt, 2);
         idx = ft_find_cooler(smartgreen, unit_id);
         if (idx != -1)
+        {
             smartgreen->coolers[idx].last_off = last_off;
+            smartgreen->coolers[idx].hours_running = hours_running;
+        }
     }
     sqlite3_finalize(stmt);
     return;
@@ -606,7 +611,7 @@ int db_save_cooler(t_smartgreen *smartgreen, t_cooler_state *cooler)
     sqlite3_bind_int(stmt, 26, cooler->alarm_maint_opening);
     sqlite3_bind_int(stmt, 27, cooler->alarm_maint_closing);
     sqlite3_bind_int(stmt, 28, cooler->alarm_maint_legionella);
-    sqlite3_bind_int(stmt, 29, cooler->hours_running);
+    sqlite3_bind_double(stmt, 29, cooler->hours_running);
     sqlite3_bind_int(stmt, 30, cooler->install_date);
     sqlite3_bind_int(stmt, 31, cooler->warranty_months);
     sqlite3_bind_int(stmt, 32, cooler->disabled);

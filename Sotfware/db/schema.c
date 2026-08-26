@@ -67,7 +67,7 @@ const char *SCHEMA_SQL =
     "    alarm_maint_opening    INTEGER DEFAULT 0,\n"
     "    alarm_maint_closing    INTEGER DEFAULT 0,\n"
     "    alarm_maint_legionella INTEGER DEFAULT 0,\n"
-    "    hours_running          INTEGER DEFAULT 0,\n"
+    "    hours_running          REAL    DEFAULT 0.00,\n"
     "    install_date           INTEGER DEFAULT 0,\n"
     "    warranty_months        INTEGER DEFAULT 24,\n"
     "    disabled               INTEGER DEFAULT 0,\n"

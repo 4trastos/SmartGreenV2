@@ -21,6 +21,14 @@ const STATUS = {
   warranty:{ gradient: 'from-orange-900/25 to-transparent',  border: 'border-orange-500/35', dot: 'bg-orange-400 shadow-[0_0_10px_#f97316]',  label: 'GARANTÍA', lc: 'text-orange-400' },
 }
 
+const formatHours = (seconds) => {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}
+
 function MiniChart({ value, status }) {
   const bars = [3,5,4,6,5,7,value]
   const color = status === 'active' ? '#088fc3' : status === 'fault' ? '#ef4444' : status === 'warning' ? '#eab308' : '#ffffff30'
@@ -182,7 +190,7 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
           { l:'Agua', v: cooler.alarm_water ? 'Sin agua' : 'Con agua', c: cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
           { l:'Salinidad', v:`${cooler.salinity_us.toFixed(0)} μS`, c:'text-white' },
           { l:'PPM', v:`${cooler.salinity_ppm?.toFixed(0)||0}`, c:'text-white' },
-          { l:'Horas', v:`${cooler.hours_running.toFixed(0)} h`, c:'text-white/50' },
+          { l:'Horas', v: formatHours(cooler.hours_running), c:'text-white/50' },
         ].map(({l,v,c}) => (
           <div key={l} className="bg-black/25 rounded-xl p-3 text-center">
             <p className="text-white/25 text-xs uppercase tracking-wider mb-1">{l}</p>
@@ -262,7 +270,7 @@ function CoolerDetail({ cooler, onClose, zone }) {
             {l:'PPM', v:`${cooler.salinity_ppm?.toFixed(0)||0}`, c:'text-white'},
             {l:'Bomba', v:cooler.pump_on?'ON':'OFF', c:cooler.pump_on?'text-[#088fc3]':'text-white/30'},
             {l:'Solenoide', v:cooler.solenoid_on?'ON':'OFF', c:cooler.solenoid_on?'text-[#088fc3]':'text-white/30'},
-            {l:'Horas', v:`${cooler.hours_running.toFixed(0)} h`, c:'text-white/60'},
+            {l:'Horas', v: formatHours(cooler.hours_running), c:'text-white/60'},
           ].map(({l,v,c}) => (
             <div key={l} className="bg-white/4 rounded-xl p-3 text-center">
               <p className="text-white/25 text-xs uppercase tracking-wider mb-1">{l}</p>
@@ -380,7 +388,12 @@ export default function Dashboard({ data, connected }) {
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium
                   ${z.on_off==='ON'?'bg-[#004d89]/25 border-[#088fc3]/35 text-[#088fc3]':'bg-white/3 border-white/8 text-white/25'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${z.on_off==='ON'?'bg-[#088fc3]':'bg-white/15'}`} />
-                Zona {z.zone_id} · {z.on_off} · {z.cool_fan_mode} · {z.fan_speed_cmd}/10 · {z.target_temp}°C
+                Zona {z.zone_id} · {z.on_off} · {z.cool_fan_mode} · {
+                  (() => {
+                    const c = data.coolers.find(c => c.zone_id === z.zone_id)
+                    return c ? c.actual_fan_speed : z.fan_speed_cmd
+                  })()
+                }/10 · {z.target_temp}°C
               </div>
             ))}
             <div className="ml-auto flex items-center gap-1.5 text-xs text-white/20">

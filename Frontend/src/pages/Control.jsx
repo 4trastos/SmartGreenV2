@@ -32,16 +32,6 @@ export default function Control({ data }) {
     })
   }
 
-  // const setTemp = async (zoneId, delta) => {
-  //   const zone = localZones.find(z => z.zone_id === zoneId)
-  //   const newTemp = Math.min(35, Math.max(15, zone.target_temp + delta))
-  //   setLocalZones(prev => prev.map(z => z.zone_id === zoneId ? { ...z, target_temp: newTemp } : z))
-  //   await fetch(`${API_URL}/config`, {
-  //     method: 'POST', headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify({ key: `target_temp_zone_${zoneId}`, value: newTemp })
-  //   })
-  // }
-
   const setTemp = async (zoneId, delta) => {
     const zone = localZones.find(z => z.zone_id === zoneId)
     const newTemp = Math.min(35, Math.max(15, zone.target_temp + delta))
@@ -162,12 +152,12 @@ export default function Control({ data }) {
                 </div>
               </div>
 
-              {/* Humedad — solo en modo AUTO */}
+              {/* Humedad máxima — solo en modo AUTO */}
               {zone.cool_fan_mode === 'AUTO' && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-white/40 text-xs uppercase tracking-wider">
-                      Humedad objetivo
+                      Humedad máxima
                     </span>
 
                     <button
@@ -185,55 +175,23 @@ export default function Control({ data }) {
                   {zone.humidity_control ? (
                     <div className="flex items-center gap-3">
 
-                      <div className="flex-1">
-                        <p className="text-white/30 text-xs mb-1">Mín</p>
+                      <button
+                        onClick={() => setHumidity(zone.zone_id, 'max', -5)}
+                        className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 cursor-pointer flex items-center justify-center"
+                      >
+                        −
+                      </button>
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setHumidity(zone.zone_id, 'min', -5)}
-                            className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 cursor-pointer flex items-center justify-center"
-                          >
-                            −
-                          </button>
+                      <span className="text-white font-mono font-bold flex-1 text-center">
+                        {zone.humidity_max}%
+                      </span>
 
-                          <span className="text-white font-mono font-bold flex-1 text-center">
-                            {zone.humidity_min}%
-                          </span>
-
-                          <button
-                            onClick={() => setHumidity(zone.zone_id, 'min', 5)}
-                            className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 cursor-pointer flex items-center justify-center"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="w-px h-12 bg-white/10" />
-
-                      <div className="flex-1">
-                        <p className="text-white/30 text-xs mb-1">Máx</p>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setHumidity(zone.zone_id, 'max', -5)}
-                            className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 cursor-pointer flex items-center justify-center"
-                          >
-                            −
-                          </button>
-
-                          <span className="text-white font-mono font-bold flex-1 text-center">
-                            {zone.humidity_max}%
-                          </span>
-
-                          <button
-                            onClick={() => setHumidity(zone.zone_id, 'max', 5)}
-                            className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 cursor-pointer flex items-center justify-center"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
+                      <button
+                        onClick={() => setHumidity(zone.zone_id, 'max', 5)}
+                        className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 text-white hover:bg-white/10 cursor-pointer flex items-center justify-center"
+                      >
+                        +
+                      </button>
 
                     </div>
                   ) : (

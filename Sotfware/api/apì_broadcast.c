@@ -76,7 +76,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             smartgreen->coolers[i].alarm_water,
             smartgreen->coolers[i].alarm_comms,
             smartgreen->coolers[i].alarm_warranty,
-            smartgreen->coolers[i].hours_running / 3600.0,
+            smartgreen->coolers[i].hours_running,
             smartgreen->coolers[i].alarm_maint_closing,
             smartgreen->coolers[i].alarm_maint_opening,
             smartgreen->coolers[i].alarm_maint_legionella,

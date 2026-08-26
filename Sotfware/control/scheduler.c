@@ -70,6 +70,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
     int         r52 = 0;
     int         startup_drain_done = 0;
     static int  heartbeat_tick = 0;
+    float       error = 0.0f;
 
     if (read_interval < 0)
         read_interval = SCHEDULER_READ_MIN;
@@ -130,18 +131,35 @@ void    scheduler_run(t_smartgreen *smartgreen)
                 {
                     if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "AUTO") == 0)
                     {
-                        new_speed = ft_auto_fan_speed(smartgreen, z);
-                        if (new_speed != smartgreen->zone_params[z].fan_speed_cmd)
+                        new_speed = ft_auto_fan_speed(smartgreen, z, &error);
+
+                        if (error < 0)
                         {
-                            smartgreen->zone_params[z].fan_speed_cmd = new_speed;
+                            // Standby — resetear integral para arranque limpio
+                            smartgreen->zone_params[z].integral = 0.0f;
+                            smartgreen->zone_params[z].fan_speed_cmd = 0;
+                            smartgreen->zone_params[z].pump_on = 0;
                             for (int i = 0; i < smartgreen->num_coolers; i++)
                                 if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
-                                {
-                                    r50 = calculate_register_50(0, smartgreen->zone_params[z].pump_on, new_speed);
-                                    r52 = calculate_register_52(new_speed);
-                                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-                                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
-                                }
+                                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, 0, 0));
+                        }
+                        else
+                        {
+                            // Normal — pump+fan a velocidad calculada
+                            int was_off = (smartgreen->zone_params[z].pump_on == 0);
+                            smartgreen->zone_params[z].pump_on = 1;
+                            if (new_speed != smartgreen->zone_params[z].fan_speed_cmd || was_off)
+                            {
+                                smartgreen->zone_params[z].fan_speed_cmd = new_speed;
+                                for (int i = 0; i < smartgreen->num_coolers; i++)
+                                    if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
+                                    {
+                                        r50 = calculate_register_50(0, smartgreen->zone_params[z].pump_on, new_speed);
+                                        r52 = calculate_register_52(new_speed);
+                                        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
+                                        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
+                                    }
+                            }
                         }
                         ft_auto_humidity_control(smartgreen, z);
                     }

@@ -60,12 +60,6 @@ enum MHD_Result api_put_scheduler(t_smartgreen *smartgreen, struct MHD_Connectio
     const char      *sql = "UPDATE scheduler SET name=?, zone_id=?, active=?, action=?, hour=?, "
                            "mon=?, tue=?, wed=?, thu=?, fri=?, sat=?, sun=? WHERE id=?;";
 
-    printf("\n========== PUT SCHEDULER ==========\n");
-    printf("id        = %d\n", id);
-    printf("body_size = %zu\n", body_size);
-    printf("body      = '%s'\n", body ? body : "(NULL)");
-    printf("===================================\n");
-
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
 
