@@ -1,5 +1,76 @@
 #include "../incl/smartgreen.h"
 
+enum MHD_Result api_get_cooler(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id)
+{
+    t_maintenance_log   last_maint;
+    char                responsed[4096];
+    int                 offset = 0;
+    int                 last_closing = 0;
+    int                 last_opening = 0;
+    int                 last_legionella = 0;
+    int                 z = 0;
+    int                 fan_speed_display = 0;
+    int                 idx = ft_find_cooler(smartgreen, unit_id);
+
+    if (idx == -1)
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Cooler not found\"}"));
+
+    pthread_mutex_lock(&smartgreen->data_mutex);
+
+    if (db_get_last_maintenance(smartgreen, smartgreen->coolers[idx].unit_id, MAINT_CLOSING, &last_maint) == 0)
+        last_closing = last_maint.timestamp;
+    if (db_get_last_maintenance(smartgreen, smartgreen->coolers[idx].unit_id, MAINT_OPENING, &last_maint) == 0)
+        last_opening = last_maint.timestamp;
+    if (db_get_last_maintenance(smartgreen, smartgreen->coolers[idx].unit_id, MAINT_LEGIONELLA, &last_maint) == 0)
+        last_legionella = last_maint.timestamp;
+    z = ft_find_zone(smartgreen, smartgreen->coolers[idx].zone_id);
+    fan_speed_display = (z != -1) ? smartgreen->zone_params[z].fan_speed_cmd : 0;
+
+    offset += snprintf(responsed + offset, sizeof(responsed),
+        "{"
+        "\"unit_id\":%d,\"zone_id\":%d,\"is_extractor\":%d,"
+        "\"drain_valve_open\":%d,\"drain_valve_confirm\":%d,"
+        "\"cool_mode_on\":%d,\"fan_on\":%d,\"fault_present\":%d,"
+        "\"inlet_valve_open\":%d,\"fan_speed_cmd\":%d,\"fan_speed_confirmed\":%d,"
+        "\"most_recent_fault\":%d,\"water_present\":%d,\"pump_on\":%d,\"solenoid_on\":%d,"
+        "\"salinity_ppm\":%.2f,\"salinity_us\":%.2f,\"error_count\":%d,"
+        "\"last_read\":%ld,\"last_mod\":%ld,"
+        "\"alarm_fault\":%d,\"alarm_salinity\":%d,\"alarm_water\":%d,\"alarm_comms\":%d,\"alarm_warranty\":%d,"
+        "\"hours_running\":%.1f,"
+        "\"alarm_maint_closing\":%d,\"alarm_maint_opening\":%d,\"alarm_maint_legionella\":%d,"
+        "\"last_closing\":%d,\"last_opening\":%d,\"last_legionella\":%d,"
+        "\"disabled\":%d,\"ramp_rate\":%d,\"cold_starts\":%d,\"fan_starts\":%d,"
+        "\"fan_hours\":%d,\"tank_drains\":%d,\"avg_tank_fill\":%d,"
+        "\"fan_speed_z1\":%d,\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
+        "\"extended_status\":%d,\"modbus_addr\":%d,\"r0_config\":%d,"
+        "\"prev_fan_starts\":%d,\"fan_zero_ticks\":%d,\"fan_running\":%d,\"last_off\":%ld"
+        "}",
+        smartgreen->coolers[idx].unit_id, smartgreen->coolers[idx].zone_id, smartgreen->coolers[idx].is_extractor,
+        smartgreen->coolers[idx].drain_valve_open, smartgreen->coolers[idx].drain_valve_confirm,
+        smartgreen->coolers[idx].cool_mode_on, smartgreen->coolers[idx].fan_on, smartgreen->coolers[idx].fault_present,
+        smartgreen->coolers[idx].inlet_valve_open, fan_speed_display, smartgreen->coolers[idx].fan_speed_confirmed,
+        smartgreen->coolers[idx].most_recent_fault, smartgreen->coolers[idx].water_present,
+        smartgreen->coolers[idx].pump_on, smartgreen->coolers[idx].solenoid_on,
+        smartgreen->coolers[idx].salinity_ppm, smartgreen->coolers[idx].salinity_us, smartgreen->coolers[idx].error_count,
+        smartgreen->coolers[idx].last_read, smartgreen->coolers[idx].last_mod,
+        smartgreen->coolers[idx].alarm_fault, smartgreen->coolers[idx].alarm_salinity,
+        smartgreen->coolers[idx].alarm_water, smartgreen->coolers[idx].alarm_comms, smartgreen->coolers[idx].alarm_warranty,
+        smartgreen->coolers[idx].hours_running / 3600.0,
+        smartgreen->coolers[idx].alarm_maint_closing, smartgreen->coolers[idx].alarm_maint_opening, smartgreen->coolers[idx].alarm_maint_legionella,
+        last_closing, last_opening, last_legionella,
+        smartgreen->coolers[idx].disabled, smartgreen->coolers[idx].ramp_rate,
+        smartgreen->coolers[idx].cold_starts, smartgreen->coolers[idx].fan_starts,
+        smartgreen->coolers[idx].fan_hours, smartgreen->coolers[idx].tank_drains, smartgreen->coolers[idx].avg_tank_fill,
+        smartgreen->coolers[idx].fan_speed_z1, smartgreen->coolers[idx].fan_speed_z2,
+        smartgreen->coolers[idx].fan_speed_z3, smartgreen->coolers[idx].fan_speed_z4, smartgreen->coolers[idx].fan_speed_z5,
+        smartgreen->coolers[idx].extended_status, smartgreen->coolers[idx].modbus_addr, smartgreen->coolers[idx].r0_config,
+        smartgreen->coolers[idx].prev_fan_starts, smartgreen->coolers[idx].fan_zero_ticks,
+        smartgreen->coolers[idx].fan_running, smartgreen->coolers[idx].last_off);
+
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    return (api_send_response(connection, MHD_HTTP_OK, responsed));
+}
+
 enum MHD_Result api_get_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {
     sqlite3_stmt        *stmt = NULL;

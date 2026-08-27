@@ -3,38 +3,25 @@
 void    ft_auto_humidity_control(t_smartgreen *smartgreen, int zone_idx)
 {
     float   humidity_actual;
-    // float   humidity_min;
     float   humidity_max;
     int     sensor_idx = -1;
     int     r50 = 0;
     int     zone_id = smartgreen->zone_params[zone_idx].zone_id;
 
-    // Buscar sensor INT de la zona
+    if (!smartgreen->zone_params[zone_idx].humidity_control)
+        return;  // ← control desactivado, no hacer nada
+
     for (int i = 0; i < smartgreen->num_sensors; i++)
         if (smartgreen->sensors[i].zone_id == zone_id && strcmp(smartgreen->sensors[i].type, "INT") == 0)
             { sensor_idx = i; break; }
-    
     if (sensor_idx == -1 || !smartgreen->sensors[sensor_idx].valid)
         return;
+
     humidity_actual = smartgreen->sensors[sensor_idx].humidity;
-    // humidity_min = smartgreen->zone_params[zone_idx].humidity_min;
     humidity_max = smartgreen->zone_params[zone_idx].humidity_max;
 
-    // Control ON/OFF con histéresis
-    // if (humidity_actual < humidity_min && !smartgreen->zone_params[zone_idx].pump_on)
-    // {
-    //     // Encender bomba — necesita más agua
-    //     smartgreen->zone_params[zone_idx].pump_on = 1;
-    //     for (int i = 0; i < smartgreen->num_coolers; i++)
-    //         if (smartgreen->coolers[i].zone_id == zone_id)
-    //         {
-    //             r50 = calculate_register_50(0, 1, smartgreen->zone_params[zone_idx].fan_speed_cmd);
-    //             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-    //         }
-    // }
     if (humidity_actual > humidity_max && smartgreen->zone_params[zone_idx].pump_on)
     {
-        // Apagar bomba — humedad suficiente
         smartgreen->zone_params[zone_idx].pump_on = 0;
         for (int i = 0; i < smartgreen->num_coolers; i++)
             if (smartgreen->coolers[i].zone_id == zone_id)
@@ -43,7 +30,16 @@ void    ft_auto_humidity_control(t_smartgreen *smartgreen, int zone_idx)
                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
             }
     }
-    return;
+    else if (humidity_actual <= humidity_max && !smartgreen->zone_params[zone_idx].pump_on)
+    {
+        smartgreen->zone_params[zone_idx].pump_on = 1;
+        for (int i = 0; i < smartgreen->num_coolers; i++)
+            if (smartgreen->coolers[i].zone_id == zone_id)
+            {
+                r50 = calculate_register_50(0, 1, smartgreen->zone_params[zone_idx].fan_speed_cmd);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
+            }
+    }
 }
 
 int     sensor_validate(t_sensor_state *sensor)

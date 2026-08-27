@@ -88,6 +88,7 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
                 drain_args->smartgreen = smartgreen;
                 drain_args->unit_id = smartgreen->coolers[i].unit_id;
                 drain_args->zone_id = smartgreen->coolers[i].zone_id;
+                drain_args->reason = DRAIN_SALINITY;
                 pthread_t   tid;
                 pthread_create(&tid, NULL, ft_drain_thread, drain_args);
                 pthread_detach(tid);

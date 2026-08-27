@@ -114,6 +114,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
                                             drain_args->smartgreen = smartgreen;
                                             drain_args->zone_id    = smartgreen->zone_params[h].zone_id;
                                             drain_args->unit_id    = smartgreen->coolers[i].unit_id;
+                                            drain_args->reason     = DRAIN_SAFETY;
                                             pthread_t tid;
                                             pthread_create(&tid, NULL, ft_drain_thread, drain_args);
                                             pthread_detach(tid);
@@ -193,9 +194,10 @@ void    scheduler_run(t_smartgreen *smartgreen)
                             t_drain_args *drain_args = malloc(sizeof(t_drain_args));
                             if (drain_args)
                             {
-                                drain_args->smartgreen = smartgreen;
-                                drain_args->zone_id = smartgreen->zone_params[h].zone_id;
-                                drain_args->unit_id= smartgreen->coolers[i].unit_id;
+                                drain_args->smartgreen  = smartgreen;
+                                drain_args->zone_id     = smartgreen->zone_params[h].zone_id;
+                                drain_args->unit_id     = smartgreen->coolers[i].unit_id;
+                                drain_args->reason      = DRAIN_PERIODIC;
                                 pthread_t tid;
                                 pthread_create(&tid, NULL, ft_drain_thread, drain_args);
                                 pthread_detach(tid);

@@ -1,5 +1,59 @@
 #include "../incl/smartgreen.h"
 
+enum MHD_Result api_post_cooler_raw(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, int reg, const char *body, size_t body_size)
+{
+    int value = 0;
+
+    if (!body || body_size == 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
+    if (sscanf(body, "{\"value\":%d}", &value) != 1)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, reg, value);
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
+
+enum MHD_Result api_post_zone_solenoid(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size)
+{
+    char    action[8] = {0};
+    int     on;
+
+    if (!body || body_size == 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
+    if (sscanf(body, "{\"action\":\"%7[^\"]\"}", action) != 1)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
+    on = (strcmp(action, "ON") == 0) ? 1 : 0;
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+        if (smartgreen->coolers[i].zone_id == id)
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE,
+                smartgreen->coolers[i].unit_id, 50, calculate_register_51(on, 1));
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
+
+enum MHD_Result api_post_zone_pump(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size)
+{
+    char    action[8] = {0};
+    int     on;
+    int     zone_idx;
+
+    if (!body || body_size == 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
+    if (sscanf(body, "{\"action\":\"%7[^\"]\"}", action) != 1)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
+    on = (strcmp(action, "ON") == 0) ? 1 : 0;
+    zone_idx = ft_find_zone(smartgreen, id);
+    if (zone_idx == -1)
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    smartgreen->zone_params[zone_idx].pump_on = on;
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+        if (smartgreen->coolers[i].zone_id == id)
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE,
+                smartgreen->coolers[i].unit_id, 49,
+                calculate_register_50(0, on, smartgreen->zone_params[zone_idx].fan_speed_cmd));
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
+
 enum MHD_Result api_post_zone_targettemp(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size)
 {
     float   value = 0.0f;
@@ -409,10 +463,8 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
             for (int i = 0; i < smartgreen->num_coolers; i++)
                 if (smartgreen->coolers[i].zone_id == id)
                 {
-                    int r50 = calculate_register_50(0, 0, 1);       // sin pump, fan speed 1
-                    int r52 = calculate_register_52(1);
-                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, 16); // fan=1, pump=OFF, drain=0
+                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, REG50_SOLENOID_OFF); // solenoid=OFF
                 }
         }
         else

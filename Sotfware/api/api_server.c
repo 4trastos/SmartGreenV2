@@ -46,6 +46,8 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
 
     if (strcmp(method, "GET") == 0)
     {
+        if (strncmp(url, "/api/coolers/", 13) == 0)
+            return (api_get_cooler(smartgreen, connection, atoi(url + 13)));
         if (strcmp(url, "/api/coolers") == 0)
             return(api_get_coolers(smartgreen, connection));
         if (strcmp(url, "/api/sensors") == 0)
@@ -116,6 +118,10 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
                 ret = api_post_zone_humidity_control(smartgreen, connection, id, ctx->body, ctx->len);
             else if (strcmp(action, "targettemp") == 0)
                 ret = api_post_zone_targettemp(smartgreen, connection, id, ctx->body, ctx->len);
+            else if (strcmp(action, "solenoid") == 0)
+                ret = api_post_zone_solenoid(smartgreen, connection, id, ctx->body, ctx->len);
+            else if (strcmp(action, "pump") == 0)
+                ret = api_post_zone_pump(smartgreen, connection, id, ctx->body, ctx->len);
             else
                 ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown action\"}");
             free(ctx);
@@ -190,6 +196,56 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             free(ctx);
             *con_cls = NULL;
             return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+        }
+
+        ctx = *con_cls;
+        if (sscanf(url, "/api/coolers/%d/%31s", &id, action) == 2)
+        {
+            if (strcmp(action, "r0") == 0)
+                ret = api_post_cooler_raw(smartgreen, connection, id, 0, ctx->body, ctx->len);
+            else if (strcmp(action, "r49") == 0)
+                ret = api_post_cooler_raw(smartgreen, connection, id, 49, ctx->body, ctx->len);
+            else if (strcmp(action, "r50") == 0)
+                ret = api_post_cooler_raw(smartgreen, connection, id, 50, ctx->body, ctx->len);
+            else if (strcmp(action, "r52") == 0)
+                ret = api_post_cooler_raw(smartgreen, connection, id, 52, ctx->body, ctx->len);
+            else if (strcmp(action, "heartbeat") == 0)
+            {
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_HEARTBEAT, id, 400, 300);
+                ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+            }
+            else if (strcmp(action, "prewet") == 0)
+            {
+                t_prewet_args *args = malloc(sizeof(t_prewet_args));
+                if (args) {
+                    args->smartgreen = smartgreen;
+                    args->zone_id = smartgreen->coolers[ft_find_cooler(smartgreen, id)].zone_id;
+                    args->need_prewet = 1;
+                    pthread_t tid;
+                    pthread_create(&tid, NULL, prewet_thread, args);
+                    pthread_detach(tid);
+                }
+                ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+            }
+            else if (strcmp(action, "drain_cycle") == 0)
+            {
+                t_drain_args *drain_args = malloc(sizeof(t_drain_args));
+                if (drain_args) {
+                    drain_args->smartgreen = smartgreen;
+                    drain_args->unit_id = id;
+                    drain_args->zone_id = smartgreen->coolers[ft_find_cooler(smartgreen, id)].zone_id;
+                    drain_args->reason = DRAIN_SALINITY;
+                    pthread_t tid;
+                    pthread_create(&tid, NULL, ft_drain_thread, drain_args);
+                    pthread_detach(tid);
+                }
+                ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+            }
+            else
+                ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown action\"}");
+            free(ctx);
+            *con_cls = NULL;
+            return (ret);
         }
         
         free(ctx);

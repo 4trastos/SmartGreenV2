@@ -103,6 +103,15 @@
 # define MAINT_LEGIONELLA       "legionella"   // Tratamiento legionela
 # define MAINT_REPAIR           "repair"       // Reparación puntual
 
+/* CONSTANTES VERIFICADAS POR SNIFFING */
+# define REG49_ENCENDIDO                48      // pump=OFF, fan=3
+# define REG49_PARADA                   162     // fan=10 parada gradual
+# define REG49_APAGADO                  0       // todo OFF
+# define REG50_SOLENOID_ON              24      // solenoid=ON, drain=CLOSED
+# define REG50_SOLENOID_OFF             16      // solenoid=OFF, drain=CLOSED
+# define REG50_DRAIN_OPEN_SOLENOID_ON   8       // solenoid=ON, drain=OPEN
+# define REG50_DRAIN_OPEN_SOLENOID_OFF  0       // solenoid=OFF, drain=OPEN
+
 
 extern const char *SCHEMA_SQL;
 
@@ -331,9 +340,17 @@ typedef struct s_prewet_args
     int                 padding;
 }   t_prewet_args;
 
+typedef enum e_drain_reason
+{
+    DRAIN_SALINITY,
+    DRAIN_PERIODIC,
+    DRAIN_SAFETY
+}   t_drain_reason;
+
 typedef struct s_drain_args
 {
     t_smartgreen        *smartgreen;
+    t_drain_reason      reason;
     int                 zone_id;
     int                 unit_id;
     int                 padding;
@@ -439,6 +456,7 @@ int                 api_start(t_smartgreen *smartgreen);
 void                api_stop(t_smartgreen *smartgreen);
 enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls);
 enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_get_cooler(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id);
 enum MHD_Result     api_get_sensors(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_get_zones(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_get_status(t_smartgreen *smartgreen, struct MHD_Connection *connection);
@@ -462,6 +480,9 @@ enum MHD_Result     api_post_zone_humidity(t_smartgreen *smartgreen, struct MHD_
 enum MHD_Result     api_post_zone_humidity_control(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_delete_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id);
 enum MHD_Result     api_post_zone_targettemp(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
+enum MHD_Result     api_post_zone_pump(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
+enum MHD_Result     api_post_zone_solenoid(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
+enum MHD_Result     api_post_cooler_raw(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, int reg, const char *body, size_t body_size);
 
 /*  WEBSOCKET   */
 int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
