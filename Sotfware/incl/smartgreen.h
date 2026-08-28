@@ -56,7 +56,6 @@
 # define SQL_SAVE_FAULT_LOG     "INSERT INTO fault_log (id, unit_id, fault_code, fault_present, time_created, time_cleared) VALUES(?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_ZONES         "INSERT OR REPLACE INTO zones (id, name, enabled) VALUES(?, ?, ?)"
 # define SQL_SAVE_SENSOR_ZONE   "INSERT OR REPLACE INTO sensor_zone (sensor_id, zone_id) VALUES(?, ?)"
-// # define SQL_SAVE_SCHEDULER     "INSERT OR IGNORE INTO scheduler (id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_SCHEDULER     "INSERT INTO scheduler (name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_MAINTENANCE   "INSERT OR REPLACE INTO maintenance_log (id, unit_id, timestamp, type, description, technician, next_service) VALUES(?, ?, ?, ?, ?, ?, ?)"
 # define SQL_INIT_USER          "INSERT OR IGNORE INTO users (id, username, password, role, active) VALUES (?, ?, ?, ?, ?)"
@@ -102,6 +101,7 @@
 # define MAINT_CLOSING          "closing"      // Cierre / fin temporada
 # define MAINT_LEGIONELLA       "legionella"   // Tratamiento legionela
 # define MAINT_REPAIR           "repair"       // Reparación puntual
+# define IMD_PIN                "1234"
 
 /* CONSTANTES VERIFICADAS POR SNIFFING */
 # define REG49_ENCENDIDO                48      // pump=OFF, fan=3
@@ -483,6 +483,7 @@ enum MHD_Result     api_post_zone_targettemp(t_smartgreen *smartgreen, struct MH
 enum MHD_Result     api_post_zone_pump(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_post_zone_solenoid(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_post_cooler_raw(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, int reg, const char *body, size_t body_size);
+enum MHD_Result     api_post_imd_unlock(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 
 /*  WEBSOCKET   */
 int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);

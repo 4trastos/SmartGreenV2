@@ -1,5 +1,19 @@
 #include "../incl/smartgreen.h"
 
+enum MHD_Result api_post_imd_unlock(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
+{
+    (void)smartgreen;
+    char pin[16] = {0};
+
+    if (!body || body_size == 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
+    if (sscanf(body, "{\"pin\":\"%15[^\"]\"}", pin) != 1)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
+    if (strcmp(pin, IMD_PIN) != 0)
+        return (api_send_response(connection, MHD_HTTP_UNAUTHORIZED, "{\"error\":\"PIN incorrecto\"}"));
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
+
 int     db_get_last_maintenance(t_smartgreen *smartgreen, int unit_id, const char *type, t_maintenance_log *out)
 {
     sqlite3_stmt    *stmt = NULL;

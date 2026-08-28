@@ -6,6 +6,7 @@ import Maintenance from './pages/Maintenance'
 import Settings from './pages/Settings'
 import { useSmartGreen } from './hooks/useSmartGreen'
 import Scheduler from './pages/Scheduler'
+import IMD from './pages/IMD'
 
 import { API_URL } from './config.js'
 
@@ -30,6 +31,7 @@ function RebootModal({ onClose }) {
     setRebooting(true)
     await fetch(`${API_URL}/reboot`, { method: 'POST' }).catch(() => {})
   }
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
@@ -75,6 +77,8 @@ function Clock() {
 export default function App() {
   const [page, setPage] = useState('dashboard')
   const [showReboot, setShowReboot] = useState(false)
+  const [imdActive, setImdActive] = useState(false)
+  const [imdZoneId, setImdZoneId] = useState(null)
   const { data, connected } = useSmartGreen()
 
   const alarmCount = data.coolers.filter(c =>
@@ -165,7 +169,25 @@ export default function App() {
           </div>
         </header>
         <div className="flex-1 overflow-hidden">
-          <PageComponent data={data} connected={connected} />
+          {imdActive ? (
+            <IMD
+              data={data}
+              onExit={() => {
+                setImdActive(false)
+                fetch(`${API_URL}/zones/${imdZoneId}/mode`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ mode: 'AUTO' })
+                })
+              }}
+            />
+          ) : (
+            <PageComponent
+              data={data}
+              connected={connected}
+              onImdActivate={(zoneId) => { setImdActive(true); setImdZoneId(zoneId) }}
+            />
+          )}
         </div>
       </main>
 

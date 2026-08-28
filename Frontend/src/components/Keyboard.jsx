@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const ROWS = [
+const ROWS_FULL = [
   ['1','2','3','4','5','6','7','8','9','0'],
   ['q','w','e','r','t','y','u','i','o','p'],
   ['a','s','d','f','g','h','j','k','l','ñ'],
@@ -8,8 +8,16 @@ const ROWS = [
   ['CAPS','ESPACIO','↵']
 ]
 
-export default function Keyboard({ value, onChange, onClose }) {
+const ROWS_NUMERIC = [
+  ['1','2','3'],
+  ['4','5','6'],
+  ['7','8','9'],
+  ['⌫','0','↵']
+]
+
+export default function Keyboard({ value, onChange, onClose, numeric = false }) {
   const [caps, setCaps] = useState(false)
+  const ROWS = numeric ? ROWS_NUMERIC : ROWS_FULL
 
   const press = (key) => {
     if (key === '⌫') onChange(value.slice(0, -1))

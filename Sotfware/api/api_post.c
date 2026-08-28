@@ -521,20 +521,26 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
     int speed = 0;
     int r50 = 0;
     int r52 = 0;
+    int pump = 0;
 
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
     if (sscanf(body, "{\"speed\":%d}", &speed) != 1)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON SPEED\"}"));
     if (speed < 0 || speed > 10)
-        return (api_send_response(connection,  MHD_HTTP_BAD_REQUEST, "{\"error\":\"speed must be between 0 and 10\"}"));
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"speed must be between 0 and 10\"}"));
     zone_idx = ft_find_zone(smartgreen, id);
     if (zone_idx == -1)
         return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
 
     pthread_mutex_lock(&smartgreen->data_mutex);
     smartgreen->zone_params[zone_idx].fan_speed_cmd = speed;
-    db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);              // Nuevo -> posible error??
+
+    // En modo FAN no encender bomba
+    pump = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") == 0) ? 0 : 1;
+    smartgreen->zone_params[zone_idx].pump_on = pump;
+
+    db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
     pthread_mutex_unlock(&smartgreen->data_mutex);
 
     if (smartgreen->modbus_ctx)
@@ -543,7 +549,7 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
         {
             if (smartgreen->coolers[i].zone_id == id)
             {
-                r50 = calculate_register_50(0, 1, speed);
+                r50 = calculate_register_50(0, pump, speed);
                 r52 = calculate_register_52(speed);
                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);

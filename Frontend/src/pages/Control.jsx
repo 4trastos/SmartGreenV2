@@ -1,18 +1,50 @@
 import { useState, useEffect } from 'react'
 import { API_URL } from '../config.js'
+import Keyboard from '../components/Keyboard'
 
-export default function Control({ data }) {
+export default function Control({ data, onImdActivate }) {
   const zones = data.zones.length > 0 ? data.zones : [
     { zone_id: 1, on_off: 'ON', fan_speed_cmd: 7, target_temp: 25.0, cool_fan_mode: 'AUTO', humidity_min: 60, humidity_max: 70, humidity_control: 1  },
     { zone_id: 2, on_off: 'OFF', fan_speed_cmd: 3, target_temp: 22.0, cool_fan_mode: 'AUTO', humidity_min: 60, humidity_max: 70, humidity_control: 1  }
   ]
 
   const [localZones, setLocalZones] = useState(zones)
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [pin, setPin] = useState('')
+  const [pinError, setPinError] = useState(false)
+  const [pendingZoneId, setPendingZoneId] = useState(null)
+  const [showPinKeyboard, setShowPinKeyboard] = useState(false)
 
   useEffect(() => {
     if (data.zones.length > 0)
       setLocalZones([...data.zones])
   }, [JSON.stringify(data.zones)])
+
+  const handleModeClick = async (zoneId, mode) => {
+    if (mode === 'IMD') {
+      setPendingZoneId(zoneId)
+      setPin('')
+      setPinError(false)
+      setShowPinModal(true)
+    } else {
+      setMode(zoneId, mode)
+    }
+  }
+
+  const confirmPin = async () => {
+    const res = await fetch(`${API_URL}/imd/unlock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin })
+    })
+    if (res.ok) {
+      setShowPinModal(false)
+      setMode(pendingZoneId, 'IMD')
+      onImdActivate(pendingZoneId)
+    } else {
+      setPinError(true)
+    }
+  }
 
   const toggle = async (zoneId) => {
     const zone = localZones.find(z => z.zone_id === zoneId)
@@ -75,6 +107,7 @@ export default function Control({ data }) {
   const MODES = ['AUTO', 'MANUAL', 'FAN', 'IMD']
 
   return (
+    <>
     <div className="h-full flex flex-col p-6 gap-4">
       <p className="text-white/30 text-xs font-bold tracking-widest uppercase shrink-0">Control de zonas</p>
       <div className="flex gap-4 flex-1">
@@ -98,6 +131,13 @@ export default function Control({ data }) {
                     ${zone.on_off === 'ON' ? 'left-9' : 'left-1'}`} />
                 </button>
               </div>
+
+              {/* Aviso modo FAN */}
+              {zone.cool_fan_mode === 'FAN' && zone.on_off === 'ON' && (
+                <div className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-yellow-500/15 border border-yellow-500/40 text-yellow-400 font-black tracking-wide">
+                  ⚠️ MODO VENTILACIÓN — NO está enfriando
+                </div>
+              )}
 
               {/* Fan speed */}
               {(zone.cool_fan_mode === 'MANUAL' ||  zone.cool_fan_mode === 'FAN') && (
@@ -141,11 +181,9 @@ export default function Control({ data }) {
                 <span className="text-white/40 text-xs uppercase tracking-wider block mb-3">Modo</span>
                 <div className="grid grid-cols-4 gap-2">
                   {MODES.map(m => (
-                    <button key={m} onClick={() => setMode(zone.zone_id, m)}
+                    <button key={m} onClick={() => handleModeClick(zone.zone_id, m)}
                       className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer
-                        ${zone.cool_fan_mode === m
-                          ? 'bg-[#088fc3] text-white'
-                          : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
+                        ${zone.cool_fan_mode === m ? 'bg-[#088fc3] text-white' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
                       {m}
                     </button>
                   ))}
@@ -206,5 +244,44 @@ export default function Control({ data }) {
         })}
       </div>
     </div>
+    {/* Modal PIN - IMD */}
+    {showPinModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg"
+        onClick={() => setShowPinModal(false)}>
+        <div onClick={e => e.stopPropagation()}
+          className="w-[320px] rounded-3xl border border-red-500/30 p-6 bg-[#060c12] shadow-2xl">
+          <p className="text-white/30 text-xs tracking-widest uppercase mb-1">Acceso restringido</p>
+          <p className="text-white text-2xl font-black mb-6">Modo IMD</p>
+          <input value={pin}
+            readOnly
+            onFocus={() => setShowPinKeyboard(true)}
+            onClick={e => { e.stopPropagation(); setShowPinKeyboard(true) }}
+            onTouchStart={e => e.stopPropagation()}
+            placeholder="PIN técnico"
+            className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-white text-center text-2xl font-mono tracking-widest mb-2
+              ${pinError ? 'border-red-500/60' : 'border-white/10'}`} />
+          {pinError && <p className="text-red-400 text-xs text-center mb-4">PIN incorrecto</p>}
+          <div className="flex gap-3 mt-4">
+            <button onClick={() => setShowPinModal(false)}
+              className="flex-1 py-3 rounded-xl bg-white/5 text-white/60 font-bold cursor-pointer">
+              Cancelar
+            </button>
+            <button onClick={confirmPin}
+              className="flex-1 py-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 font-bold cursor-pointer">
+              Acceder
+            </button>
+          </div>
+          {showPinKeyboard && (
+            <Keyboard
+              value={pin}
+              onChange={val => setPin(val)}
+              onClose={() => setShowPinKeyboard(false)}
+              numeric={true}
+            />
+          )}
+        </div>
+      </div>
+    )}
+    </>
   )
 }

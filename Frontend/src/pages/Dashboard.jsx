@@ -80,6 +80,11 @@ function CoolerCard({ cooler, onClick, toggleCooler, zone }) {
           <p className="text-white/20 text-xs">/10</p>
         </div>
       </div>
+      {zone?.cool_fan_mode === 'FAN' && zone?.on_off === 'ON' && (
+        <div className="w-full text-center py-1 rounded-lg bg-yellow-500/15 text-yellow-400 text-xs font-bold mb-2">
+          ⚠️ No enfría
+        </div>
+      )}
       <div className="flex gap-2 text-xs">
         <div className="flex-1 bg-black/20 rounded-lg p-2 text-center">
           <p className="text-white/25 mb-0.5">Agua</p>
@@ -185,6 +190,11 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
             style={{ height: `${Math.max(10,(v/10)*100)}%`, backgroundColor: i===8 ? (s==='active'?'#088fc3':s==='fault'?'#ef4444':'#eab308') : '#ffffff15' }} />
         ))}
       </div>
+      {zone?.cool_fan_mode === 'FAN' && zone?.on_off === 'ON' && (
+        <div className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-yellow-500/15 border border-yellow-500/40 text-yellow-400 text-sm font-black tracking-wide mb-2">
+          ⚠️ VENTILACIÓN — No enfría
+        </div>
+      )}
       <div className="grid grid-cols-4 gap-3">
         {[
           { l:'Agua', v: cooler.alarm_water ? 'Sin agua' : 'Con agua', c: cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
