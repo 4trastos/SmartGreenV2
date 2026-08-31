@@ -34,13 +34,16 @@ enum MHD_Result api_post_zone_pump(t_smartgreen *smartgreen, struct MHD_Connecti
     char    action[8] = {0};
     int     on;
     int     zone_idx;
+    int     fan_speed;
 
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
     if (sscanf(body, "{\"action\":\"%7[^\"]\"}", action) != 1)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
+
     on = (strcmp(action, "ON") == 0) ? 1 : 0;
     zone_idx = ft_find_zone(smartgreen, id);
+    fan_speed = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "IMD") == 0) ? 0 : smartgreen->zone_params[zone_idx].fan_speed_cmd;
     if (zone_idx == -1)
         return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
     pthread_mutex_lock(&smartgreen->data_mutex);
@@ -48,9 +51,7 @@ enum MHD_Result api_post_zone_pump(t_smartgreen *smartgreen, struct MHD_Connecti
     pthread_mutex_unlock(&smartgreen->data_mutex);
     for (int i = 0; i < smartgreen->num_coolers; i++)
         if (smartgreen->coolers[i].zone_id == id)
-            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE,
-                smartgreen->coolers[i].unit_id, 49,
-                calculate_register_50(0, on, smartgreen->zone_params[zone_idx].fan_speed_cmd));
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, on, fan_speed));
     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
 
@@ -537,7 +538,7 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
     smartgreen->zone_params[zone_idx].fan_speed_cmd = speed;
 
     // En modo FAN no encender bomba
-    pump = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") == 0) ? 0 : 1;
+    pump = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") == 0 || strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "IMD") == 0) ? 0 : 1;
     smartgreen->zone_params[zone_idx].pump_on = pump;
 
     db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);

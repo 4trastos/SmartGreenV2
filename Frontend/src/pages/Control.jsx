@@ -14,6 +14,7 @@ export default function Control({ data, onImdActivate }) {
   const [pinError, setPinError] = useState(false)
   const [pendingZoneId, setPendingZoneId] = useState(null)
   const [showPinKeyboard, setShowPinKeyboard] = useState(false)
+  const [showImdWarning, setShowImdWarning] = useState(false)
 
   useEffect(() => {
     if (data.zones.length > 0)
@@ -22,6 +23,12 @@ export default function Control({ data, onImdActivate }) {
 
   const handleModeClick = async (zoneId, mode) => {
     if (mode === 'IMD') {
+      const zone = localZones.find(z => z.zone_id === zoneId)
+      if (zone.on_off === 'ON') {
+        setShowImdWarning(true)
+        setTimeout(() => setShowImdWarning(false), 3000)
+        return
+      }
       setPendingZoneId(zoneId)
       setPin('')
       setPinError(false)
@@ -188,6 +195,11 @@ export default function Control({ data, onImdActivate }) {
                     </button>
                   ))}
                 </div>
+                {showImdWarning && (
+                  <div className="mt-2 py-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-bold text-center">
+                    ⚠️ Apaga el cooler antes de entrar en modo IMD
+                  </div>
+                )}
               </div>
 
               {/* Humedad máxima — solo en modo AUTO */}

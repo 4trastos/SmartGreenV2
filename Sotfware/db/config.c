@@ -186,9 +186,9 @@ int ft_init_data(t_smartgreen *smartgreen)
         {
             smartgreen->zone_params[i].zone_id = i + 1;
             smartgreen->zone_params[i].fan_speed_cmd = 3;
-            smartgreen->zone_params[i].target_temp = 25.0;
+            smartgreen->zone_params[i].target_temp = 20.0;
             smartgreen->zone_params[i].humidity_min = 60.0;
-            smartgreen->zone_params[i].humidity_max = 70.0;
+            smartgreen->zone_params[i].humidity_max = 85.0;
             smartgreen->zone_params[i].integral = 00.0;
             smartgreen->zone_params[i].pump_on = 0;
             smartgreen->zone_params[i].humidity_control = 0;

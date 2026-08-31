@@ -1,12 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { API_URL } from '../config.js'
 
 const SECTIONS = ['test', 'config', 'info']
 
 export default function IMD({ data, onExit }) {
   const [section, setSection] = useState('test')
+  const [prewetRunning, setPrewetRunning] = useState(false)
   const cooler = data.coolers?.[0]
   const zone = data.zones?.[0]
+
+   useEffect(() => {
+    if (zone && zone.prewet_in_progress === 'no' && prewetRunning)
+      setPrewetRunning(false)
+  }, [data.zones])
 
   const sendCmd = async (endpoint, body) => {
     await fetch(`${API_URL}${endpoint}`, {
@@ -98,17 +104,32 @@ export default function IMD({ data, onExit }) {
 
             {/* Prewet */}
             <div className="bg-white/4 rounded-2xl p-4">
-            <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Prewet</p>
-            <div className="flex gap-2">
-                <button onClick={() => sendCmd(`/coolers/${cooler?.unit_id}/prewet`, {})}
-                className="flex-1 py-2 rounded-xl bg-[#088fc3]/20 text-[#088fc3] text-sm font-bold cursor-pointer hover:bg-[#088fc3]/30">
-                Forzar
-                </button>
-                <button onClick={() => sendCmd(`/zones/${zone?.zone_id}/onoff`, {action:'OFF'})}
-                className="flex-1 py-2 rounded-xl bg-red-500/20 text-red-400 text-sm font-bold cursor-pointer hover:bg-red-500/30">
-                Detener
-                </button>
-            </div>
+                <div className="flex items-center justify-between mb-3">
+                    <p className="text-white/40 text-xs uppercase tracking-wider">Prewet (Test)</p>
+                    {prewetRunning && (
+                    <span className="px-2 py-1 rounded-lg bg-green-500/20 border border-green-500/40 text-green-400 text-xs font-bold">
+                        ● Test en marcha
+                    </span>
+                    )}
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={() => {
+                        setPrewetRunning(true)
+                        sendCmd(`/coolers/${cooler?.unit_id}/prewet_test`, {})
+                        }}
+                        disabled={prewetRunning}
+                        className={`flex-1 py-2 rounded-xl text-sm font-bold cursor-pointer
+                            ${prewetRunning ? 'bg-white/5 text-white/20 cursor-not-allowed' : 'bg-[#088fc3]/20 text-[#088fc3] hover:bg-[#088fc3]/30'}`}>
+                        Forzar
+                    </button>
+                    <button onClick={async () => {
+                    setPrewetRunning(false)
+                    await sendCmd(`/zones/${zone?.zone_id}/onoff`, {action:'OFF'})
+                    }}
+                    className="flex-1 py-2 rounded-xl bg-red-500/20 text-red-400 text-sm font-bold cursor-pointer hover:bg-red-500/30">
+                    Detener
+                    </button>
+                </div>
             </div>
         </div>
         )}
@@ -116,7 +137,7 @@ export default function IMD({ data, onExit }) {
         {/* Config técnica */}
         {section === 'config' && (
         <div className="flex-1 overflow-y-auto">
-            <p className="text-white/30 text-sm text-center mt-8">⚙️ Configuración técnica — próximamente</p>
+            <p className="text-white/30 text-sm text-center mt-8">Configuración técnica — próximamente</p>
         </div>
         )}
 

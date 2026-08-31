@@ -87,7 +87,7 @@ export default function App() {
     s.alarm_signal || s.alarm_temp
   ).length
 
-  const isPrewet = data.zones.some(z => z.prewet_in_progress === 'yes')
+  const isPrewet = !imdActive && data.zones.some(z => z.prewet_in_progress === 'yes')
   const pages = { dashboard: Dashboard, control: Control, alarms: Alarms, maint: Maintenance, settings: Settings, scheduler: Scheduler }
   const PageComponent = pages[page]
 
@@ -107,9 +107,9 @@ export default function App() {
             const isActive = page === item.id
             const hasAlert = item.id === 'alarms' && alarmCount > 0
             return (
-              <button key={item.id} onClick={() => !isPrewet && setPage(item.id)} title={item.label}
+              <button key={item.id} onClick={() => !isPrewet && !imdActive && setPage(item.id)} title={item.label}
                 className={`relative group w-full h-11 rounded-xl flex items-center justify-center transition-all duration-200
-                  ${isPrewet ? 'opacity-30 cursor-not-allowed text-white/20' : isActive ? 'bg-[#088fc3]/20 text-white shadow-[inset_0_0_0_1px_rgba(8,143,195,0.3)] cursor-pointer' : 'text-white/40 hover:text-white hover:bg-white/6 cursor-pointer'}`}>
+                  ${isPrewet || imdActive ? 'opacity-30 cursor-not-allowed text-white/20' : isActive ? 'bg-[#088fc3]/20 text-white shadow-[inset_0_0_0_1px_rgba(8,143,195,0.3)] cursor-pointer' : 'text-white/40 hover:text-white hover:bg-white/6 cursor-pointer'}`}>
                 {item.icon}
                 {hasAlert && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_6px_#ef4444]" />}
                 <span className="absolute left-14 bg-[#0d1a26] text-white text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/10 shadow-xl z-50">
@@ -174,10 +174,10 @@ export default function App() {
               data={data}
               onExit={() => {
                 setImdActive(false)
-                fetch(`${API_URL}/zones/${imdZoneId}/mode`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ mode: 'AUTO' })
+                fetch(`${API_URL}/zones/${imdZoneId}/onoff`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'OFF'})
+                })
+                fetch(`${API_URL}/zones/${imdZoneId}/cancelprewet`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})
+                fetch(`${API_URL}/zones/${imdZoneId}/mode`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mode: 'AUTO'})
                 })
               }}
             />

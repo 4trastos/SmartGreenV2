@@ -130,6 +130,8 @@ void    scheduler_run(t_smartgreen *smartgreen)
                 // ← Control AUTO por zona
                 for (int z = 0; z < smartgreen->num_zones; z++)
                 {
+                    if (strcmp(smartgreen->zone_params[z].prewet_in_progress, "yes") == 0)
+                        continue;
                     if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "AUTO") == 0)
                     {
                         new_speed = ft_auto_fan_speed(smartgreen, z, &error);

@@ -122,6 +122,17 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
                 ret = api_post_zone_solenoid(smartgreen, connection, id, ctx->body, ctx->len);
             else if (strcmp(action, "pump") == 0)
                 ret = api_post_zone_pump(smartgreen, connection, id, ctx->body, ctx->len);
+            else if (strcmp(action, "cancelprewet") == 0)
+            {
+                int z = ft_find_zone(smartgreen, id);
+                if (z != -1) {
+                    pthread_mutex_lock(&smartgreen->data_mutex);
+                    ft_strcpy(smartgreen->zone_params[z].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
+                    db_update_zone_params(smartgreen, &smartgreen->zone_params[z]);
+                    pthread_mutex_unlock(&smartgreen->data_mutex);
+                }
+                ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+            }
             else
                 ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown action\"}");
             free(ctx);
@@ -249,6 +260,28 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
                     pthread_detach(tid);
                 }
                 ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+            }
+            else if (strcmp(action, "prewet_test") == 0)
+            {
+                int idx = ft_find_cooler(smartgreen, id);
+                if (idx == -1)
+                {
+                    ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Cooler not found\"}");
+                }
+                else
+                {
+                    t_prewet_args *args = malloc(sizeof(t_prewet_args));
+                    if (args)
+                    {
+                        args->smartgreen  = smartgreen;
+                        args->zone_id     = smartgreen->coolers[idx].zone_id;
+                        args->need_prewet = 1;
+                        pthread_t tid;
+                        pthread_create(&tid, NULL, prewet_test_thread, args);
+                        pthread_detach(tid);
+                    }
+                    ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+                }
             }
             else
                 ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown action\"}");

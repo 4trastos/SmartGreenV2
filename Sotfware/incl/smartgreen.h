@@ -438,6 +438,7 @@ void                ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int o
 void                ft_check_alarms(t_smartgreen *smartgreen);
 void                ft_maintenance_alarms(t_smartgreen *smartgreen);
 void                *prewet_thread(void *arg);
+void                *prewet_test_thread(void *arg);
 void                scheduler_run(t_smartgreen *smartgreen);
 void                scheduler_stop(t_smartgreen *smartgreen); 
 void                ft_auto_humidity_control(t_smartgreen *smartgreen, int zone_idx);
