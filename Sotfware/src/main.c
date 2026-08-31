@@ -30,7 +30,7 @@ int ft_check_database(t_smartgreen *smartgreen)
         return (-1);
     if (db_load_zone_params(smartgreen) == -1)
         return (-1);
-    for (int i; i < smartgreen->num_zones; i++)
+    for (int i = 0; i < smartgreen->num_zones; i++)
     {
         ft_strcpy(smartgreen->zone_params[i].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
         db_update_zone_params(smartgreen, &smartgreen->zone_params[i]);
