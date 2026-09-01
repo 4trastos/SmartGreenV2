@@ -39,6 +39,45 @@ int ft_check_database(t_smartgreen *smartgreen)
     return (0);
 }
 
+// int ft_check_database(t_smartgreen *smartgreen)
+// {
+//     int new_inst;
+
+//     if (db_init(smartgreen) == -1)
+//     return (-1);
+    
+//     new_inst = db_read_config(smartgreen, "new_installation");
+//     if (new_inst == -1)
+//     {
+//         db_cleanup_error_log(smartgreen);
+//         ft_init_config(smartgreen);
+//         ft_init_users(smartgreen);
+//         ft_init_struct(smartgreen);
+//         if (ft_init_data(smartgreen) == -1)
+//             return (-1);
+//         db_save_config(smartgreen, "new_installation", 1);
+//     }
+//     else
+//     {
+//         ft_init_users(smartgreen);  // INSERT OR IGNORE — seguro
+//         ft_init_struct(smartgreen); // solo lee num_coolers etc.
+//         if (ft_init_data(smartgreen) == -1)
+//             return (-1);
+//     }
+    
+//     if (db_load_zone_params(smartgreen) == -1)
+//         return (-1);
+
+//     for (int i = 0; i < smartgreen->num_zones; i++)
+//     {
+//         ft_strcpy(smartgreen->zone_params[i].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
+//         db_update_zone_params(smartgreen, &smartgreen->zone_params[i]);
+//     }    
+//     db_load_coolers_state(smartgreen);
+//     return (0);
+// }
+
+
 int main(int argc, char **argv)
 {
     t_smartgreen    *smartgreen;

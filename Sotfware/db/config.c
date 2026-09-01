@@ -34,12 +34,12 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "maint_closing_date",        0);                     // timestamp cierre previsto
     db_save_config(smartgreen, "maint_legionella_date",     0);                     // timestamp legionela prevista
     db_save_config(smartgreen, "free_cooling_temp",         0);                     // temperatura free cooling (0=desactivado)
-    db_save_config(smartgreen, "min_setpoint_temp",         20);                    // temperatura mínima setpoint
-    db_save_config(smartgreen, "max_setpoint_temp",         30);                    // temperatura máxima setpoint
+    db_save_config(smartgreen, "min_setpoint_temp",         18);                    // temperatura mínima setpoint
+    db_save_config(smartgreen, "max_setpoint_temp",         35);                    // temperatura máxima setpoint
     db_save_config(smartgreen, "min_setpoint_fan",          0);                     // velocidad mínima ventilador
     db_save_config(smartgreen, "max_setpoint_fan",          10);                    // velocidad máxima ventilador
     db_save_config(smartgreen, "min_setpoint_hum",          20);                    // humedad mínima setpoint
-    db_save_config(smartgreen, "max_setpoint_hum",          80);                    // humedad máxima setpoint
+    db_save_config(smartgreen, "max_setpoint_hum",          85);                    // humedad máxima setpoint
     db_save_config(smartgreen, "broadcast_coolers",         0);                     // 0=individual, 1=broadcast
     db_save_config(smartgreen, "use_exterior_sensor",       1);                     // 0=no, 1=si
     db_save_config(smartgreen, "auto_libera_individual",    120);                   // segundos antes de liberar control individual
@@ -56,6 +56,7 @@ void    ft_init_config(t_smartgreen *smartgreen)
 int ft_init_data(t_smartgreen *smartgreen)
 {
     int i;
+    int new_inst;
 
     smartgreen->coolers = NULL;
     if (smartgreen->num_coolers > 0)
@@ -221,10 +222,13 @@ int ft_init_data(t_smartgreen *smartgreen)
         smartgreen->scheduler = malloc(sizeof(t_scheduler_entry) * smartgreen->num_schedulers);
         if (!smartgreen->scheduler)
             return (-1);
+
+        new_inst = db_read_config(smartgreen, "new_installation");
+
         while (i < smartgreen->num_schedulers)
         {
             smartgreen->scheduler[i].id = i + 1;
-            ft_strcpy(smartgreen->scheduler[i].name, "SCHEDULER", sizeof(smartgreen->scheduler->name));
+            ft_strcpy(smartgreen->scheduler[i].name, "PROGRAMADOR", sizeof(smartgreen->scheduler->name));
             smartgreen->scheduler[i].zone_id = i + 1;
             smartgreen->scheduler[i].active = 1;
             ft_strcpy(smartgreen->scheduler[i].action, "ON", sizeof(smartgreen->scheduler->action));
@@ -237,12 +241,15 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->scheduler[i].sat = 0;
             smartgreen->scheduler[i].sun = 0;
 
-            if (db_save_scheduler(smartgreen, &smartgreen->scheduler[i]) == -1)
-                return (-1);
+            if (new_inst != 1)
+                if (db_save_scheduler(smartgreen, &smartgreen->scheduler[i]) == -1)
+                    return (-1);
             i++;
         }
-        
     }
+    
+    if (new_inst != 1)
+        db_save_config(smartgreen, "new_installation", 1);
     return (0);
 }
 

@@ -415,6 +415,7 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
     t_prewet_args   *args;
     char            action[8] = {0};
     char            cool_fan_mode[8];
+    char            sql_off[128];
     int             zone_idx;
     int             on;
     int             prewet_sel;
@@ -508,7 +509,9 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
             if (smartgreen->coolers[i].zone_id == id)
             {
                 smartgreen->coolers[i].last_off = get_timestamp();
-                db_save_cooler(smartgreen, &smartgreen->coolers[i]);
+                snprintf(sql_off, sizeof(sql_off), "UPDATE cooler_state SET last_off=%ld WHERE unit_id=%d", (long)smartgreen->coolers[i].last_off, smartgreen->coolers[i].unit_id);
+                sqlite3_exec(smartgreen->db, sql_off, NULL, NULL, NULL);
+                //db_save_cooler(smartgreen, &smartgreen->coolers[i]);
             }
         pthread_mutex_unlock(&smartgreen->data_mutex);
     }

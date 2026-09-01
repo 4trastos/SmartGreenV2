@@ -27,6 +27,7 @@ int     ft_modbus_init(t_smartgreen *smartgreen)
 int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
 {
     uint16_t    tab_reg[MODBUS_COOLER_REGS];
+    char        sql_hrs[128];
     int         rc;
     int         unit_idx = ft_find_cooler(smartgreen, unit_id);
     if (unit_idx == -1)
@@ -49,7 +50,7 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
         {
             smartgreen->coolers[unit_idx].disabled = 1;
             smartgreen->coolers[unit_idx].alarm_comms = 1;
-            db_save_error(smartgreen, smartgreen->coolers[unit_idx].unit_id, modbus_strerror(errno));
+            // db_save_error(smartgreen, smartgreen->coolers[unit_idx].unit_id, modbus_strerror(errno));
         }
         pthread_mutex_unlock(&smartgreen->data_mutex); 
         return (-1);
@@ -63,7 +64,9 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
     smartgreen->coolers[unit_idx].last_read = get_timestamp();
     if (smartgreen->coolers[unit_idx].fan_on)
         smartgreen->coolers[unit_idx].hours_running += smartgreen->read_interval;
-    db_save_cooler(smartgreen, &smartgreen->coolers[unit_idx]);
+    snprintf(sql_hrs, sizeof(sql_hrs), "UPDATE cooler_state SET hours_running=%.1f WHERE unit_id=%d", smartgreen->coolers[unit_idx].hours_running, unit_id);
+    sqlite3_exec(smartgreen->db, sql_hrs, NULL, NULL, NULL);
+    // db_save_cooler(smartgreen, &smartgreen->coolers[unit_idx]);
     pthread_mutex_unlock(&smartgreen->data_mutex);
     return (0);
 }
@@ -96,7 +99,7 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
             smartgreen->sensors[unit_idx].valid = 0;          
             smartgreen->sensors[unit_idx].temperature = 0.0f; 
             smartgreen->sensors[unit_idx].humidity = 0.0f;  
-            db_save_error(smartgreen, smartgreen->coolers[unit_idx].unit_id, modbus_strerror(errno));
+            // db_save_error(smartgreen, smartgreen->coolers[unit_idx].unit_id, modbus_strerror(errno));
         }
         pthread_mutex_unlock(&smartgreen->data_mutex); 
         return (-1);
