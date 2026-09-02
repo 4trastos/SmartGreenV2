@@ -46,6 +46,8 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
 
     if (strcmp(method, "GET") == 0)
     {
+        if (strcmp(url, "/api/setup/status") == 0)
+            return api_get_setup_status(smartgreen, connection);
         if (strncmp(url, "/api/coolers/", 13) == 0)
             return (api_get_cooler(smartgreen, connection, atoi(url + 13)));
         if (strcmp(url, "/api/coolers") == 0)
@@ -99,6 +101,32 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
 
             *upload_data_size = 0;
             return (MHD_YES);
+        }
+
+        ctx = *con_cls;
+        if (strncmp(url, "/api/setup/", 11) == 0)
+        {
+            char action[32] = {0};
+            sscanf(url + 11, "%31s", action);
+            if (strcmp(action, "language") == 0)
+                ret = api_post_setup_language(smartgreen, connection, ctx->body, ctx->len);
+            else if (strcmp(action, "zones") == 0)
+                ret = api_post_setup_zones(smartgreen, connection, ctx->body, ctx->len);
+            else if (strcmp(action, "coolers") == 0)
+                ret = api_post_setup_coolers(smartgreen, connection, ctx->body, ctx->len);
+            else if (strcmp(action, "sensors") == 0)
+                ret = api_post_setup_sensors(smartgreen, connection, ctx->body, ctx->len);
+            else if (strcmp(action, "scan") == 0)
+                ret = api_post_setup_scan(smartgreen, connection);
+            else if (strcmp(action, "confirm") == 0)
+                ret = api_post_setup_confirm(smartgreen, connection);
+            else if (strcmp(action, "purge") == 0)
+                ret = api_post_setup_purge(smartgreen, connection);
+            else
+                ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown\"}");
+            free(ctx);
+            *con_cls = NULL;
+            return (ret);
         }
 
         ctx = *con_cls;
@@ -276,6 +304,7 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
                         args->smartgreen  = smartgreen;
                         args->zone_id     = smartgreen->coolers[idx].zone_id;
                         args->need_prewet = 1;
+                        args->from_setup = 0;
                         pthread_t tid;
                         pthread_create(&tid, NULL, prewet_test_thread, args);
                         pthread_detach(tid);

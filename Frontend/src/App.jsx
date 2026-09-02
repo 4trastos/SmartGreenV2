@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Dashboard from './pages/Dashboard'
 import Control from './pages/Control'
 import Alarms from './pages/Alarms'
@@ -7,6 +7,7 @@ import Settings from './pages/Settings'
 import { useSmartGreen } from './hooks/useSmartGreen'
 import Scheduler from './pages/Scheduler'
 import IMD from './pages/IMD'
+import Setup from './pages/Setup'
 
 import { API_URL } from './config.js'
 
@@ -79,7 +80,15 @@ export default function App() {
   const [showReboot, setShowReboot] = useState(false)
   const [imdActive, setImdActive] = useState(false)
   const [imdZoneId, setImdZoneId] = useState(null)
+  const [setupRequired, setSetupRequired] = useState(null)
   const { data, connected } = useSmartGreen()
+
+  useEffect(() => {
+    fetch(`${API_URL}/setup/status`)
+      .then(r => r.json())
+      .then(d => setSetupRequired(d.setup_required))
+      .catch(() => setSetupRequired(false))
+  }, [])
 
   const alarmCount = data.coolers.filter(c =>
     c.alarm_fault || c.alarm_water || c.alarm_comms || c.alarm_salinity
@@ -90,6 +99,14 @@ export default function App() {
   const isPrewet = !imdActive && data.zones.some(z => z.prewet_in_progress === 'yes')
   const pages = { dashboard: Dashboard, control: Control, alarms: Alarms, maint: Maintenance, settings: Settings, scheduler: Scheduler }
   const PageComponent = pages[page]
+
+  // Cargando
+  if (setupRequired === null)
+    return <div className="flex h-screen w-screen bg-[#060c12] items-center justify-center text-white/40">Iniciando...</div>
+
+  // Primera instalación
+  if (setupRequired)
+    return <Setup onComplete={() => setSetupRequired(false)} data={data} />
 
   return (
     <div className="flex h-screen w-screen bg-[#060c12] overflow-hidden text-white"

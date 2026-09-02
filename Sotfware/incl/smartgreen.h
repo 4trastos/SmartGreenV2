@@ -328,6 +328,7 @@ typedef struct s_smartgreen
     int                 num_schedulers;
     int                 read_interval;
     int                 ws_num_clients;
+    int                 setup_mode;
     char                active_token[65];   // token activo
     time_t              token_expiry;       // timestamp expiración
 }   t_smartgreen;
@@ -338,6 +339,7 @@ typedef struct s_prewet_args
     int                 zone_id;
     int                 need_prewet;
     int                 padding;
+    int                 from_setup;
 }   t_prewet_args;
 
 typedef enum e_drain_reason
@@ -485,6 +487,15 @@ enum MHD_Result     api_post_zone_pump(t_smartgreen *smartgreen, struct MHD_Conn
 enum MHD_Result     api_post_zone_solenoid(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size);
 enum MHD_Result     api_post_cooler_raw(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, int reg, const char *body, size_t body_size);
 enum MHD_Result     api_post_imd_unlock(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
+enum MHD_Result     api_get_setup_status(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_post_setup_language(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
+enum MHD_Result     api_post_setup_zones(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
+enum MHD_Result     api_post_setup_coolers(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
+enum MHD_Result     api_post_setup_scan(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_post_setup_confirm(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_post_setup_purge(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_post_setup_sensors(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t len);
+enum MHD_Result     api_post_setup_purge_stop(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 
 /*  WEBSOCKET   */
 int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
