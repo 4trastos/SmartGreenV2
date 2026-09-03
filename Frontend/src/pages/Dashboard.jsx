@@ -60,7 +60,7 @@ function CoolerCard({ cooler, onClick, toggleCooler, zone }) {
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full shrink-0 ${st.dot}`} />
-          <span className="text-white text-lg font-black">#{cooler.unit_id}</span>
+          <span className="text-white text-lg font-black">{cooler.model || `#${cooler.unit_id}`}</span>
           <span className="text-white/20 text-xs">Z{cooler.zone_id}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -170,9 +170,9 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
           <p className="text-white/30 text-xs font-bold tracking-widest uppercase mb-1">Cooler principal</p>
           <div className="flex items-center gap-3">
             <span className={`w-3 h-3 rounded-full ${st.dot}`} />
-            <p className="text-white text-5xl font-black leading-none">#{cooler.unit_id}</p>
+            <p className="text-white text-3xl font-black leading-none">{cooler.model || `#${cooler.unit_id}`}</p>
           </div>
-          <p className="text-white/20 text-sm mt-1">Zona {cooler.zone_id}</p>
+          <p className="text-white/20 text-sm mt-1">cooler: {cooler.unit_id} · Zona {cooler.zone_id}</p>
         </div>
         <div className="text-right">
           <span className={`text-sm font-bold px-3 py-1 rounded-full border ${st.lc} border-current bg-current/10`}>{st.label}</span>
@@ -246,7 +246,7 @@ function CoolerDetail({ cooler, onClose, zone }) {
         <div className="flex justify-between items-start mb-5">
           <div>
             <p className="text-white/25 text-xs tracking-widest uppercase mb-1">Cooler · Zona {cooler.zone_id}</p>
-            <p className="text-white text-3xl font-black">#{cooler.unit_id}</p>
+            <p className="text-white text-3xl font-black">{cooler.model || `#${cooler.unit_id}`}</p>
             <p className={`text-sm font-bold mt-1 ${st.lc}`}>{fanOn ? 'ON' : 'OFF'}</p>
             <button onClick={toggleOnOff}
               className={`mt-2 px-4 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-all

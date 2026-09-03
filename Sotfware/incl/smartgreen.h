@@ -283,6 +283,8 @@ typedef struct  s_cooler_state
     time_t              last_read;
     time_t              last_mod;
     time_t              last_off;
+    char                model[16];
+    int                 firmware;
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
@@ -403,6 +405,7 @@ int                 calculate_register_51(int solenoid_on, int drain_closed);
 int                 calculate_register_52(int fan_speed);
 double              calculate_salinity_ppm(int raw_value);
 double              calculate_salinity_us(int raw_value);
+char                *ft_model_name(int cpmd_code);
 
 /*  DATABASE    */
 int                 db_init(t_smartgreen *smartgreen);

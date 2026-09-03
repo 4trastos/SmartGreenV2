@@ -1,5 +1,15 @@
 #include "../incl/smartgreen.h"
 
+char    *ft_model_name(int cpmd_code)
+{
+    if (cpmd_code == 100) return ("TBS 580");
+    if (cpmd_code == 64)  return ("TBS 460");
+    if (cpmd_code == 80)  return ("TBS 520");
+    if (cpmd_code == 120) return ("TBS 640");
+    // añadir más según catálogo Breezair
+    return ("Breezair");
+}
+
 int    decode_water_present_zone(uint16_t reg, int zone)
 {
     int shift;
@@ -69,6 +79,9 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     // offset 54 - r_40055 -> salinidad
     state->salinity_ppm = calculate_salinity_ppm(regs[54]);
     state->salinity_us = calculate_salinity_us(regs[54]);
+
+    ft_strcpy(state->model, ft_model_name(regs[4]), sizeof(state->model));
+    state->firmware = regs[1];
 
     printf(
         "[DEBUG COOLER] "

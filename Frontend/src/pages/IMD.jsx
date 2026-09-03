@@ -1,11 +1,38 @@
 import { useState, useEffect } from 'react'
 import { API_URL } from '../config.js'
+import Keyboard from '../components/Keyboard'
+
+function ConfigParam({ label, unit, value, onChange }) {
+  const [showKb, setShowKb] = useState(false)
+  const [local, setLocal] = useState(String(value ?? ''))
+
+  useEffect(() => { setLocal(String(value ?? '')) }, [value])
+
+  return (
+    <div className="bg-white/4 rounded-xl p-3">
+      <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{label}</p>
+      <div className="flex items-center gap-1">
+        <input value={local} readOnly
+          onClick={() => setShowKb(true)}
+          onTouchStart={e => e.stopPropagation()}
+          className="w-full bg-transparent text-white font-bold text-lg cursor-pointer focus:outline-none" />
+        {unit && <span className="text-white/30 text-xs">{unit}</span>}
+      </div>
+      {showKb && (
+        <Keyboard value={local} numeric={true}
+          onChange={val => setLocal(val)}
+          onClose={() => { setShowKb(false); if (local !== String(value)) onChange(local) }} />
+      )}
+    </div>
+  )
+}
 
 const SECTIONS = ['test', 'config', 'info']
 
 export default function IMD({ data, onExit }) {
   const [section, setSection] = useState('test')
   const [prewetRunning, setPrewetRunning] = useState(false)
+  const [config, setConfig] = useState({})
   const cooler = data.coolers?.[0]
   const zone = data.zones?.[0]
 
@@ -21,6 +48,25 @@ export default function IMD({ data, onExit }) {
         body: JSON.stringify(body)
     })
   }
+
+    useEffect(() => {
+    fetch(`${API_URL}/config`)
+        .then(r => r.json())
+        .then(arr => {
+        const obj = {}
+        arr.forEach(item => { obj[item.key] = item.value })
+        setConfig(obj)
+        })
+    }, [])
+
+    const saveConfig = async (key, value) => {
+    setConfig(prev => ({...prev, [key]: value}))
+    await fetch(`${API_URL}/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value: parseInt(value) })
+    })
+    }
 
   return (
     <div className="h-full flex flex-col p-4 gap-4">
@@ -136,8 +182,68 @@ export default function IMD({ data, onExit }) {
 
         {/* Config técnica */}
         {section === 'config' && (
-        <div className="flex-1 overflow-y-auto">
-            <p className="text-white/30 text-sm text-center mt-8">Configuración técnica — próximamente</p>
+        <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+
+            {/* SENSORES */}
+            <div className="bg-white/4 rounded-2xl p-4">
+            <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Sensores</p>
+            <div className="grid grid-cols-2 gap-3">
+                {[
+                { key: 'sensor_1_offset',           label: 'Offset Tª INT',  unit: '°C' },
+                { key: 'sensor_1_humidity_offset',  label: 'Offset Hr INT',  unit: '%'  },
+                { key: 'sensor_2_offset',           label: 'Offset Tª EXT',  unit: '°C' },
+                { key: 'sensor_2_humidity_offset',  label: 'Offset Hr EXT',  unit: '%'  },
+                ].map(({ key, label, unit }) => (
+                <ConfigParam key={key} label={label} unit={unit}
+                    value={config[key]} onChange={v => saveConfig(key, v)} />
+                ))}
+            </div>
+            </div>
+
+            {/* FAN */}
+            <div className="bg-white/4 rounded-2xl p-4">
+            <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Velocidad Fan</p>
+            <div className="grid grid-cols-2 gap-3">
+                {[
+                { key: 'min_setpoint_fan', label: 'Velocidad mín', unit: '' },
+                { key: 'max_setpoint_fan', label: 'Velocidad máx', unit: '' },
+                ].map(({ key, label, unit }) => (
+                <ConfigParam key={key} label={label} unit={unit}
+                    value={config[key]} onChange={v => saveConfig(key, v)} />
+                ))}
+            </div>
+            </div>
+
+            {/* PREWET */}
+            <div className="bg-white/4 rounded-2xl p-4">
+            <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Prewet</p>
+            <div className="grid grid-cols-2 gap-3">
+                {[
+                { key: 'prewet_delay_solenoid', label: 'Delay solenoide', unit: 's' },
+                { key: 'prewet_delay_water',    label: 'Delay agua',      unit: 's' },
+                { key: 'prewet_delay_pump',     label: 'Delay bomba',     unit: 's' },
+                { key: 'prewet_max_wait',       label: 'Máx espera agua', unit: 's' },
+                ].map(({ key, label, unit }) => (
+                <ConfigParam key={key} label={label} unit={unit}
+                    value={config[key]} onChange={v => saveConfig(key, v)} />
+                ))}
+            </div>
+            </div>
+
+            {/* DRENAJE */}
+            <div className="bg-white/4 rounded-2xl p-4">
+            <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Drenaje</p>
+            <div className="grid grid-cols-2 gap-3">
+                {[
+                { key: 'salinity_trigger',     label: 'Trigger salinidad', unit: 'uS' },
+                { key: 'salinity_drain_delay', label: 'Delay drenaje',     unit: 's'  },
+                ].map(({ key, label, unit }) => (
+                <ConfigParam key={key} label={label} unit={unit}
+                    value={config[key]} onChange={v => saveConfig(key, v)} />
+                ))}
+            </div>
+            </div>
+
         </div>
         )}
 
@@ -145,8 +251,8 @@ export default function IMD({ data, onExit }) {
         {section === 'info' && cooler && (
         <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-3 content-start">
             {[
-            {l:'Modelo', v:'Breezair TBS'},
-            {l:'Firmware', v:`CPMD ${cooler.r0_config}`},
+            {l:'Modelo', v: cooler.model || 'Breezair'},
+            {l:'Firmware', v: cooler.firmware ? `v${(cooler.firmware >> 8)}.${cooler.firmware & 0xFF}` : '-'},
             {l:'Dirección Modbus', v:`#${cooler.modbus_addr}`},
             {l:'Horas funcionamiento', v:`${(cooler.hours_running/3600).toFixed(1)}h`},
             {l:'Arranques fan', v:cooler.fan_starts},
