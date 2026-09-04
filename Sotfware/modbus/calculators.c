@@ -77,6 +77,7 @@ void    ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on)
 void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 {
     int r0 = calculate_register_0(smartgreen);
+    int idx = ft_find_cooler(smartgreen, unit_id);
 
     printf("[DEBUG] ft_cooler_onoff(unit=%d, on=%d)\n", unit_id, on); fflush(stdout);
 
@@ -84,6 +85,14 @@ void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 
     if (!on)
     {
+        if (idx != -1)
+        {
+            smartgreen->coolers[idx].solenoid_zero_ticks = 0;
+            smartgreen->coolers[idx].pump_zero_ticks = 0;
+            smartgreen->coolers[idx].drain_zero_ticks = 0;
+            smartgreen->coolers[idx].solenoid_cmd = 0;
+            smartgreen->coolers[idx].drain_cmd = 0;
+        }
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_APAGADO);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 0,  162);
@@ -91,6 +100,11 @@ void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
     }
     else
     {
+        if (idx != -1)
+        {
+            smartgreen->coolers[idx].solenoid_cmd = 1;
+            smartgreen->coolers[idx].drain_cmd = 0;
+        }
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 0,  r0);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_ENCENDIDO);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON);

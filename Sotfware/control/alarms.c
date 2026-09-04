@@ -20,6 +20,7 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
     for (int i = 0; i < smartgreen->num_coolers; i++)
     {
         warranty_end = smartgreen->coolers[i].install_date + (smartgreen->coolers[i].warranty_months * 30 * 24 * 3600);
+        printf("[DEBUG SOLENOID] idx=%d solenoid_cmd=%d solenoid_on=%d ticks=%d\n", i, smartgreen->coolers[i].solenoid_cmd, smartgreen->coolers[i].solenoid_on, smartgreen->coolers[i].solenoid_zero_ticks); fflush(stdout);
         
         // 🔴 Fallo en el Cooler
         if (smartgreen->coolers[i].fault_present && !smartgreen->coolers[i].alarm_fault)
@@ -64,6 +65,57 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
                 else if (!smartgreen->coolers[i].cool_mode_on)
                     smartgreen->coolers[i].alarm_fault = 0;
             }
+        }
+
+        // 🔴 Avería solenoide — mandamos ON pero no confirma
+        if (z != -1 && strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].prewet_in_progress, "no") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "IMD") != 0)
+        {
+            // Solenoide
+            if (smartgreen->coolers[i].solenoid_cmd == 1 && smartgreen->coolers[i].solenoid_on == 0)
+            {
+                smartgreen->coolers[i].solenoid_zero_ticks++;
+                if (smartgreen->coolers[i].solenoid_zero_ticks >= 5 && !smartgreen->coolers[i].alarm_fault)
+                {
+                    snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d averia solenoide", smartgreen->coolers[i].unit_id);
+                    db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
+                    smartgreen->coolers[i].alarm_fault = 1;
+                    ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, 0);
+                }
+            }
+            else
+                smartgreen->coolers[i].solenoid_zero_ticks = 0;
+
+            // Bomba
+            if (smartgreen->coolers[i].pump_on == 1 && smartgreen->coolers[i].cool_mode_on == 0)
+            {
+                smartgreen->coolers[i].pump_zero_ticks++;
+                if (smartgreen->coolers[i].pump_zero_ticks >= 2 && !smartgreen->coolers[i].alarm_fault)
+                {
+                    snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d averia bomba",
+                            smartgreen->coolers[i].unit_id);
+                    db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
+                    smartgreen->coolers[i].alarm_fault = 1;
+                    ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, 0);
+                }
+            }
+            else
+                smartgreen->coolers[i].pump_zero_ticks = 0;
+
+            // Drenaje
+            if (smartgreen->coolers[i].drain_cmd == 1 && smartgreen->coolers[i].drain_valve_confirm == 0)
+            {
+                smartgreen->coolers[i].drain_zero_ticks++;
+                if (smartgreen->coolers[i].drain_zero_ticks >= 2 && !smartgreen->coolers[i].alarm_fault)
+                {
+                    snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d averia valvula drenaje",
+                            smartgreen->coolers[i].unit_id);
+                    db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
+                    smartgreen->coolers[i].alarm_fault = 1;
+                    ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, 0);
+                }
+            }
+            else
+                smartgreen->coolers[i].drain_zero_ticks = 0;
         }
 
         // 🔴 Sin comunicación

@@ -83,46 +83,47 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     ft_strcpy(state->model, ft_model_name(regs[4]), sizeof(state->model));
     state->firmware = regs[1];
 
-    printf(
-        "[DEBUG COOLER] "
-        "R49=0x%04X "
-        "R50=0x%04X "
-        "R51=0x%04X "
-        "R52=0x%04X "
-        "R53=0x%04X | "
-        "drain=%d "
-        "cool_mode=%d "
-        "fan=%d "
-        "fault=%d "
-        "inlet=%d "
-        "fan_speed=%d "
-        "fault_code=%d | "
-        "pump=%d "
-        "solenoid=%d "
-        "drain_confirm=%d "
-        "fan_speed_conf=%d | "
-        "fan_running=%d "
-        "water=%d\n",
-        regs[49],
-        regs[50],
-        regs[51],
-        regs[52],
-        regs[53],
-        state->drain_valve_open,
-        state->cool_mode_on,
-        state->fan_on,
-        state->fault_present,
-        state->inlet_valve_open,
-        state->actual_fan_speed,
-        state->most_recent_fault,
-        state->pump_on,
-        state->solenoid_on,
-        state->drain_valve_confirm,
-        state->fan_speed_confirmed,
-        state->fan_running,
-        state->water_present
-    );
-    fflush(stdout);
+    // printf(
+    //     "[DEBUG COOLER] "
+    //     "R49=0x%04X "
+    //     "R50=0x%04X "
+    //     "R51=0x%04X "
+    //     "R52=0x%04X "
+    //     "R53=0x%04X | "
+    //     "drain=%d "
+    //     "cool_mode=%d "
+    //     "fan=%d "
+    //     "fault=%d "
+    //     "inlet=%d "
+    //     "fan_speed=%d "
+    //     "fault_code=%d | "
+    //     "pump=%d "
+    //     "solenoid=%d "
+    //     "drain_confirm=%d "
+    //     "fan_speed_conf=%d | "
+    //     "fan_running=%d "
+    //     "water=%d\n",
+    //     regs[49],
+    //     regs[50],
+    //     regs[51],
+    //     regs[52],
+    //     regs[53],
+    //     state->drain_valve_open,
+    //     state->cool_mode_on,
+    //     state->fan_on,
+    //     state->fault_present,
+    //     state->inlet_valve_open,
+    //     state->actual_fan_speed,
+    //     state->most_recent_fault,
+    //     state->pump_on,
+    //     state->solenoid_on,
+    //     state->drain_valve_confirm,
+    //     state->fan_speed_confirmed,
+    //     state->fan_running,
+    //     state->water_present
+    // );
+    // fflush(stdout);
+    printf("[DEBUG_REG49_REG56] -> ( R49=0x%04X R56=0x%04X )\n", regs[49], regs[56]); fflush(stdout);
 }
 
 void    decode_sensor_state(uint16_t *regs, t_sensor_state *state)

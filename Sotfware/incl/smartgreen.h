@@ -285,6 +285,16 @@ typedef struct  s_cooler_state
     time_t              last_off;
     char                model[16];
     int                 firmware;
+    int                 solenoid_cmd;                   // lo que mandamos: 0=OFF, 1=ON
+    int                 solenoid_zero_ticks;            // contador de discrepancias
+    int                 drain_cmd;                      // lo que mandamos
+    int                 drain_zero_ticks;
+    int                 pump_zero_ticks;
+    uint16_t            fault_r803;
+    int                 alarm_pump;
+    int                 alarm_drain;
+    int                 alarm_solenoid;
+    int                 alarm_fan_hw;
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
