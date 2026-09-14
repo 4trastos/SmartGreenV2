@@ -23,11 +23,33 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
         printf("[DEBUG SOLENOID] idx=%d solenoid_cmd=%d solenoid_on=%d ticks=%d\n", i, smartgreen->coolers[i].solenoid_cmd, smartgreen->coolers[i].solenoid_on, smartgreen->coolers[i].solenoid_zero_ticks); fflush(stdout);
         
         // 🔴 Fallo en el Cooler
+        // if (smartgreen->coolers[i].fault_present && !smartgreen->coolers[i].alarm_fault)
+        // {
+        //     snprintf(msg, sizeof(msg), "🔴 CRITICO: Fault cooler unit_id=%d code=%d", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].most_recent_fault);
+        //     db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
+        //     smartgreen->coolers[i].alarm_fault = 1;
+        // }
+        // else if (!smartgreen->coolers[i].fault_present && smartgreen->coolers[i].alarm_fault)
+        //     smartgreen->coolers[i].alarm_fault = 0;
+        // Ya tenemos most_recent_fault — solo falta actuar sobre él
         if (smartgreen->coolers[i].fault_present && !smartgreen->coolers[i].alarm_fault)
         {
-            snprintf(msg, sizeof(msg), "🔴 CRITICO: Fault cooler unit_id=%d code=%d", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].most_recent_fault);
-            db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
-            smartgreen->coolers[i].alarm_fault = 1;
+            switch (smartgreen->coolers[i].most_recent_fault)
+            {
+                case 1: break; // Normal — SmartGreen reemplaza wall control
+                case 2: snprintf(msg, sizeof(msg), "🔴 Fault 02: Sin agua en 20 min"); break;
+                case 4: snprintf(msg, sizeof(msg), "🔴 Fault 04: Drain no vacía en 20 min"); break;
+                case 7: snprintf(msg, sizeof(msg), "🔴 Fault 07: Motor error — fan desconectado"); break;
+                case 9: snprintf(msg, sizeof(msg), "🔴 Fault 09: Frecuencia incorrecta"); break;
+                default: snprintf(msg, sizeof(msg), "🔴 Fault %02d: Avería hardware",
+                            smartgreen->coolers[i].most_recent_fault); break;
+            }
+            if (smartgreen->coolers[i].most_recent_fault != 1)
+            {
+                db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
+                smartgreen->coolers[i].alarm_fault = 1;
+                ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, 0);
+            }
         }
         else if (!smartgreen->coolers[i].fault_present && smartgreen->coolers[i].alarm_fault)
             smartgreen->coolers[i].alarm_fault = 0;
@@ -49,8 +71,9 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
                     smartgreen->coolers[i].alarm_fault = 1;
 
                     // Apagar cooler por seguridad
-                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, 0);
-                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, 0);
+                    ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, 0);
+                    // ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, 0);
+                    // ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, 0);
                 }
             }
             else

@@ -1,6 +1,14 @@
 import { useState } from 'react'
 import { API_URL } from '../config.js'
 
+const formatHours = (seconds) => {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}
+
 const TILES = [
   { id: 'opening',    label: 'Apertura',       icon: '▲', desc: 'Inicio de temporada',       color: 'from-[#004d89]/40 to-[#088fc3]/10', border: 'border-[#088fc3]/40' },
   { id: 'closing',    label: 'Cierre',          icon: '▼', desc: 'Fin de temporada',           color: 'from-blue-900/30 to-transparent',   border: 'border-blue-500/30' },
@@ -23,14 +31,6 @@ function MaintenanceModal({ type, coolers, onClose }) {
     })
     setSent(true)
     setTimeout(() => { setSent(false); onClose() }, 2000)
-  }
-
-  const formatHours = (seconds) => {
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    if (h === 0) return `${m}m`
-    if (m === 0) return `${h}h`
-    return `${h}h ${m}m`
   }
 
   return (

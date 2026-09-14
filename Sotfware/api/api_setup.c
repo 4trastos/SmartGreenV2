@@ -84,10 +84,11 @@ enum MHD_Result api_post_setup_scan(t_smartgreen *smartgreen, struct MHD_Connect
             if (modbus_read_registers(smartgreen->modbus_ctx, 0, 1, &reg) != -1)
                 found = 1;
         pthread_mutex_unlock(&smartgreen->data_mutex);
+
+        usleep(15000);
         if (found)
         {
-            offset += snprintf(buf + offset, sizeof(buf) - offset,
-                "%s{\"unit_id\":%d}", first ? "" : ",", addr);
+            offset += snprintf(buf + offset, sizeof(buf) - offset, "%s{\"unit_id\":%d}", first ? "" : ",", addr);
             first = 0;
         }
     }
@@ -104,8 +105,7 @@ enum MHD_Result api_post_setup_scan(t_smartgreen *smartgreen, struct MHD_Connect
         pthread_mutex_unlock(&smartgreen->data_mutex);
         if (found)
         {
-            offset += snprintf(buf + offset, sizeof(buf) - offset,
-                "%s{\"unit_id\":%d}", first ? "" : ",", addr);
+            offset += snprintf(buf + offset, sizeof(buf) - offset, "%s{\"unit_id\":%d}", first ? "" : ",", addr);
             first = 0;
         }
     }

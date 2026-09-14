@@ -19,6 +19,8 @@ int     ft_modbus_init(t_smartgreen *smartgreen)
 
     modbus_set_response_timeout(ctx, 1, 0);
 
+    // Añadir timeout de bytes para evitar cortes por retardos de hardware en Linux
+    modbus_set_byte_timeout(ctx, 0, 500000);
     printf("Modbus connected correctly\n");
     smartgreen->modbus_ctx = ctx;
     return (0);
@@ -27,7 +29,6 @@ int     ft_modbus_init(t_smartgreen *smartgreen)
 // int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
 // {
 //     uint16_t    tab_reg[MODBUS_COOLER_REGS];
-//     uint16_t    tab_fault[6];
 //     char        sql_hrs[128];
 //     int         rc;
 //     int         unit_idx = ft_find_cooler(smartgreen, unit_id);
@@ -41,37 +42,36 @@ int     ft_modbus_init(t_smartgreen *smartgreen)
 //     }
 
 //     // Leer registros de fault (R799-R804)
-//     if (modbus_read_registers(smartgreen->modbus_ctx, 799, 6, tab_fault) != -1)
-//     {
-//         uint16_t r803 = tab_fault[4];
-//         uint16_t nibble = (r803 >> 12) & 0x0F;
-        
-//         printf("[R803=0x%04X nibble=0x%X] pump=%d drain=%d solenoid=%d fan=%d\n",
-//             r803, nibble,
-//             (nibble & 0x01) ? 1 : 0,
-//             (nibble & 0x02) ? 1 : 0,
-//             (nibble & 0x04) ? 1 : 0,
-//             (nibble & 0x08) ? 1 : 0);
-//         fflush(stdout);
-        
-//         pthread_mutex_lock(&smartgreen->data_mutex);
-//         smartgreen->coolers[unit_idx].fault_r803     = r803;
-//         smartgreen->coolers[unit_idx].alarm_pump     = (nibble & 0x01) ? 1 : 0;
-//         smartgreen->coolers[unit_idx].alarm_drain    = (nibble & 0x02) ? 1 : 0;
-//         smartgreen->coolers[unit_idx].alarm_solenoid = (nibble & 0x04) ? 1 : 0;
-//         smartgreen->coolers[unit_idx].alarm_fan_hw   = (nibble & 0x08) ? 1 : 0;
-//         pthread_mutex_unlock(&smartgreen->data_mutex);
-//     }
-//     else
-//     {
-//         pthread_mutex_lock(&smartgreen->data_mutex);
-//         smartgreen->coolers[unit_idx].fault_r803     = 0;
-//         smartgreen->coolers[unit_idx].alarm_pump     = 0;
-//         smartgreen->coolers[unit_idx].alarm_drain    = 0;
-//         smartgreen->coolers[unit_idx].alarm_solenoid = 0;
-//         smartgreen->coolers[unit_idx].alarm_fan_hw   = 0;
-//         pthread_mutex_unlock(&smartgreen->data_mutex);
-//     }
+//     // uint16_t tab_fault[6];
+//     // if (modbus_read_registers(smartgreen->modbus_ctx, 799, 6, tab_fault) != -1)
+//     // {
+//     //     uint16_t r803 = tab_fault[4];
+//     //     uint16_t nibble = (r803 >> 12) & 0x0F;
+//     //     if (r803 != 0)
+//     //     {
+//     //         pthread_mutex_lock(&smartgreen->data_mutex);
+//     //         smartgreen->coolers[unit_idx].fault_r803     = r803;
+//     //         smartgreen->coolers[unit_idx].alarm_pump     = (nibble & 0x01) ? 1 : 0;
+//     //         smartgreen->coolers[unit_idx].alarm_drain    = (nibble & 0x02) ? 1 : 0;
+//     //         smartgreen->coolers[unit_idx].alarm_solenoid = (nibble & 0x04) ? 1 : 0;
+//     //         smartgreen->coolers[unit_idx].alarm_fan_hw   = (nibble & 0x08) ? 1 : 0;
+//     //         pthread_mutex_unlock(&smartgreen->data_mutex);
+//     //         printf("[FAULT R803=0x%04X pump=%d drain=%d solenoid=%d fan=%d]\n",
+//     //             r803,
+//     //             smartgreen->coolers[unit_idx].alarm_pump,
+//     //             smartgreen->coolers[unit_idx].alarm_drain,
+//     //             smartgreen->coolers[unit_idx].alarm_solenoid,
+//     //             smartgreen->coolers[unit_idx].alarm_fan_hw);
+//     //         fflush(stdout);
+//     //     }
+//     // }
+
+//     uint16_t tab_extras[10];
+//     modbus_read_registers(smartgreen->modbus_ctx, 799, 6, tab_extras);
+//     printf("[REG799] ");
+//     for (int i = 0; i < 6; i++)
+//         printf("R%d=0x%04X ", 799+i, tab_extras[i]);
+//     printf("\n"); fflush(stdout);
 
 //     rc = modbus_read_registers(smartgreen->modbus_ctx, 0, MODBUS_COOLER_REGS, tab_reg);
 //     if (rc == -1)
@@ -118,22 +118,12 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
         return (-1);
     }
     
-    uint16_t tab_extras[10];
-    modbus_read_registers(smartgreen->modbus_ctx, 799, 6, tab_extras);
-    printf("[REG799] ");
-    for (int i = 0; i < 6; i++)
-        printf("R%d=0x%04X ", 799+i, tab_extras[i]);
-    printf("\n"); fflush(stdout);
-
-    uint16_t tab_extra[200];
-    rc = modbus_read_registers(smartgreen->modbus_ctx, 200, 200, tab_extra);
-    if (rc != -1)
-    {
-        for (int i = 0; i < 200; i++)
-            if (tab_extra[i] != 0)
-                printf("[DEBUG -> REG%d] 0x%04X\n", 200+i, tab_extra[i]);
-    }
-    fflush(stdout);
+    // uint16_t tab_extras[10];
+    // modbus_read_registers(smartgreen->modbus_ctx, 799, 6, tab_extras);
+    // printf("[REG799] ");
+    // for (int i = 0; i < 6; i++)
+    //     printf("R%d=0x%04X ", 799+i, tab_extras[i]);
+    // printf("\n"); fflush(stdout);
 
     rc = modbus_read_registers(smartgreen->modbus_ctx, 0, MODBUS_COOLER_REGS, tab_reg);
     if (rc == -1)

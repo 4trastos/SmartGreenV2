@@ -290,11 +290,6 @@ typedef struct  s_cooler_state
     int                 drain_cmd;                      // lo que mandamos
     int                 drain_zero_ticks;
     int                 pump_zero_ticks;
-    uint16_t            fault_r803;
-    int                 alarm_pump;
-    int                 alarm_drain;
-    int                 alarm_solenoid;
-    int                 alarm_fan_hw;
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
