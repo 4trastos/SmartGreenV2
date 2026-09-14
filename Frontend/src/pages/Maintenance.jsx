@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { API_URL } from '../config.js'
+import Keyboard from '../components/Keyboard'
 
 const formatHours = (seconds) => {
   const h = Math.floor(seconds / 3600)
@@ -21,6 +22,8 @@ const TILES = [
 function MaintenanceModal({ type, coolers, onClose }) {
   const [form, setForm] = useState({ unit_id: coolers[0]?.unit_id || 2, technician: '', description: '' })
   const [sent, setSent] = useState(false)
+  const [showKbTechnician, setShowKbTechnician] = useState(false)
+  const [showKbDescription, setShowKbDescription] = useState(false)
   const t = TILES.find(t => t.id === type)
 
   const submit = async () => {
@@ -61,18 +64,37 @@ function MaintenanceModal({ type, coolers, onClose }) {
         <div className="mb-4">
           <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Técnico</label>
           <input value={form.technician}
-            onChange={e => setForm(f => ({ ...f, technician: e.target.value }))}
+            readOnly
+            onClick={e => { e.stopPropagation(); setShowKbTechnician(true) }}
+            onTouchStart={e => e.stopPropagation()}
             placeholder="Nombre del técnico"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60" />
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60 cursor-pointer"
+            style={{ borderColor: showKbTechnician ? '#088fc3' : undefined }} />
+          {showKbTechnician && (
+            <Keyboard
+              value={form.technician}
+              onChange={val => setForm(f => ({ ...f, technician: val }))}
+              onClose={() => setShowKbTechnician(false)}
+            />
+          )}
         </div>
 
         <div className="mb-6">
           <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Observaciones</label>
-          <textarea value={form.description}
-            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+          <input value={form.description}
+            readOnly
+            onClick={e => { e.stopPropagation(); setShowKbDescription(true) }}
+            onTouchStart={e => e.stopPropagation()}
             placeholder="Descripción del trabajo realizado..."
-            rows={3}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60 resize-none" />
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60 cursor-pointer"
+            style={{ borderColor: showKbDescription ? '#088fc3' : undefined }} />
+          {showKbDescription && (
+            <Keyboard
+              value={form.description}
+              onChange={val => setForm(f => ({ ...f, description: val }))}
+              onClose={() => setShowKbDescription(false)}
+            />
+          )}
         </div>
 
         <button onClick={submit}
@@ -88,6 +110,8 @@ function MaintenanceModal({ type, coolers, onClose }) {
 }
 
 function StatusModal({ coolers, onClose }) {
+  const fmt = (ts) => ts ? new Date(ts * 1000).toLocaleDateString('es-ES') : null
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
@@ -102,10 +126,13 @@ function StatusModal({ coolers, onClose }) {
         </div>
 
         <div className="overflow-y-auto flex-1 space-y-2" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
-          {coolers.map(c => (
+          {coolers.map(c => {
+            const aperturaOk = c.last_opening > c.last_closing
+            const cierreOk = c.last_closing > c.last_opening
+            return (
             <div key={c.unit_id} className="bg-white/4 border border-white/8 rounded-xl p-4">
               <div className="flex justify-between items-center mb-3">
-                <span className="text-white font-bold">Cooler #{c.unit_id}</span>
+                <span className="text-white font-bold">{c.model || `Cooler #${c.unit_id}`}</span>
                 {c.alarm_warranty ? (
                   <span className="text-orange-400 text-xs font-bold bg-orange-500/10 px-2 py-1 rounded-full border border-orange-500/30">⚠ Garantía</span>
                 ) : (
@@ -118,26 +145,45 @@ function StatusModal({ coolers, onClose }) {
                   <p className="text-white font-mono font-bold">{formatHours(c.hours_running)}</p>
                 </div>
                 <div className="bg-white/3 rounded-lg p-2">
-                  <p className="text-white/30 mb-1">Último cierre</p>
-                  <p className={c.last_closing ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>
-                    {c.last_closing ? new Date(c.last_closing * 1000).toLocaleDateString('es-ES') : 'Pendiente'}
-                  </p>
-                </div>
-                <div className="bg-white/3 rounded-lg p-2">
-                  <p className="text-white/30 mb-1">Alarmas activas</p>
-                  <p className={`font-bold ${(c.alarm_fault || c.alarm_water || c.alarm_comms) ? 'text-red-400' : 'text-green-400'}`}>
-                    {(c.alarm_fault || c.alarm_water || c.alarm_comms) ? 'Sí' : 'No'}
-                  </p>
-                </div>
-                <div className="bg-white/3 rounded-lg p-2">
                   <p className="text-white/30 mb-1">Estado</p>
                   <p className={`font-bold ${c.fan_on ? 'text-[#088fc3]' : 'text-white/40'}`}>
                     {c.fan_on ? 'Activo' : 'Standby'}
                   </p>
                 </div>
+                <div className="bg-white/3 rounded-lg p-2">
+                  <p className="text-white/30 mb-1">Apertura</p>
+                  <p className={aperturaOk ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>
+                    {aperturaOk ? `Realizada ${fmt(c.last_opening)}` : 'Pendiente'}
+                  </p>
+                </div>
+                <div className="bg-white/3 rounded-lg p-2">
+                  <p className="text-white/30 mb-1">Cierre</p>
+                  <p className={cierreOk ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>
+                    {cierreOk ? `Realizado ${fmt(c.last_closing)}` : 'Pendiente'}
+                  </p>
+                </div>
+                <div className="bg-white/3 rounded-lg p-2">
+                  <p className="text-white/30 mb-1">Legionela</p>
+                  <p className={c.last_legionella ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>
+                    {c.last_legionella ? `Realizado ${fmt(c.last_legionella)}` : 'Pendiente'}
+                  </p>
+                </div>
+                <div className="bg-white/3 rounded-lg p-2">
+                  <p className="text-white/30 mb-1">Última reparación</p>
+                  <p className={c.last_repair ? 'text-white font-mono' : 'text-white/30 italic'}>
+                    {fmt(c.last_repair) || 'Sin reparaciones'}
+                  </p>
+                </div>
+                <div className="bg-white/3 rounded-lg p-2 col-span-2">
+                  <p className="text-white/30 mb-1">Alarmas activas</p>
+                  <p className={`font-bold ${(c.alarm_fault || c.alarm_water || c.alarm_comms) ? 'text-red-400' : 'text-green-400'}`}>
+                    {(c.alarm_fault || c.alarm_water || c.alarm_comms) ? 'Sí' : 'No'}
+                  </p>
+                </div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

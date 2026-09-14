@@ -286,6 +286,7 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
     int                 last_closing = 0;
     int                 last_opening = 0;
     int                 last_legionella = 0;
+    int                 last_repair = 0;
     int                 z = 0;
     int                 fan_speed_display = 0;
 
@@ -297,6 +298,7 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
         last_closing = 0;
         last_opening = 0;
         last_legionella = 0;
+        last_repair = 0;
 
         if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_CLOSING, &last_maint) == 0)
             last_closing = last_maint.timestamp;
@@ -304,6 +306,8 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
             last_opening = last_maint.timestamp;
         if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_LEGIONELLA, &last_maint) == 0)
             last_legionella = last_maint.timestamp;
+        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_REPAIR, &last_maint) == 0)
+            last_repair = last_maint.timestamp;
         z = ft_find_zone(smartgreen, smartgreen->coolers[i].zone_id);
         fan_speed_display = (z != -1) ? smartgreen->zone_params[z].fan_speed_cmd : 0;
     
@@ -341,6 +345,7 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
             "\"last_closing\":%d,"
             "\"last_opening\":%d,"
             "\"last_legionella\":%d,"
+            "\"last_repair\":%d,"
             "\"disabled\":%d,\"ramp_rate\":%d,\"cold_starts\":%d,\"fan_starts\":%d,"
             "\"fan_hours\":%d,\"tank_drains\":%d,\"avg_tank_fill\":%d,\"fan_speed_z1\":%d,"
             "\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
@@ -380,6 +385,7 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
             last_closing,
             last_opening,
             last_legionella,
+            last_repair,
             smartgreen->coolers[i].disabled,
             smartgreen->coolers[i].ramp_rate,
             smartgreen->coolers[i].cold_starts,

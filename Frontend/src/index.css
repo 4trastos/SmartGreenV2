@@ -3,3 +3,14 @@
 * { box-sizing: border-box; }
 body { background-color: #060c12; color: white; margin: 0; padding: 0; overflow: hidden; }
 select option { background-color: #0d1a26; }
+
+* {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}

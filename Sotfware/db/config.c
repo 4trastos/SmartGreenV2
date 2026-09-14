@@ -51,6 +51,7 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "sensor_1_humidity_offset",  25);                    // offset correciión humnedad
     db_save_config(smartgreen, "sensor_2_offset",           0);
     db_save_config(smartgreen, "sensor_2_humidity_offset",  28);
+    db_save_config(smartgreen, "last_repair",               0);
 }
 
 int ft_init_data(t_smartgreen *smartgreen)

@@ -8,6 +8,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
     int                 last_closing = 0;
     int                 last_opening = 0;
     int                 last_legionella = 0;
+    int                 last_repair = 0;
     t_alarm_level       alarm_level = ALARM_GREEN;
     const char          *alarm_text = "🟢 OK";
 
@@ -19,15 +20,15 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
         last_closing = 0;
         last_opening = 0;
         last_legionella = 0;
-        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id,
-                                    MAINT_CLOSING, &last_maint) == 0)
+        last_repair = 0;
+        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_CLOSING, &last_maint) == 0)
             last_closing = last_maint.timestamp;
-        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id,
-                                    MAINT_OPENING, &last_maint) == 0)
+        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_OPENING, &last_maint) == 0)
             last_opening = last_maint.timestamp;
-        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id,
-                                    MAINT_LEGIONELLA, &last_maint) == 0)
+        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_LEGIONELLA, &last_maint) == 0)
             last_legionella = last_maint.timestamp;
+        if (db_get_last_maintenance(smartgreen, smartgreen->coolers[i].unit_id, MAINT_REPAIR, &last_maint) == 0)
+            last_repair = last_maint.timestamp;
 
         offset += snprintf(buffer + offset, sizeof(buffer) - offset,
             "%s{"
@@ -45,6 +46,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             "\"alarm_maint_closing\":%d,\"alarm_maint_opening\":%d,"
             "\"alarm_maint_legionella\":%d,"
             "\"last_closing\":%d,\"last_opening\":%d,\"last_legionella\":%d,"
+            "\"last_repair\":%d,"
             "\"disabled\":%d,\"ramp_rate\":%d,\"cold_starts\":%d,\"fan_starts\":%d,"
             "\"fan_hours\":%d,\"tank_drains\":%d,\"avg_tank_fill\":%d,\"fan_speed_z1\":%d,"
             "\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
@@ -81,7 +83,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             smartgreen->coolers[i].alarm_maint_closing,
             smartgreen->coolers[i].alarm_maint_opening,
             smartgreen->coolers[i].alarm_maint_legionella,
-            last_closing, last_opening, last_legionella,
+            last_closing, last_opening, last_legionella, last_repair,
             smartgreen->coolers[i].disabled,
             smartgreen->coolers[i].ramp_rate,
             smartgreen->coolers[i].cold_starts,
