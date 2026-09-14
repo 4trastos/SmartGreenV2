@@ -292,8 +292,11 @@ void    scheduler_run(t_smartgreen *smartgreen)
                         if (on && zone_idx != -1)
                         {
                             pthread_mutex_lock(&smartgreen->data_mutex);
-                            ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, "AUTO", sizeof(smartgreen->zone_params->cool_fan_mode));
-                            smartgreen->zone_params[zone_idx].target_temp = 24.0f;
+                            // ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, "AUTO", sizeof(smartgreen->zone_params->cool_fan_mode));
+                            // smartgreen->zone_params[zone_idx].target_temp = 24.0f;
+                            ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, smartgreen->scheduler[i].mode, sizeof(smartgreen->zone_params->cool_fan_mode));
+                            if (smartgreen->scheduler[i].target_temp > 0)
+                                smartgreen->zone_params[zone_idx].target_temp = smartgreen->scheduler[i].target_temp;
                             db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
                             pthread_mutex_unlock(&smartgreen->data_mutex);
                         }
@@ -330,7 +333,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
 int     db_read_scheduler(t_smartgreen *smartgreen)
 {
     sqlite3_stmt    *stmt = NULL;
-    const char      *sql = "SELECT id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun FROM scheduler WHERE active = 1;";
+    const char      *sql = "SELECT id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun, mode, target_temp FROM scheduler WHERE active = 1;";
     int             rc;
     int             idx = 0;
 
@@ -365,6 +368,8 @@ int     db_read_scheduler(t_smartgreen *smartgreen)
         smartgreen->scheduler[idx].fri = sqlite3_column_int64(stmt, 10);
         smartgreen->scheduler[idx].sat = sqlite3_column_int64(stmt, 11);
         smartgreen->scheduler[idx].sun = sqlite3_column_int64(stmt, 12);
+        ft_strcpy(smartgreen->scheduler[idx].mode, (char *)sqlite3_column_text(stmt, 13), sizeof(smartgreen->scheduler->mode));
+        smartgreen->scheduler[idx].target_temp = (float)sqlite3_column_double(stmt, 14);
         idx++;
     }
     smartgreen->num_schedulers = idx;

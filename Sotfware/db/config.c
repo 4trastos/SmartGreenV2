@@ -241,6 +241,8 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->scheduler[i].fri = 0;
             smartgreen->scheduler[i].sat = 0;
             smartgreen->scheduler[i].sun = 0;
+            ft_strcpy(smartgreen->scheduler[i].mode, "AUTO", sizeof(smartgreen->scheduler->mode));
+            smartgreen->scheduler[i].target_temp = 0.00;
 
             if (new_inst != 1)
                 if (db_save_scheduler(smartgreen, &smartgreen->scheduler[i]) == -1)

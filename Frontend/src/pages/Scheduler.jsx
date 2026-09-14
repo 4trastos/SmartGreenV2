@@ -14,7 +14,7 @@ const DAYS = [
   { key: 'sun', label: 'D' },
 ]
 
-const EMPTY = { name: '', zone_id: 1, active: 1, action: 'ON', hour: '08:00', mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0 }
+const EMPTY = { name: '', zone_id: 1, active: 1, action: 'ON', hour: '08:00', mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0,  mode: 'AUTO', target_temp: 24 }
 
 function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose }) {
   const [showKeyboard, setShowKeyboard] = useState(false)
@@ -90,6 +90,33 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
             )}
           </div>
           </div>
+
+          {/* Modo — solo si action es ON */}
+          {form.action === 'ON' && (
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Modo</label>
+                <select value={form.mode || 'AUTO'} onChange={e => setForm(f => ({ ...f, mode: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
+                  style={{ backgroundColor: '#0d1a26' }}>
+                  <option value="AUTO" style={{ backgroundColor: '#0d1a26' }}>⚙ AUTO</option>
+                  <option value="FAN" style={{ backgroundColor: '#0d1a26' }}>💨 FAN</option>
+                </select>
+              </div>
+              {form.mode === 'AUTO' && (
+                <div className="flex-1">
+                  <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Temp. objetivo</label>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setForm(f => ({ ...f, target_temp: Math.max(16, (f.target_temp || 24) - 0.5) }))}
+                      className="w-10 h-10 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">−</button>
+                    <span className="flex-1 text-center text-white font-bold text-lg">{form.target_temp || 24}°</span>
+                    <button onClick={() => setForm(f => ({ ...f, target_temp: Math.min(35, (f.target_temp || 24) + 0.5) }))}
+                      className="w-10 h-10 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">+</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Días</label>
@@ -235,6 +262,11 @@ export default function Scheduler({ data }) {
                 <div className="flex-1">
                   <p className="text-white font-black text-lg leading-tight">{s.name}</p>
                   <p className="text-white/40 text-xs mt-1">{zone?.name || `Zona ${s.zone_id}`}</p>
+                  {s.action === 'ON' && (
+                    <p className="text-white/30 text-xs mt-0.5">
+                      {s.mode === 'AUTO' ? `AUTO · ${s.target_temp}°` : 'FAN'}
+                    </p>
+                  )}
                 </div>
                 <p className="text-white font-mono text-2xl font-bold">{s.hour}</p>
                 <div className="flex gap-1">

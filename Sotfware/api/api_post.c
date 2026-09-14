@@ -276,6 +276,8 @@ enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Conn
     int                 fri = 0;
     int                 sat = 0;
     int                 sun = 0;
+    char                mode[64] = {0};
+    float               target_temp = 0.00; 
 
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
@@ -307,6 +309,16 @@ enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Conn
             hour[len] = '\0';
         }
     }
+
+    ptr = strstr(body, "\"mode\":\"");
+    if (ptr)
+        sscanf(ptr, "\"mode\":\"%63[^\"]\"", mode);
+    if (mode[0] == '\0')
+        ft_strcpy(mode, "AUTO", sizeof(mode));
+
+    ptr = strstr(body, "\"target_temp\":");
+    if (ptr)
+        sscanf(ptr + 14, "%f", &target_temp);
 
     ptr = strstr(body, "\"action\":\"");
     if (ptr)
@@ -341,6 +353,8 @@ enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Conn
     schedul.sat = sat;
     schedul.sun = sun;
     schedul.active = 1;
+    ft_strcpy(schedul.mode, mode, sizeof(schedul.mode));
+    schedul.target_temp = target_temp;
 
     if (db_save_scheduler(smartgreen, &schedul) == -1)
     {

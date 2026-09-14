@@ -56,7 +56,7 @@
 # define SQL_SAVE_FAULT_LOG     "INSERT INTO fault_log (id, unit_id, fault_code, fault_present, time_created, time_cleared) VALUES(?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_ZONES         "INSERT OR REPLACE INTO zones (id, name, enabled) VALUES(?, ?, ?)"
 # define SQL_SAVE_SENSOR_ZONE   "INSERT OR REPLACE INTO sensor_zone (sensor_id, zone_id) VALUES(?, ?)"
-# define SQL_SAVE_SCHEDULER     "INSERT OR IGNORE INTO scheduler (name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+# define SQL_SAVE_SCHEDULER     "INSERT OR IGNORE INTO scheduler (name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun, mode, target_temp) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_MAINTENANCE   "INSERT OR REPLACE INTO maintenance_log (id, unit_id, timestamp, type, description, technician, next_service) VALUES(?, ?, ?, ?, ?, ?, ?)"
 # define SQL_INIT_USER          "INSERT OR IGNORE INTO users (id, username, password, role, active) VALUES (?, ?, ?, ?, ?)"
 
@@ -201,6 +201,8 @@ typedef struct s_scheduler_entry
     int                 fri;
     int                 sat;
     int                 sun;
+    char                mode[64];
+    float               target_temp;
 }   t_scheduler_entry;
 
 typedef struct s_zones

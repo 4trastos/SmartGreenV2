@@ -249,6 +249,8 @@ int     db_save_scheduler(t_smartgreen *smartgreen, t_scheduler_entry *scheduler
     sqlite3_bind_int(stmt, 10, scheduler->fri);
     sqlite3_bind_int(stmt, 11, scheduler->sat);
     sqlite3_bind_int(stmt, 12, scheduler->sun);
+    sqlite3_bind_text(stmt, 13, scheduler->mode, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 14, scheduler->target_temp);
 
     while (attemps < DB_MAX_RETRIES)
     {
