@@ -19,6 +19,69 @@ const TILES = [
   { id: 'future',     label: 'Próximamente',    icon: '○', desc: 'Funcionalidad futura',       color: 'from-white/2 to-transparent',       border: 'border-white/10' },
 ]
 
+const PIN_REQUIRED = ['opening', 'closing', 'legionella', 'repair']
+
+function PinModal({ onSuccess, onClose }) {
+  const [pin, setPin] = useState('')
+  const [error, setError] = useState(false)
+
+  const check = (newPin) => {
+    if (newPin.length < 4) return
+    if (newPin === '1234') {
+      onSuccess()
+    } else {
+      setError(true)
+      setTimeout(() => { setError(false); setPin('') }, 1000)
+    }
+  }
+
+  const press = (k) => {
+    if (k === '⌫') { setPin(p => p.slice(0, -1)); setError(false); return }
+    if (pin.length >= 4) return
+    const newPin = pin + k
+    setPin(newPin)
+    if (newPin.length === 4) check(newPin)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}
+        className="w-[300px] rounded-3xl border border-white/10 p-6 bg-[#060c12] shadow-2xl">
+        <p className="text-white/30 text-xs tracking-widest uppercase mb-1 text-center">Acceso restringido</p>
+        <p className="text-white text-xl font-black mb-6 text-center">PIN técnico</p>
+
+        {/* Indicadores */}
+        <div className="flex justify-center gap-3 mb-6">
+          {[0,1,2,3].map(i => (
+            <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all
+              ${error ? 'border-red-500 bg-red-500' :
+                pin.length > i ? 'border-[#088fc3] bg-[#088fc3]' : 'border-white/20 bg-transparent'}`} />
+          ))}
+        </div>
+
+        {/* Teclado numérico */}
+        <div className="grid grid-cols-3 gap-2">
+          {[1,2,3,4,5,6,7,8,9,'⌫',0,''].map((k, i) => (
+            k === '' ? <div key={i} /> :
+            <button key={i} onClick={() => press(String(k))}
+              className={`h-12 rounded-xl font-bold text-lg cursor-pointer transition-all
+                ${k === '⌫' ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-white/8 text-white hover:bg-white/15'}`}>
+              {k}
+            </button>
+          ))}
+        </div>
+
+        {error && <p className="text-red-400 text-xs text-center mt-3">PIN incorrecto</p>}
+
+        <button onClick={onClose}
+          className="w-full mt-4 py-2 rounded-xl bg-white/5 text-white/40 text-sm cursor-pointer hover:bg-white/10">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function MaintenanceModal({ type, coolers, onClose }) {
   const [form, setForm] = useState({ unit_id: coolers[0]?.unit_id || 2, technician: '', description: '' })
   const [sent, setSent] = useState(false)
@@ -63,44 +126,37 @@ function MaintenanceModal({ type, coolers, onClose }) {
 
         <div className="mb-4">
           <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Técnico</label>
-          <input value={form.technician}
-            readOnly
+          <input value={form.technician} readOnly
             onClick={e => { e.stopPropagation(); setShowKbTechnician(true) }}
             onTouchStart={e => e.stopPropagation()}
             placeholder="Nombre del técnico"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60 cursor-pointer"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none cursor-pointer"
             style={{ borderColor: showKbTechnician ? '#088fc3' : undefined }} />
           {showKbTechnician && (
-            <Keyboard
-              value={form.technician}
+            <Keyboard value={form.technician}
               onChange={val => setForm(f => ({ ...f, technician: val }))}
-              onClose={() => setShowKbTechnician(false)}
-            />
+              onClose={() => setShowKbTechnician(false)} />
           )}
         </div>
 
         <div className="mb-6">
           <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Observaciones</label>
-          <input value={form.description}
-            readOnly
+          <input value={form.description} readOnly
             onClick={e => { e.stopPropagation(); setShowKbDescription(true) }}
             onTouchStart={e => e.stopPropagation()}
             placeholder="Descripción del trabajo realizado..."
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60 cursor-pointer"
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none cursor-pointer"
             style={{ borderColor: showKbDescription ? '#088fc3' : undefined }} />
           {showKbDescription && (
-            <Keyboard
-              value={form.description}
+            <Keyboard value={form.description}
               onChange={val => setForm(f => ({ ...f, description: val }))}
-              onClose={() => setShowKbDescription(false)}
-            />
+              onClose={() => setShowKbDescription(false)} />
           )}
         </div>
 
         <button onClick={submit}
           className={`w-full py-3 rounded-xl font-bold text-sm transition-all cursor-pointer
-            ${sent
-              ? 'bg-green-500/20 border border-green-500/40 text-green-400'
+            ${sent ? 'bg-green-500/20 border border-green-500/40 text-green-400'
               : 'bg-[#004d89] border border-[#088fc3]/40 text-white hover:bg-[#005fa8]'}`}>
           {sent ? '✓ Registrado correctamente' : `Registrar ${t.label}`}
         </button>
@@ -111,7 +167,6 @@ function MaintenanceModal({ type, coolers, onClose }) {
 
 function StatusModal({ coolers, onClose }) {
   const fmt = (ts) => ts ? new Date(ts * 1000).toLocaleDateString('es-ES') : null
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
@@ -124,64 +179,53 @@ function StatusModal({ coolers, onClose }) {
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white cursor-pointer">✕</button>
         </div>
-
         <div className="overflow-y-auto flex-1 space-y-2" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}>
           {coolers.map(c => {
             const aperturaOk = c.last_opening > c.last_closing
             const cierreOk = c.last_closing > c.last_opening
             return (
-            <div key={c.unit_id} className="bg-white/4 border border-white/8 rounded-xl p-4">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-white font-bold">{c.model || `Cooler #${c.unit_id}`}</span>
-                {c.alarm_warranty ? (
-                  <span className="text-orange-400 text-xs font-bold bg-orange-500/10 px-2 py-1 rounded-full border border-orange-500/30">⚠ Garantía</span>
-                ) : (
-                  <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded-full border border-green-500/30">✓ En garantía</span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-white/3 rounded-lg p-2">
-                  <p className="text-white/30 mb-1">Horas funcionamiento</p>
-                  <p className="text-white font-mono font-bold">{formatHours(c.hours_running)}</p>
+              <div key={c.unit_id} className="bg-white/4 border border-white/8 rounded-xl p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-white font-bold">{c.model || `Cooler #${c.unit_id}`}</span>
+                  {c.alarm_warranty ? (
+                    <span className="text-orange-400 text-xs font-bold bg-orange-500/10 px-2 py-1 rounded-full border border-orange-500/30">⚠ Garantía</span>
+                  ) : (
+                    <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded-full border border-green-500/30">✓ En garantía</span>
+                  )}
                 </div>
-                <div className="bg-white/3 rounded-lg p-2">
-                  <p className="text-white/30 mb-1">Estado</p>
-                  <p className={`font-bold ${c.fan_on ? 'text-[#088fc3]' : 'text-white/40'}`}>
-                    {c.fan_on ? 'Activo' : 'Standby'}
-                  </p>
-                </div>
-                <div className="bg-white/3 rounded-lg p-2">
-                  <p className="text-white/30 mb-1">Apertura</p>
-                  <p className={aperturaOk ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>
-                    {aperturaOk ? `Realizada ${fmt(c.last_opening)}` : 'Pendiente'}
-                  </p>
-                </div>
-                <div className="bg-white/3 rounded-lg p-2">
-                  <p className="text-white/30 mb-1">Cierre</p>
-                  <p className={cierreOk ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>
-                    {cierreOk ? `Realizado ${fmt(c.last_closing)}` : 'Pendiente'}
-                  </p>
-                </div>
-                <div className="bg-white/3 rounded-lg p-2">
-                  <p className="text-white/30 mb-1">Legionela</p>
-                  <p className={c.last_legionella ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>
-                    {c.last_legionella ? `Realizado ${fmt(c.last_legionella)}` : 'Pendiente'}
-                  </p>
-                </div>
-                <div className="bg-white/3 rounded-lg p-2">
-                  <p className="text-white/30 mb-1">Última reparación</p>
-                  <p className={c.last_repair ? 'text-white font-mono' : 'text-white/30 italic'}>
-                    {fmt(c.last_repair) || 'Sin reparaciones'}
-                  </p>
-                </div>
-                <div className="bg-white/3 rounded-lg p-2 col-span-2">
-                  <p className="text-white/30 mb-1">Alarmas activas</p>
-                  <p className={`font-bold ${(c.alarm_fault || c.alarm_water || c.alarm_comms) ? 'text-red-400' : 'text-green-400'}`}>
-                    {(c.alarm_fault || c.alarm_water || c.alarm_comms) ? 'Sí' : 'No'}
-                  </p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-white/3 rounded-lg p-2">
+                    <p className="text-white/30 mb-1">Horas funcionamiento</p>
+                    <p className="text-white font-mono font-bold">{formatHours(c.hours_running)}</p>
+                  </div>
+                  <div className="bg-white/3 rounded-lg p-2">
+                    <p className="text-white/30 mb-1">Estado</p>
+                    <p className={`font-bold ${c.fan_on ? 'text-[#088fc3]' : 'text-white/40'}`}>{c.fan_on ? 'Activo' : 'Standby'}</p>
+                  </div>
+                  <div className="bg-white/3 rounded-lg p-2">
+                    <p className="text-white/30 mb-1">Apertura</p>
+                    <p className={aperturaOk ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>{aperturaOk ? `Realizada ${fmt(c.last_opening)}` : 'Pendiente'}</p>
+                  </div>
+                  <div className="bg-white/3 rounded-lg p-2">
+                    <p className="text-white/30 mb-1">Cierre</p>
+                    <p className={cierreOk ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>{cierreOk ? `Realizado ${fmt(c.last_closing)}` : 'Pendiente'}</p>
+                  </div>
+                  <div className="bg-white/3 rounded-lg p-2">
+                    <p className="text-white/30 mb-1">Legionela</p>
+                    <p className={c.last_legionella ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>{c.last_legionella ? `Realizado ${fmt(c.last_legionella)}` : 'Pendiente'}</p>
+                  </div>
+                  <div className="bg-white/3 rounded-lg p-2">
+                    <p className="text-white/30 mb-1">Última reparación</p>
+                    <p className={c.last_repair ? 'text-white font-mono' : 'text-white/30 italic'}>{fmt(c.last_repair) || 'Sin reparaciones'}</p>
+                  </div>
+                  <div className="bg-white/3 rounded-lg p-2 col-span-2">
+                    <p className="text-white/30 mb-1">Alarmas activas</p>
+                    <p className={`font-bold ${(c.alarm_fault || c.alarm_water || c.alarm_comms) ? 'text-red-400' : 'text-green-400'}`}>
+                      {(c.alarm_fault || c.alarm_water || c.alarm_comms) ? 'Sí' : 'No'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
             )
           })}
         </div>
@@ -192,6 +236,7 @@ function StatusModal({ coolers, onClose }) {
 
 export default function Maintenance({ data }) {
   const [selected, setSelected] = useState(null)
+  const [pinPending, setPinPending] = useState(null)
 
   const coolers = data.coolers.length > 0 ? data.coolers : [
     { unit_id: 2, hours_running: 1250, alarm_warranty: 0, last_closing: 1783849118, fan_on: 1, alarm_fault: 0, alarm_water: 0, alarm_comms: 0 },
@@ -201,15 +246,23 @@ export default function Maintenance({ data }) {
     { unit_id: 6, hours_running: 150,  alarm_warranty: 0, last_closing: 0,          fan_on: 0, alarm_fault: 1, alarm_water: 0, alarm_comms: 0 },
   ]
 
+  const handleTileClick = (id) => {
+    if (id === 'future') return
+    if (PIN_REQUIRED.includes(id)) {
+      setPinPending(id)
+    } else {
+      setSelected(id)
+    }
+  }
+
   return (
     <div className="h-full flex flex-col p-4 gap-4 overflow-hidden">
       <p className="text-white/20 text-xs font-bold tracking-widest uppercase shrink-0">Mantenimiento</p>
 
-      {/* 6 tiles en grid 3x2 */}
       <div className="grid grid-cols-3 gap-3 flex-1">
         {TILES.map(t => (
           <button key={t.id}
-            onClick={() => t.id !== 'future' && setSelected(t.id)}
+            onClick={() => handleTileClick(t.id)}
             className={`rounded-2xl border p-4 text-left transition-all duration-200 bg-gradient-to-br ${t.color} ${t.border} flex flex-col justify-between
               ${t.id === 'future' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:brightness-110'}`}>
             <div className="text-white/60 text-3xl mb-2">{t.icon}</div>
@@ -220,6 +273,14 @@ export default function Maintenance({ data }) {
           </button>
         ))}
       </div>
+
+      {/* PIN modal */}
+      {pinPending && (
+        <PinModal
+          onSuccess={() => { setSelected(pinPending); setPinPending(null) }}
+          onClose={() => setPinPending(null)}
+        />
+      )}
 
       {/* Modals */}
       {selected === 'status' && (

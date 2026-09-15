@@ -162,12 +162,14 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
   const st = STATUS[coolerStatus(cooler, zone)]
   const s = coolerStatus(cooler, zone)
   const isOn = zone?.on_off === 'ON'
+  const mode = zone?.cool_fan_mode || 'AUTO'
 
   return (
     <div onClick={() => onClick(cooler)}
       className={`flex-1 rounded-3xl border cursor-pointer overflow-hidden bg-gradient-to-br ${st.gradient} ${st.border} p-6 flex flex-col`}>
-      
-      <div className="flex justify-between items-start mb-4">
+
+      {/* Header */}
+      <div className="flex justify-between items-start mb-6">
         <div>
           <p className="text-white/30 text-xs font-bold tracking-widest uppercase mb-1">Cooler principal</p>
           <div className="flex items-center gap-3">
@@ -175,36 +177,54 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
             <p className="text-white text-3xl font-black leading-none">{cooler.model || `#${cooler.unit_id}`}</p>
           </div>
           <p className="text-white/20 text-sm mt-1">#{cooler.unit_id} · Zona {cooler.zone_id}</p>
-          {/* Modo actual */}
-          {zone?.on_off === 'ON' && zone?.cool_fan_mode !== 'FAN' && (
-            <p className="text-white/30 text-xs mt-0.5 font-bold">{zone?.cool_fan_mode}</p>
-          )}
         </div>
-        <div className="text-right">
-          {/* Botón ON/OFF donde estaba el cartel */}
+        <div className="text-right flex flex-col items-end gap-2">
           <button onClick={(e) => { e.stopPropagation(); toggleCooler(cooler.zone_id, cooler.unit_id, isOn) }}
-            className={`px-4 py-1.5 rounded-xl font-bold text-xs cursor-pointer block ml-auto
-              ${isOn ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30' : 'bg-[#004d89]/40 border border-[#088fc3]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
+            className={`px-5 py-2 rounded-xl font-bold text-sm cursor-pointer
+              ${isOn
+                ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30'
+                : 'bg-[#004d89]/40 border border-[#088fc3]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
             {isOn ? '■ Apagar' : '▶ Encender'}
           </button>
-          {/* Estado debajo del botón */}
-          <span className={`text-xs font-bold px-3 py-1 rounded-full border mt-2 inline-block ${st.lc} border-current bg-current/10`}>{st.label}</span>
-          <p className={`text-6xl font-black font-mono mt-3 leading-none ${st.lc}`}>{fanSpeed(cooler, zone)}<span className="text-2xl text-white/20">/10</span></p>
+          <p className={`text-6xl font-black font-mono leading-none ${st.lc}`}>
+            {fanSpeed(cooler, zone)}<span className="text-2xl text-white/20">/10</span>
+          </p>
         </div>
       </div>
 
       {/* Aviso FAN */}
-      {zone?.cool_fan_mode === 'FAN' && zone?.on_off === 'ON' && (
-        <div className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-yellow-500/15 border border-yellow-500/40 text-yellow-400 text-sm font-black tracking-wide mb-2">
+      {mode === 'FAN' && isOn && (
+        <div className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-yellow-500/15 border border-yellow-500/40 text-yellow-400 text-sm font-black tracking-wide mb-4">
           ⚠️ VENTILACIÓN — No enfría
         </div>
       )}
 
+      {/* Modo + temp objetivo */}
+      <div className="flex gap-3 mb-4">
+        <div className={`flex-1 rounded-xl p-3 text-center border
+          ${mode === 'AUTO' ? 'bg-[#088fc3]/15 border-[#088fc3]/30' :
+            mode === 'MANUAL' ? 'bg-white/8 border-white/15' :
+            'bg-yellow-500/10 border-yellow-500/20'}`}>
+          <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Modo</p>
+          <p className={`font-black text-lg
+            ${mode === 'AUTO' ? 'text-[#088fc3]' :
+              mode === 'MANUAL' ? 'text-white' :
+              'text-yellow-400'}`}>{mode}</p>
+        </div>
+        {mode === 'AUTO' && (
+          <div className="flex-1 rounded-xl p-3 text-center border bg-white/5 border-white/10">
+            <p className="text-white/30 text-xs uppercase tracking-wider mb-1">Objetivo</p>
+            <p className="text-white font-black text-lg">{zone?.target_temp}°C</p>
+          </div>
+        )}
+      </div>
+
       <div className="flex-1" />
 
+      {/* Info grid */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { l:'Agua', v: cooler.alarm_water ? 'Sin agua' : 'Con agua', c: cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]'},
+          { l:'Agua', v: cooler.alarm_water ? 'Sin agua' : 'Con agua', c: cooler.alarm_water ? 'text-yellow-400' : 'text-[#088fc3]' },
           { l:'Salinidad', v:`${cooler.salinity_us.toFixed(0)} μS`, c:'text-white' },
           { l:'PPM', v:`${cooler.salinity_ppm?.toFixed(0)||0}`, c:'text-white' },
           { l:'Horas', v: formatHours(cooler.hours_running), c:'text-white/50' },

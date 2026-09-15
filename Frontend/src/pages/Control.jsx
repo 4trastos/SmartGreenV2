@@ -38,20 +38,22 @@ export default function Control({ data, onImdActivate }) {
     }
   }
 
-  const confirmPin = async () => {
-    const res = await fetch(`${API_URL}/imd/unlock`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin })
-    })
-    if (res.ok) {
-      setShowPinModal(false)
-      setMode(pendingZoneId, 'IMD')
-      onImdActivate(pendingZoneId)
-    } else {
-      setPinError(true)
+    const confirmPin = async (pinValue) => {
+        const res = await fetch(`${API_URL}/imd/unlock`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: pinValue || pin })
+        })
+        if (res.ok) {
+            setShowPinModal(false)
+            setPin('')
+            setMode(pendingZoneId, 'IMD')
+            onImdActivate(pendingZoneId)
+        } else {
+            setPinError(true)
+            setPin('')
+        }
     }
-  }
 
   const toggle = async (zoneId) => {
     const zone = localZones.find(z => z.zone_id === zoneId)
@@ -271,46 +273,53 @@ export default function Control({ data, onImdActivate }) {
           )}
         </div>
 
-      </div>
-
-      {/* Modal PIN - IMD */}
-      {showPinModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg"
-          onClick={() => setShowPinModal(false)}>
-          <div onClick={e => e.stopPropagation()}
-            className="w-[320px] rounded-3xl border border-red-500/30 p-6 bg-[#060c12] shadow-2xl">
-            <p className="text-white/30 text-xs tracking-widest uppercase mb-1">Acceso restringido</p>
-            <p className="text-white text-2xl font-black mb-6">Modo IMD</p>
-            <input value={pin}
-              readOnly
-              onFocus={() => setShowPinKeyboard(true)}
-              onClick={e => { e.stopPropagation(); setShowPinKeyboard(true) }}
-              onTouchStart={e => e.stopPropagation()}
-              placeholder="PIN técnico"
-              className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-white text-center text-2xl font-mono tracking-widest mb-2
-                ${pinError ? 'border-red-500/60' : 'border-white/10'}`} />
-            {pinError && <p className="text-red-400 text-xs text-center mb-4">PIN incorrecto</p>}
-            <div className="flex gap-3 mt-4">
-              <button onClick={() => setShowPinModal(false)}
-                className="flex-1 py-3 rounded-xl bg-white/5 text-white/60 font-bold cursor-pointer">
-                Cancelar
-              </button>
-              <button onClick={confirmPin}
-                className="flex-1 py-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 font-bold cursor-pointer">
-                Acceder
-              </button>
-            </div>
-            {showPinKeyboard && (
-              <Keyboard
-                value={pin}
-                onChange={val => setPin(val)}
-                onClose={() => setShowPinKeyboard(false)}
-                numeric={true}
-              />
-            )}
-          </div>
         </div>
-      )}
+
+        {/* Modal PIN - IMD */}
+        {showPinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg"
+            onClick={() => setShowPinModal(false)}>
+            <div onClick={e => e.stopPropagation()}
+            className="w-[300px] rounded-3xl border border-white/10 p-6 bg-[#060c12] shadow-2xl">
+            <p className="text-white/30 text-xs tracking-widest uppercase mb-1 text-center">Acceso restringido</p>
+            <p className="text-white text-xl font-black mb-6 text-center">Modo IMD</p>
+
+            {/* Indicadores */}
+            <div className="flex justify-center gap-3 mb-6">
+                {[0,1,2,3].map(i => (
+                <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all
+                    ${pinError ? 'border-red-500 bg-red-500' :
+                    pin.length > i ? 'border-[#088fc3] bg-[#088fc3]' : 'border-white/20 bg-transparent'}`} />
+                ))}
+            </div>
+
+            {/* Teclado numérico */}
+            <div className="grid grid-cols-3 gap-2">
+                {[1,2,3,4,5,6,7,8,9,'⌫',0,''].map((k, i) => (
+                k === '' ? <div key={i} /> :
+                <button key={i} onClick={() => {
+                    if (k === '⌫') { setPin(p => p.slice(0,-1)); setPinError(false); return }
+                    if (pin.length >= 4) return
+                    const newPin = pin + k
+                    setPin(newPin)
+                    if (newPin.length === 4) confirmPin(newPin)
+                }}
+                    className={`h-12 rounded-xl font-bold text-lg cursor-pointer transition-all
+                    ${k === '⌫' ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-white/8 text-white hover:bg-white/15'}`}>
+                    {k}
+                </button>
+                ))}
+            </div>
+
+            {pinError && <p className="text-red-400 text-xs text-center mt-3">PIN incorrecto</p>}
+
+            <button onClick={() => { setShowPinModal(false); setPin(''); setPinError(false) }}
+                className="w-full mt-4 py-2 rounded-xl bg-white/5 text-white/40 text-sm cursor-pointer hover:bg-white/10">
+                Cancelar
+            </button>
+            </div>
+        </div>
+        )}
     </>
   )
 }

@@ -14,3 +14,10 @@ input, textarea {
   -webkit-user-select: text;
   user-select: text;
 }
+
+* {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
