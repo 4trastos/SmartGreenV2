@@ -9,7 +9,6 @@ import Scheduler from './pages/Scheduler'
 import IMD from './pages/IMD'
 import Setup from './pages/Setup'
 import Quiet from './pages/Quiet'
-
 import { API_URL } from './config.js'
 
 const NAV = [
@@ -20,7 +19,7 @@ const NAV = [
   { id: 'alarms', label: 'Alarmas',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> },
   { id: 'scheduler', label: 'Programador',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },  
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
   { id: 'quiet', label: 'Modo Silencio',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> },
   { id: 'maint', label: 'Mantenimiento',
@@ -35,7 +34,6 @@ function RebootModal({ onClose }) {
     setRebooting(true)
     await fetch(`${API_URL}/reboot`, { method: 'POST' }).catch(() => {})
   }
-  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
@@ -47,7 +45,7 @@ function RebootModal({ onClose }) {
             </svg>
           </div>
           <p className="text-white text-xl font-black mb-2">¿Reiniciar el sistema?</p>
-          <p className="text-white/40 text-sm">SmartGreen se reiniciará y la pantalla quedará apagada unos segundos.</p>
+          <p className="text-white/40 text-sm">Connect se reiniciará y la pantalla quedará apagada unos segundos.</p>
         </div>
         {rebooting ? (
           <div className="text-center py-4">
@@ -84,6 +82,7 @@ export default function App() {
   const [imdActive, setImdActive] = useState(false)
   const [imdZoneId, setImdZoneId] = useState(null)
   const [setupRequired, setSetupRequired] = useState(null)
+  const [quietMode, setQuietMode] = useState(0)
   const { data, connected } = useSmartGreen()
 
   useEffect(() => {
@@ -92,6 +91,16 @@ export default function App() {
       .then(d => setSetupRequired(d.setup_required))
       .catch(() => setSetupRequired(false))
   }, [])
+
+  useEffect(() => {
+    fetch(`${API_URL}/config`)
+      .then(r => r.json())
+      .then(arr => {
+        const found = arr.find(i => i.key === 'quiet_mode')
+        if (found) setQuietMode(found.value)
+      })
+      .catch(() => {})
+  }, [data.zones])
 
   const alarmCount = data.coolers.filter(c =>
     c.alarm_fault || c.alarm_water || c.alarm_comms || c.alarm_salinity
@@ -103,22 +112,15 @@ export default function App() {
   const pages = { dashboard: Dashboard, control: Control, alarms: Alarms, maint: Maintenance, settings: Settings, scheduler: Scheduler, quiet: Quiet }
   const PageComponent = pages[page]
 
-  // Cargando
   if (setupRequired === null)
     return <div className="flex h-screen w-screen bg-[#060c12] items-center justify-center text-white/40">Iniciando...</div>
 
-  // Primera instalación
   if (setupRequired)
     return <Setup onComplete={() => setSetupRequired(false)} data={data} />
 
   return (
     <div className="flex h-screen w-screen bg-[#060c12] overflow-hidden text-white"
       style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-
-      {/* <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[20%] w-[500px] h-[500px] bg-[#004d89]/8 rounded-full blur-[100px]" />
-        <div className="absolute bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-[#088fc3]/5 rounded-full blur-[80px]" />
-      </div> */}
 
       {/* SIDEBAR */}
       <nav className="relative z-20 flex flex-col items-center py-5 w-16 border-r border-white/5 bg-[#07111a]/90 backdrop-blur-xl shrink-0">
@@ -141,14 +143,11 @@ export default function App() {
         <div className="w-full px-2 mb-3">
           <div className="border-t border-white/8 mb-3" />
           <button onClick={() => !isPrewet && setShowReboot(true)}
-            className={`relative group w-full h-11 rounded-xl flex items-center justify-center transition-all duration-200
+            className={`w-full h-11 rounded-xl flex items-center justify-center transition-all duration-200
               ${isPrewet ? 'opacity-30 cursor-not-allowed text-white/20' : 'cursor-pointer text-white/25 hover:text-red-400 hover:bg-red-500/10'}`}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5">
               <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
             </svg>
-            <span className="absolute left-14 bg-[#0d1a26] text-white text-xs px-2.5 py-1.5 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/10 shadow-xl z-50">
-              Reiniciar sistema
-            </span>
           </button>
         </div>
 
@@ -164,11 +163,19 @@ export default function App() {
             <span className="text-white/40 text-xs tracking-widest uppercase font-medium">
               {NAV.find(n => n.id === page)?.label}
             </span>
+            {quietMode > 0 && (
+              <span className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border border-[#088fc3]/30 bg-[#088fc3]/10 text-[#088fc3] font-bold">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+                Modo silencio
+              </span>
+            )}
           </div>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
             <img src="/logo_australair_connect_Mini.png" alt="Australair" className="h-5 brightness-0 invert opacity-80" />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             {alarmCount > 0 && (
               <button onClick={() => setPage('alarms')}
                 className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 rounded-full px-3 py-1 text-red-400 text-xs font-bold cursor-pointer hover:bg-red-500/20 transition-colors">
@@ -190,11 +197,9 @@ export default function App() {
               data={data}
               onExit={() => {
                 setImdActive(false)
-                fetch(`${API_URL}/zones/${imdZoneId}/onoff`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'OFF'})
-                })
-                fetch(`${API_URL}/zones/${imdZoneId}/cancelprewet`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})
-                fetch(`${API_URL}/zones/${imdZoneId}/mode`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mode: 'AUTO'})
-                })
+                fetch(`${API_URL}/zones/${imdZoneId}/onoff`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'OFF'}) })
+                fetch(`${API_URL}/zones/${imdZoneId}/cancelprewet`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}' })
+                fetch(`${API_URL}/zones/${imdZoneId}/mode`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mode: 'AUTO'}) })
               }}
             />
           ) : (

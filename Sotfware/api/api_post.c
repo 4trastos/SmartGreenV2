@@ -377,7 +377,7 @@ enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connect
     parsed = sscanf(body, "{\"key\":\"%63[^\"]\",\"value\":%d}", key, &value);
     if (key[0] == '\0')
         return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"key required\"}"));
-    if (value == 0 || parsed < 2)
+    if (parsed < 2)
         return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"key and value required\"}"));
     
     pthread_mutex_lock(&smartgreen->data_mutex);

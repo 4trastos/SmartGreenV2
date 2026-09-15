@@ -52,6 +52,10 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "sensor_2_offset",           0);
     db_save_config(smartgreen, "sensor_2_humidity_offset",  28);
     db_save_config(smartgreen, "last_repair",               0);
+    db_save_config(smartgreen, "quiet_mode",                0);                     // 0=OFF, 1=24H, 2=TIME
+    db_save_config(smartgreen, "quiet_max_speed",           3);                     // velocidad máxima 1-10
+    db_save_config(smartgreen, "quiet_start",               2200);                  // 22:00 → 2200
+    db_save_config(smartgreen, "quiet_end",                 600);                   // 06:00 → 600
 }
 
 int ft_init_data(t_smartgreen *smartgreen)

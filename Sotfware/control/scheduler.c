@@ -1,4 +1,32 @@
 #include "../incl/smartgreen.h"
+#ifndef MIN
+# define MIN(a,b) ((a)<(b)?(a):(b))
+#endif
+
+int ft_is_quiet_mode(t_smartgreen *smartgreen)
+{
+    int quiet_mode  = db_read_config(smartgreen, "quiet_mode");
+    if (quiet_mode == 0) return 0;  // OFF
+
+    if (quiet_mode == 1) return 1;  // 24H — siempre activo
+
+    // TIME — comprobar horario
+    time_t      now = get_timestamp();
+    struct tm   *tm_info = localtime(&now);
+    int         current = tm_info->tm_hour * 100 + tm_info->tm_min;
+    int         start = db_read_config(smartgreen, "quiet_start");
+    int         end   = db_read_config(smartgreen, "quiet_end");
+
+    if (start <= end)
+        return (current >= start && current < end);
+    else  // cruza medianoche ej: 2200 → 0600
+        return (current >= start || current < end);
+}
+
+int ft_quiet_max_speed(t_smartgreen *smartgreen)
+{
+    return db_read_config(smartgreen, "quiet_max_speed");
+}
 
 int     scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min)
 {
@@ -136,6 +164,14 @@ void    scheduler_run(t_smartgreen *smartgreen)
                     {
                         new_speed = ft_auto_fan_speed(smartgreen, z, &error);
 
+                        // Quiet mode — limitar velocidad
+                        if (ft_is_quiet_mode(smartgreen))
+                        {
+                            int max_q = ft_quiet_max_speed(smartgreen);
+                            if (new_speed > max_q)
+                                new_speed = max_q;
+                        }
+
                         if (error < 0)
                         {
                             // Standby — resetear integral para arranque limpio
@@ -175,7 +211,8 @@ void    scheduler_run(t_smartgreen *smartgreen)
                             for (int i = 0; i < smartgreen->num_coolers; i++)
                                 if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
                                 {
-                                    r50 = calculate_register_50(0, 0, smartgreen->zone_params[z].fan_speed_cmd);
+                                    // r50 = calculate_register_50(0, 0, smartgreen->zone_params[z].fan_speed_cmd);
+                                    r50 = calculate_register_50(0, 0, ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd);
                                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
                                 }
                         }
@@ -188,7 +225,8 @@ void    scheduler_run(t_smartgreen *smartgreen)
                             for (int i = 0; i < smartgreen->num_coolers; i++)
                                 if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
                                 {
-                                    r50 = calculate_register_50(0, 1, smartgreen->zone_params[z].fan_speed_cmd);
+                                    // r50 = calculate_register_50(0, 1, smartgreen->zone_params[z].fan_speed_cmd);
+                                    r50 = calculate_register_50(0, 1, ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd);
                                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
                                 }
                         }
@@ -288,12 +326,9 @@ void    scheduler_run(t_smartgreen *smartgreen)
                             if (smartgreen->coolers[j].zone_id == smartgreen->scheduler[i].zone_id)
                                 ft_cooler_onoff(smartgreen, smartgreen->coolers[j].unit_id, on);
                         
-                        // Si es ON, forzar AUTO y 24°
                         if (on && zone_idx != -1)
                         {
                             pthread_mutex_lock(&smartgreen->data_mutex);
-                            // ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, "AUTO", sizeof(smartgreen->zone_params->cool_fan_mode));
-                            // smartgreen->zone_params[zone_idx].target_temp = 24.0f;
                             ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, smartgreen->scheduler[i].mode, sizeof(smartgreen->zone_params->cool_fan_mode));
                             if (smartgreen->scheduler[i].target_temp > 0)
                                 smartgreen->zone_params[zone_idx].target_temp = smartgreen->scheduler[i].target_temp;

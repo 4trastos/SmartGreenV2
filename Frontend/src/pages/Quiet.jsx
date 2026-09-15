@@ -2,6 +2,20 @@ import { useState, useEffect } from 'react'
 import { API_URL } from '../config.js'
 import HourPicker from '../components/HourPicker'
 
+const intToHour = (val) => {
+  const h = Math.floor(val / 100)
+  const m = val % 100
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`
+}
+
+const hourToInt = (str) => {
+  const [h, m] = str.split(':').map(Number)
+  return h * 100 + m
+}
+
+const modeToInt = { 'OFF': 0, '24H': 1, 'TIME': 2 }
+const intToMode = { 0: 'OFF', 1: '24H', 2: 'TIME' }
+
 export default function Quiet() {
   const [mode, setMode] = useState('OFF')
   const [maxSpeed, setMaxSpeed] = useState(3)
@@ -17,21 +31,21 @@ export default function Quiet() {
       .then(arr => {
         const get = (key, def) => {
           const found = arr.find(i => i.key === key)
-          return found ? found.value : def
+          return found !== undefined ? found.value : def
         }
-        setMode(get('quiet_mode', 'OFF'))
+        setMode(intToMode[get('quiet_mode', 0)] || 'OFF')
         setMaxSpeed(get('quiet_max_speed', 3))
-        setStartHour(get('quiet_start', '22:00'))
-        setEndHour(get('quiet_end', '06:00'))
+        setStartHour(intToHour(get('quiet_start', 2200)))
+        setEndHour(intToHour(get('quiet_end', 600)))
       })
   }, [])
 
   const save = async () => {
     const configs = [
-      { key: 'quiet_mode',      value: mode },
+      { key: 'quiet_mode',      value: modeToInt[mode] },
       { key: 'quiet_max_speed', value: maxSpeed },
-      { key: 'quiet_start',     value: startHour },
-      { key: 'quiet_end',       value: endHour },
+      { key: 'quiet_start',     value: hourToInt(startHour) },
+      { key: 'quiet_end',       value: hourToInt(endHour) },
     ]
     await Promise.all(configs.map(c =>
       fetch(`${API_URL}/config`, {
@@ -90,38 +104,38 @@ export default function Quiet() {
           </div>
 
           {/* Horario — solo en modo TIME */}
-        {mode === 'TIME' && (
-        <div className="flex-1 bg-white/3 rounded-2xl border border-white/8 p-6 flex flex-col">
-            <p className="text-white/40 text-xs uppercase tracking-wider mb-4">Horario de silencio</p>
-            <div className="flex-1 flex items-center gap-4">
-            <div className="flex-1">
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Inicio</p>
-                <button onClick={() => setShowStartPicker(true)}
-                className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white text-2xl font-black font-mono cursor-pointer hover:bg-white/10">
-                {startHour}
-                </button>
-                {showStartPicker && (
-                <HourPicker value={startHour}
-                    onChange={val => setStartHour(val)}
-                    onClose={() => setShowStartPicker(false)} />
-                )}
+          {mode === 'TIME' && (
+            <div className="flex-1 bg-white/3 rounded-2xl border border-white/8 p-6 flex flex-col">
+              <p className="text-white/40 text-xs uppercase tracking-wider mb-4">Horario de silencio</p>
+              <div className="flex-1 flex items-center gap-4">
+                <div className="flex-1">
+                  <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Inicio</p>
+                  <button onClick={() => setShowStartPicker(true)}
+                    className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white text-2xl font-black font-mono cursor-pointer hover:bg-white/10">
+                    {startHour}
+                  </button>
+                  {showStartPicker && (
+                    <HourPicker value={startHour}
+                      onChange={val => setStartHour(val)}
+                      onClose={() => setShowStartPicker(false)} />
+                  )}
+                </div>
+                <div className="text-white/20 text-xl shrink-0">→</div>
+                <div className="flex-1">
+                  <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Fin</p>
+                  <button onClick={() => setShowEndPicker(true)}
+                    className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white text-2xl font-black font-mono cursor-pointer hover:bg-white/10">
+                    {endHour}
+                  </button>
+                  {showEndPicker && (
+                    <HourPicker value={endHour}
+                      onChange={val => setEndHour(val)}
+                      onClose={() => setShowEndPicker(false)} />
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="text-white/20 text-xl shrink-0">→</div>
-            <div className="flex-1">
-                <p className="text-white/30 text-xs uppercase tracking-wider mb-2">Fin</p>
-                <button onClick={() => setShowEndPicker(true)}
-                className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white text-2xl font-black font-mono cursor-pointer hover:bg-white/10">
-                {endHour}
-                </button>
-                {showEndPicker && (
-                <HourPicker value={endHour}
-                    onChange={val => setEndHour(val)}
-                    onClose={() => setShowEndPicker(false)} />
-                )}
-            </div>
-            </div>
-        </div>
-        )}
+          )}
 
         </div>
       )}
