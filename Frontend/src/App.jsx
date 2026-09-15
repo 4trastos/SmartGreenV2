@@ -166,8 +166,7 @@ export default function App() {
             </span>
           </div>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-            <span className="text-white font-bold text-base">SmartGreen</span>
-            <img src="/logo_australair.png" alt="Australair" className="h-5 brightness-0 invert opacity-80" />
+            <img src="/logo_australair_connect_Mini.png" alt="Australair" className="h-5 brightness-0 invert opacity-80" />
           </div>
           <div className="flex items-center gap-3">
             {alarmCount > 0 && (
