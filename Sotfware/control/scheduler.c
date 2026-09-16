@@ -193,6 +193,8 @@ void    scheduler_run(t_smartgreen *smartgreen)
                                 for (int i = 0; i < smartgreen->num_coolers; i++)
                                     if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
                                     {
+                                        if (was_off)
+                                            ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, 1);             // ← arranque completo
                                         r50 = calculate_register_50(0, smartgreen->zone_params[z].pump_on, new_speed);
                                         r52 = calculate_register_52(new_speed);
                                         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);

@@ -1,5 +1,59 @@
 #include "../incl/smartgreen.h"
 
+void *ft_drain_dry_thread(void *arg)
+{
+    t_drain_args    *args = (t_drain_args *)arg;
+    t_smartgreen    *smartgreen = args->smartgreen;
+    int             unit_id = args->unit_id;
+    int             zone_id = args->zone_id;
+    int             zone_idx = ft_find_zone(smartgreen, zone_id);
+    int             minutes = db_read_config(smartgreen, "drain_dry_minutes");
+    int             speed   = db_read_config(smartgreen, "drain_dry_speed");
+
+    if (minutes <= 0) minutes = 60;
+    if (speed <= 0 || speed > 10) speed = 5;
+
+    printf("[DRAIN_DRY] Iniciando — unit=%d zone=%d minutes=%d speed=%d\n",
+        unit_id, zone_id, minutes, speed); fflush(stdout);
+
+    // Marcar zona ocupada
+    if (zone_idx != -1)
+    {
+        pthread_mutex_lock(&smartgreen->data_mutex);
+        smartgreen->zone_params[zone_idx].drain_dry_running = 1;
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+    }
+
+    db_save_config(smartgreen, "drain_dry_active", 1);
+
+    // Abrir drain sin solenoide
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_DRAIN_OPEN_SOLENOID_OFF);
+
+    // Encender fan sin bomba
+    uint16_t r50 = calculate_register_50(0, 0, speed);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r50);
+
+    sleep(minutes * 60);
+
+    // Cerrar drain y apagar
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
+    ft_cooler_onoff(smartgreen, unit_id, 0);
+
+    db_save_config(smartgreen, "drain_dry_active", 0);
+
+    // Liberar flag
+    if (zone_idx != -1)
+    {
+        pthread_mutex_lock(&smartgreen->data_mutex);
+        smartgreen->zone_params[zone_idx].drain_dry_running = 0;
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+    }
+
+    printf("[DRAIN_DRY] Completado\n"); fflush(stdout);
+    free(args);
+    return (NULL);
+}
+
 void    *prewet_test_thread(void *arg)
 {
     t_prewet_args   *args = (t_prewet_args *)arg;
@@ -28,6 +82,23 @@ void    *prewet_test_thread(void *arg)
 
     // Al terminar — apagar cooler
     printf("PREWET TEST completado — apagando cooler\n"); fflush(stdout);
+    if (args->from_setup)
+    {
+        printf("PREWET SETUP — drenando agua sucia\n"); fflush(stdout);
+        for (int i = 0; i < smartgreen->num_coolers; i++)
+        {
+            if (smartgreen->coolers[i].zone_id == zone_id)
+            {
+                // Parar la bomba y el fan
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, REG49_PARADA);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, REG49_APAGADO);
+                // Abrir drain sin solenoide
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, REG50_DRAIN_OPEN_SOLENOID_OFF);
+            }
+        }
+        sleep(30);
+        
+    }
     for (int i = 0; i < smartgreen->num_coolers; i++)
         if (smartgreen->coolers[i].zone_id == zone_id)
             ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, 0);

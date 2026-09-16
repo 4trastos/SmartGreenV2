@@ -244,6 +244,25 @@ export default function IMD({ data, onExit }) {
             </div>
             </div>
 
+            {/* DRENAJE Y SECADO */}
+            <div className="bg-white/4 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+                <p className="text-white/40 text-xs uppercase tracking-wider">Drenaje y Secado</p>
+                <button onClick={() => saveConfig('drain_dry_enabled', config.drain_dry_enabled ? 0 : 1)}
+                className={`relative w-10 h-5 rounded-full transition-all cursor-pointer
+                    ${config.drain_dry_enabled ? 'bg-[#088fc3]' : 'bg-white/10'}`}>
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all
+                    ${config.drain_dry_enabled ? 'left-5' : 'left-0.5'}`} />
+                </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+                <ConfigParam key="drain_dry_minutes" label="Duración" unit="min"
+                value={config.drain_dry_minutes} onChange={v => saveConfig('drain_dry_minutes', v)} />
+                <ConfigParam key="drain_dry_speed" label="Velocidad fan" unit=""
+                value={config.drain_dry_speed} onChange={v => saveConfig('drain_dry_speed', v)} />
+            </div>
+            </div>
+
         </div>
         )}
 

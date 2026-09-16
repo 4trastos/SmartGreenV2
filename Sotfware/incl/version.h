@@ -5,9 +5,9 @@
 /* PRODUCT                                                  */
 /*----------------------------------------------------------*/
 
-# define SG_PRODUCT         "SmartGreen"
-# define SG_NAME            "SmartGreen Controller"
-# define TEST_NAME          "SmartGreen TEST"
+# define SG_PRODUCT         "Connect"
+# define SG_NAME            "Connect Controller"
+# define TEST_NAME          "Connect TEST"
 
 /*----------------------------------------------------------*/
 /* VERSIONS                                                 */

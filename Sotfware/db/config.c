@@ -56,6 +56,10 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "quiet_max_speed",           3);                     // velocidad máxima 1-10
     db_save_config(smartgreen, "quiet_start",               2200);                  // 22:00 → 2200
     db_save_config(smartgreen, "quiet_end",                 600);                   // 06:00 → 600
+    db_save_config(smartgreen, "drain_dry_enabled",         0);                     // 0=OFF, 1=ON
+    db_save_config(smartgreen, "drain_dry_minutes",         60);                    // minutos
+    db_save_config(smartgreen, "drain_dry_speed",           5);                     // velocidad fan
+    db_save_config(smartgreen, "drain_dry_active",          0);
 }
 
 int ft_init_data(t_smartgreen *smartgreen)

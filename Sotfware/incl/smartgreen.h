@@ -47,8 +47,7 @@
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 # define SQL_INSERT_SENSOR      "INSERT OR IGNORE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, humidity_offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-// # define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
-# define SQL_SAVE_CONFIG        "INSERT INTO config (key, value, last_mod) VALUES(?, ?, strftime('%s', 'now')) ON CONFLICT(key) DO UPDATE SET value=excluded.value, last_mod=strftime('%s', 'now')"
+# define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
 # define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, integral, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
                                 "salinity_us, drain_open, solenoid_on, on_off, fault_code) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_ZONE_PARAMS   "INSERT OR IGNORE INTO zone_params (zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, integral, pump_on, humidity_control, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, prewet_in_progress, last_prewet, last_drain, last_pump_time) "\
@@ -102,7 +101,7 @@
 # define MAINT_CLOSING          "closing"      // Cierre / fin temporada
 # define MAINT_LEGIONELLA       "legionella"   // Tratamiento legionela
 # define MAINT_REPAIR           "repair"       // Reparación puntual
-# define IMD_PIN                "1234"
+# define IMD_PIN                "7378"
 
 /* CONSTANTES VERIFICADAS POR SNIFFING */
 # define REG49_ENCENDIDO                48      // pump=OFF, fan=3
@@ -219,6 +218,7 @@ typedef struct s_zone_params
     int                 fan_speed_cmd;
     int                 pump_on;
     int                 humidity_control;
+    int                 drain_dry_running;
     float               target_temp;
     float               humidity_min;
     float               humidity_max;
@@ -457,6 +457,9 @@ void                scheduler_stop(t_smartgreen *smartgreen);
 void                ft_auto_humidity_control(t_smartgreen *smartgreen, int zone_idx);
 int                 ft_is_quiet_mode(t_smartgreen *smartgreen);
 int                 ft_quiet_max_speed(t_smartgreen *smartgreen);
+void                *ft_drain_dry_thread(void *arg);
+
+
 /*  UTILS   */
 void                log_error(const char *message);
 void                log_info(const char *message);
