@@ -18,7 +18,7 @@ const T = {
     sensor_hint: 'Indique si cada sensor es interior o exterior',
     purge_sub: 'Ciclo de purga paneles',
     purge_sub_active: 'Ciclo de purga paneles. ESPERE',
-    purge_body: 'Purgue paneles si el evaporativo es nuevo.',
+    purge_body: 'Purgadno paneles el evaporativo es nuevo.',
     purge_hint: 'Esto puede tardar 10 minutos.',
     confirm_sub: 'Resumen de la instalación',
     lang_label: 'Idioma', zones_label: 'Zonas',
@@ -228,6 +228,7 @@ export default function Setup({ onComplete, data }) {
   const [sensorRoles, setSensorRoles] = useState({})
   const [purging, setPurging] = useState(false)
   const prewetStartedRef = useRef(false)
+  const [purgeProgress, setPurgeProgress] = useState(0)
 
   const t = T[lang] || T.es
 
@@ -286,6 +287,7 @@ export default function Setup({ onComplete, data }) {
   const purge = async () => {
     prewetStartedRef.current = true
     setPurging(true)
+    setPurgeProgress(0)
     await post('language', { lang })
     await post('zones', { num_zones: numZones, zones })
     await post('coolers', { zone_id: 1, num_coolers: foundCoolers.length || numCoolers, coolers: foundCoolers })
@@ -293,6 +295,33 @@ export default function Setup({ onComplete, data }) {
     await fetch(`${API_URL}/setup/purge`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
     }).catch(err => console.error('Error purga:', err))
+
+    const TOTAL = 361
+    let elapsed = 0
+    const timer = setInterval(() => {
+      elapsed++
+      setPurgeProgress(Math.min(99, Math.round((elapsed / TOTAL) * 100)))
+    }, 1000)
+
+    // Polling hasta que termine
+    await new Promise(resolve => {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch(`${API_URL}/zones`)
+          const zones = await res.json()
+          const zone = zones.find(z => z.zone_id === 1)
+          if (zone && zone.prewet_in_progress === 'no') {
+            clearInterval(interval)
+            resolve()
+          }
+        } catch {}
+      }, 2000)
+    })
+
+    clearInterval(timer)
+    setPurgeProgress(100)
+    await new Promise(resolve => setTimeout(resolve, 500))
+    setStep(8)
   }
 
   const confirm = async () => {
@@ -492,25 +521,45 @@ export default function Setup({ onComplete, data }) {
         </>)}
 
         {/* PASO 7 — Purga */}
-        {step === 7 && (<>
-        <Header title={t.title} subtitle={purging ? t.purge_sub_active : t.purge_sub} />
-        <div className="p-6 text-center">
-            {!purging ? (<>
+        {step === 7 && !purging && (<>
+          <Header title={t.title} subtitle={t.purge_sub} />
+          <div className="p-6 text-center">
             <p className="text-white/80 font-bold mb-1">{t.purge_body}</p>
             <p className="text-white/50 text-sm mb-8">{t.purge_hint}</p>
             <div className="flex justify-between">
-                <Btn label={t.later} onClick={() => setStep(8)} />
-                <Btn label={t.next} onClick={purge} />
+              <Btn label={t.later} onClick={() => setStep(8)} />
+              <Btn label={t.next} onClick={purge} />
             </div>
-            </>) : (<>
-            <p className="text-white/50 text-sm mb-6">{t.purging_msg}</p>
+          </div>
+        </>)}
+
+        {step === 7 && purging && (<>
+          <Header title={t.title} subtitle={t.purge_sub_active} />
+          <div className="p-6">
+            <div className="flex justify-between items-center py-2">
+              <span className="text-gray-300 font-bold text-sm">{t.purge_body}</span>
+              <span className="text-white/50 text-sm">{t.in_progress}</span>
+            </div>
+            <div className="border-b border-white/10 mb-2" />
+            <div className="flex justify-between items-center py-2 mb-4">
+              <span className="text-gray-300 font-bold text-sm">Drain</span>
+              <span className="text-white/50 text-sm">{t.in_progress}</span>
+            </div>
             <div className="flex justify-center my-4">
-                <div className="w-20 h-20 rounded-full border-4 border-white/20 bg-white/5 flex items-center justify-center animate-pulse">
-                <span className="text-white/60 font-bold text-sm">Drain</span>
+              <div className="relative w-24 h-24">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="#ffffff20" strokeWidth="10" />
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="#088fc3" strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 42 * purgeProgress / 100} ${2 * Math.PI * 42}`} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-white font-black text-xl">{purgeProgress}%</span>
                 </div>
+              </div>
             </div>
-            </>)}
-        </div>
+            <p className="text-white/50 text-sm text-center">{t.purging_msg}</p>
+          </div>
         </>)}
 
         {/* PASO 8 — Confirmar */}

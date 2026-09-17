@@ -6,6 +6,7 @@ char    *ft_model_name(int cpmd_code)
     if (cpmd_code == 64)  return ("TBS 460");
     if (cpmd_code == 80)  return ("TBS 520");
     if (cpmd_code == 120) return ("TBS 640");
+    if (cpmd_code == 700) return ("Coolair 700");
     // añadir más según catálogo Breezair
     return ("Breezair");
 }
@@ -19,53 +20,6 @@ int    decode_water_present_zone(uint16_t reg, int zone)
     shift = (zone - 1) * 4;
     return ((reg >> shift) & 0x0F);
 }
-
-// void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
-// {
-//     FILE *f = fopen("/tmp/cooler_regs.log", "a");
-//     if (f)
-//     {
-//         fprintf(f, "\n===============================\n");
-//         fprintf(f, "timestamp=%ld unit=%d\n", (long)time(NULL), state->unit_id);
-//         for (int i = 0; i < MODBUS_COOLER_REGS; i++)
-//             fprintf(f, "R%-2d : 0x%04X (%5d)\n", i, regs[i], regs[i]);
-//         fclose(f);
-//     }
-    
-//     state->r0_config     = (regs[0]);
-//     state->modbus_addr   = (regs[8]);
-//     state->fan_speed_z1  = (regs[19]);
-//     state->fan_speed_z2  = (regs[20]);
-//     state->fan_speed_z3  = (regs[21]);
-//     state->fan_speed_z4  = (regs[22]);
-//     state->fan_speed_z5  = (regs[23]);
-//     state->ramp_rate     = (regs[24]);
-//     state->cold_starts   = (regs[27]);
-//     state->fan_starts    = (regs[28]);
-//     state->fan_hours     = (regs[29]);
-//     state->tank_drains   = (regs[32]);
-//     state->avg_tank_fill = (regs[43]);
-//     state->drain_valve_open  = (regs[49] >> 0) & 0x01;                   // drain valve open/close" (estado leído) 
-//     state->cool_mode_on      = (regs[49] >> 1) & 0x01;
-//     state->pump_on           = state->cool_mode_on;                               // cool_mode_on = bomba activa
-//     state->fault_present     = (regs[49] >> 3) & 0x01;
-//     state->actual_fan_speed  = (regs[49] >> 4) & 0x0F;                  // ← fuente de verdad
-//     state->fan_on            = state->actual_fan_speed > 0 ? 1 : 0;     // ← derivado
-//     state->fan_running       = state->fan_on;                           // ← alias, misma fuente
-//     state->inlet_valve_open  = (regs[49] >> 4) & 0x01;                  // bit 4
-//     state->most_recent_fault = (regs[49] >> 12) & 0x0F;
-//     state->extended_status  = (regs[52]);
-//     state->drain_valve_confirm = (regs[50] >> 4) & 0x01;            // drain valve open/close" (comando/confirmación)
-//     state->fan_speed_confirmed = (regs[50] >> 8) & 0x0F;            // siempre 0, no fiable
-//     state->solenoid_on         = (regs[50] >> 3) & 0x01;
-//     state->water_present = decode_water_present_zone(regs[53], state->zone_id);
-//     state->salinity_ppm = calculate_salinity_ppm(regs[54]);
-//     state->salinity_us = calculate_salinity_us(regs[54]);
-//     ft_strcpy(state->model, ft_model_name(regs[4]), sizeof(state->model));
-//     state->firmware = regs[1];
-    
-//     printf("[DEBUG FAN] reg49=0x%04X reg50=0x%04X bit3=%d fan_running=%d fan_speed=%d cool_mode=%d\n", regs[49], regs[50], (regs[50] >> 3) & 0x01, state->fan_running, state->actual_fan_speed, state->cool_mode_on); fflush(stdout);
-// }
 
 void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
 {
@@ -99,7 +53,6 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     }
     is_initialized = 1;
 
-    // --- Lectura de tus variables habituales ---
     state->r0_config     = (regs[0]);
     state->modbus_addr   = (regs[8]);
     
@@ -152,6 +105,7 @@ void    decode_sensor_state(uint16_t *regs, t_sensor_state *state)
         fprintf(fd, "regs[1]=0x%04X temp_raw=%d (%.1f°C)\n", regs[1], (int16_t)regs[1], (int16_t)regs[1] / 10.0f);
         fprintf(fd, "regs[2]=0x%04X hum_raw=%d (%.1f%%)\n", regs[2], (int16_t)regs[2], (int16_t)regs[2] / 10.0f);
         fprintf(fd, "regs[3]=0x%04X flags=%d\n", regs[3], regs[3]);
+        fprintf(fd, "regs[4]=0x%04X model_name=%d\n", regs[4], regs[4]);
         fprintf(fd, "---\n");
         fclose(fd);
     }
