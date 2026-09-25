@@ -39,15 +39,59 @@ enum MHD_Result api_post_setup_language(t_smartgreen *smartgreen, struct MHD_Con
     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
 }
 
+// enum MHD_Result api_post_setup_zones(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
+// {
+//     (void)body_size;
+//     int num_zones = 0;
+
+//     if (!body || sscanf(body, "{\"num_zones\":%d", &num_zones) != 1 || num_zones < 1 || num_zones > 8)
+//         return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid\"}");
+//     db_update_config(smartgreen, "num_zones", num_zones);
+//     smartgreen->num_zones = num_zones;
+//     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+// }
+
 enum MHD_Result api_post_setup_zones(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
 {
     (void)body_size;
-    int num_zones = 0;
+    int     num_zones = 0;
+    char    zone_name[64] = {0};
+    char    sql[256];
 
     if (!body || sscanf(body, "{\"num_zones\":%d", &num_zones) != 1 || num_zones < 1 || num_zones > 8)
         return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid\"}");
+
     db_update_config(smartgreen, "num_zones", num_zones);
     smartgreen->num_zones = num_zones;
+
+    // Leer nombres de zonas y guardar en BD
+    for (int i = 0; i < num_zones; i++)
+    {
+        const char *ptr = body;
+        for (int j = 0; j <= i; j++)
+        {
+            ptr = strstr(ptr, "\"name\":\"");
+            if (!ptr) break;
+            if (j < i) ptr++;
+        }
+        if (ptr)
+        {
+            ptr += 8; // saltar "name":"
+            char *end = strchr(ptr, '"');
+            if (end)
+            {
+                int len = end - ptr;
+                if (len > 63) len = 63;
+                strncpy(zone_name, ptr, len);
+                zone_name[len] = '\0';
+                snprintf(sql, sizeof(sql),
+                    "UPDATE zones SET name='%s' WHERE id=%d;", zone_name, i + 1);
+                sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
+                printf("[SETUP] Zona %d nombre: %s\n", i + 1, zone_name); fflush(stdout);
+            }
+        }
+    }
+
     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
 }
 

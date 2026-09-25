@@ -482,6 +482,7 @@ enum MHD_Result     api_get_zones(t_smartgreen *smartgreen, struct MHD_Connectio
         offset += snprintf(responsed + offset, sizeof(responsed),
             "%s{"
             "\"zone_id\":%d,"
+            "\"name\":\"%s\"," 
             "\"fan_speed_cmd\":%d,"
             "\"target_temp\":%.2f,"
             "\"humidity_min\":%.2f,"
@@ -500,6 +501,7 @@ enum MHD_Result     api_get_zones(t_smartgreen *smartgreen, struct MHD_Connectio
             "}",
             i > 0 ? "," : "",
             smartgreen->zone_params[i].zone_id,
+            smartgreen->zones[i].name,
             smartgreen->zone_params[i].fan_speed_cmd,
             smartgreen->zone_params[i].target_temp,
             smartgreen->zone_params[i].humidity_min,
