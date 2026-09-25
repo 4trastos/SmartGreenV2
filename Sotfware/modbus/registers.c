@@ -105,8 +105,11 @@ void    decode_sensor_state(uint16_t *regs, t_sensor_state *state)
         fprintf(fd, "regs[1]=0x%04X temp_raw=%d (%.1f°C)\n", regs[1], (int16_t)regs[1], (int16_t)regs[1] / 10.0f);
         fprintf(fd, "regs[2]=0x%04X hum_raw=%d (%.1f%%)\n", regs[2], (int16_t)regs[2], (int16_t)regs[2] / 10.0f);
         fprintf(fd, "regs[3]=0x%04X flags=%d\n", regs[3], regs[3]);
-        fprintf(fd, "regs[4]=0x%04X model_name=%d\n", regs[4], regs[4]);
-        fprintf(fd, "---\n");
+    
+        for (int i = 0; i < 10; i++)
+            fprintf(fd, "regs[%d]=0x%04X ( %d )\n", i, regs[i], regs[i]);
+
+        fprintf(fd, "---\n");    
         fclose(fd);
     }
 

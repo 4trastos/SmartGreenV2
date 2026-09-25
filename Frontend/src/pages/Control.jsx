@@ -133,7 +133,7 @@ export default function Control({ data, onImdActivate }) {
                   {/* Header */}
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-[#088fc3] text-xs font-bold tracking-widest uppercase">Zona</p>
+                      <p className="text-[#088fc3] text-xs font-bold tracking-widest uppercase">{zone.name || 'Zona'}</p>
                       <p className="text-white text-4xl font-black">{zone.zone_id}</p>
                     </div>
                     <button onClick={() => toggle(zone.zone_id)}

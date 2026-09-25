@@ -36,10 +36,12 @@ void    db_load_coolers_state(t_smartgreen *smartgreen)
 int db_load_zone_params(t_smartgreen *smartgreen)
 {
     sqlite3_stmt    *stmt = NULL;
+    sqlite3_stmt    *stmt2 = NULL;
     const char      *sql = "SELECT zone_id, fan_speed_cmd, target_temp, humidity_min, humidity_max, integral,"
                             "pump_on, humidity_control, cool_fan_mode, drain_valve, solenoid, on_off, inmediate_drain, "
                             "prewet_in_progress, last_prewet, last_drain, last_pump_time "
                             "FROM zone_params;";
+    const char      *sql2 = "SELECT id, name FROM zones;";
     int             rc;
 
     rc = sqlite3_prepare_v2(smartgreen->db, sql, -1, &stmt, NULL);
@@ -73,6 +75,19 @@ int db_load_zone_params(t_smartgreen *smartgreen)
         smartgreen->zone_params[z].last_pump_time   = sqlite3_column_int(stmt, 16);
     }
     sqlite3_finalize(stmt);
+
+    if (sqlite3_prepare_v2(smartgreen->db, sql2, -1, &stmt2, NULL) == SQLITE_OK)
+    {
+        while (sqlite3_step(stmt2) == SQLITE_ROW)
+        {
+            int zone_id = sqlite3_column_int(stmt2, 0);
+            int z = ft_find_zone(smartgreen, zone_id);
+            if (z == -1) continue;
+            smartgreen->zones[z].id = zone_id;
+            ft_strcpy(smartgreen->zones[z].name, (char*)sqlite3_column_text(stmt2, 1), sizeof(smartgreen->zones->name));
+        }
+        sqlite3_finalize(stmt2);
+    }
     return (0);
 }
 

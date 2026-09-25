@@ -176,7 +176,7 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
             <span className={`w-3 h-3 rounded-full ${st.dot}`} />
             <p className="text-white text-3xl font-black leading-none">{cooler.model || `#${cooler.unit_id}`}</p>
           </div>
-          <p className="text-white/20 text-sm mt-1">#{cooler.unit_id} · Zona {cooler.zone_id}</p>
+          <p className="text-white/20 text-sm mt-1">#{cooler.unit_id} · {zone?.name || `Zona ${cooler.zone_id}`}</p>
         </div>
         <div className="text-right flex flex-col items-end gap-2">
           <button onClick={(e) => { e.stopPropagation(); toggleCooler(cooler.zone_id, cooler.unit_id, isOn) }}
@@ -425,7 +425,7 @@ export default function Dashboard({ data, connected }) {
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium
                   ${z.on_off==='ON'?'bg-[#004d89]/25 border-[#088fc3]/35 text-[#088fc3]':'bg-white/3 border-white/8 text-white/25'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${z.on_off==='ON'?'bg-[#088fc3]':'bg-white/15'}`} />
-                Zona {z.zone_id} · {z.on_off} · {z.cool_fan_mode} · {
+                Zona {z.name || `Zona ${z.zone_id}`} · {z.on_off} · {z.cool_fan_mode} · {
                   (() => {
                     const c = data.coolers.find(c => c.zone_id === z.zone_id)
                     return c ? c.actual_fan_speed : z.fan_speed_cmd

@@ -135,7 +135,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
     for (int i = 0; i < smartgreen->num_zones; i++)
     {
         offset += snprintf(buffer + offset, sizeof(buffer) - offset,
-            "%s{\"zone_id\":%d,\"on_off\":\"%s\","
+            "%s{\"zone_id\":%d,\"name\":\"%s\",\"on_off\":\"%s\","
             "\"fan_speed_cmd\":%d,\"target_temp\":%.1f,"
             "\"humidity_min\":%.1f,\"humidity_max\":%.1f,"
             "\"humidity_control\":%d,"
@@ -143,6 +143,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             "\"prewet_in_progress\":\"%s\"}",
             i > 0 ? "," : "",
             smartgreen->zone_params[i].zone_id,
+            smartgreen->zones[i].name,
             smartgreen->zone_params[i].on_off,
             smartgreen->zone_params[i].fan_speed_cmd,
             smartgreen->zone_params[i].target_temp,
