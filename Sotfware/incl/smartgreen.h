@@ -54,7 +54,6 @@
                                 " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_ERROR         "INSERT INTO error_log (id, unit_id, timestamp, level, message) VALUES(?, ?, ?, ?, ?)"
 # define SQL_SAVE_FAULT_LOG     "INSERT INTO fault_log (id, unit_id, fault_code, fault_present, time_created, time_cleared) VALUES(?, ?, ?, ?, ?, ?)"
-// # define SQL_SAVE_ZONES         "INSERT OR REPLACE INTO zones (id, name, enabled) VALUES(?, ?, ?)"
 # define SQL_SAVE_ZONES         "INSERT OR IGNORE INTO zones (id, name, enabled) VALUES(?, ?, ?)"
 # define SQL_SAVE_SENSOR_ZONE   "INSERT OR REPLACE INTO sensor_zone (sensor_id, zone_id) VALUES(?, ?)"
 # define SQL_SAVE_SCHEDULER     "INSERT OR IGNORE INTO scheduler (name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun, mode, target_temp) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
