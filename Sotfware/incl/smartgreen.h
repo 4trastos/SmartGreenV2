@@ -33,7 +33,7 @@
 /*  PATHS   */
 # define INSTALL_DIR            "/opt/smartgreen"
 # define DATA_DIR               "/var/lib/smartgreen"
-# define LOG_DIR                "var/log/smartgreen"
+# define LOG_DIR                "/var/log/smartgreen"
 # define CONFIG_DIR             INSTALL_DIR "/config"
 # define BACKUP_DIR             INSTALL_DIR "/backups"
 # define LOG_PATH               LOG_DIR "/smartgreen.log"
