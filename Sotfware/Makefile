@@ -15,7 +15,7 @@ LDLIBS = -lmodbus -lsqlite3 -lm -lpthread -lmicrohttpd -lwebsockets -lssl -lcryp
 CPPFLAGS = -Iincl -I/usr/include/modbus -DDATA_DIR=\"$(DB_DIR)\"
 
 # Flags del compilador (Opciones y Advertencias)
-CFLAGS = -Wall -Werror -Wextra -Wpadded
+CFLAGS = -Wall -Werror -Wextra #-Wpadded
 DFLAGS = -Wall -Werror -Wextra -g3 -fsanitize=address -O0
 SFLAGS = -s
 

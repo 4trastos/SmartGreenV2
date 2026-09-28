@@ -12,10 +12,10 @@ import Quiet from './pages/Quiet'
 import { API_URL } from './config.js'
 
 const NAV = [
-  { id: 'dashboard', label: 'Vista General',
-    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> },
   { id: 'control', label: 'Control',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg> },
+  { id: 'dashboard', label: 'Vista General',
+    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> },
   { id: 'alarms', label: 'Alarmas',
     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> },
   { id: 'scheduler', label: 'Programador',
@@ -77,7 +77,7 @@ function Clock() {
 }
 
 export default function App() {
-  const [page, setPage] = useState('dashboard')
+  const [page, setPage] = useState('control')
   const [showReboot, setShowReboot] = useState(false)
   const [imdActive, setImdActive] = useState(false)
   const [imdZoneId, setImdZoneId] = useState(null)
