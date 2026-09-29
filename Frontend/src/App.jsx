@@ -83,6 +83,7 @@ export default function App() {
   const [imdZoneId, setImdZoneId] = useState(null)
   const [setupRequired, setSetupRequired] = useState(null)
   const [quietMode, setQuietMode] = useState(0)
+  const [schedulerActive, setSchedulerActive] = useState(false)
   const { data, connected } = useSmartGreen()
 
   useEffect(() => {
@@ -101,6 +102,23 @@ export default function App() {
       })
       .catch(() => {})
   }, [data.zones])
+
+  useEffect(() => {
+    const checkScheduler = () => {
+      fetch(`${API_URL}/scheduler`)
+        .then(r => r.json())
+        .then(arr => {
+          const now = new Date()
+          const day = now.getDay() === 0 ? 'sun' : ['mon','tue','wed','thu','fri','sat'][now.getDay()-1]
+          const active = arr.some(s => s.active && s[day])
+          setSchedulerActive(active)
+        })
+        .catch(() => {})
+    }
+    checkScheduler()
+    const interval = setInterval(checkScheduler, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const alarmCount = data.coolers.filter(c =>
     c.alarm_fault || c.alarm_water || c.alarm_comms || c.alarm_salinity
@@ -128,12 +146,14 @@ export default function App() {
           {NAV.map(item => {
             const isActive = page === item.id
             const hasAlert = item.id === 'alarms' && alarmCount > 0
+            const hasScheduler = item.id === 'scheduler' && schedulerActive
             return (
               <button key={item.id} onClick={() => !isPrewet && !imdActive && setPage(item.id)}
                 className={`relative w-full h-11 rounded-xl flex items-center justify-center transition-all duration-200
                   ${isPrewet || imdActive ? 'opacity-30 cursor-not-allowed text-white/20' : isActive ? 'bg-[#088fc3]/20 text-white shadow-[inset_0_0_0_1px_rgba(8,143,195,0.3)] cursor-pointer' : 'text-white/40 hover:text-white hover:bg-white/6 cursor-pointer'}`}>
                 {item.icon}
                 {hasAlert && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_6px_#ef4444]" />}
+                {hasScheduler && !hasAlert && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-green-400 rounded-full shadow-[0_0_6px_#4ade80]" />}
               </button>
             )
           })}

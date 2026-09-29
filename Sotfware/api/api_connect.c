@@ -76,7 +76,7 @@ enum MHD_Result api_get_cooler(t_smartgreen *smartgreen, struct MHD_Connection *
 enum MHD_Result api_get_scheduler(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {
     sqlite3_stmt        *stmt = NULL;
-    const char          *sql =  "SELECT id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun, mode, target_temp FROM scheduler ORDER BY id ASC;";
+    const char          *sql =  "SELECT id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun, mode, target_temp, fan_speed FROM scheduler ORDER BY id ASC;";
     struct json_object  *array = json_object_new_array();
     struct json_object  *obj;
     enum MHD_Result     result;
@@ -110,6 +110,7 @@ enum MHD_Result api_get_scheduler(t_smartgreen *smartgreen, struct MHD_Connectio
         json_object_object_add(obj, "sun",          json_object_new_int(sqlite3_column_int(stmt, 12)));
         json_object_object_add(obj, "mode",         json_object_new_string((const char *)sqlite3_column_text(stmt, 13)));
         json_object_object_add(obj, "target_temp",  json_object_new_double(sqlite3_column_int(stmt, 14)));
+        json_object_object_add(obj, "fan_speed",    json_object_new_int(sqlite3_column_int(stmt, 15)));
         json_object_array_add(array, obj);
     }
     sqlite3_finalize(stmt);

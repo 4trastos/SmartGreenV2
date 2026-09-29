@@ -1,5 +1,14 @@
 # include "../incl/smartgreen.h"
 
+enum MHD_Result api_post_reset(t_smartgreen *smartgreen, struct MHD_Connection *connection)
+{
+    (void)smartgreen;
+    api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+    sleep(1);
+    system("/home/pi/reset.sh &");
+    return (MHD_YES);
+}
+
 enum MHD_Result     api_serve_file(struct MHD_Connection *connection, const char *filepath, const char *mime)
 {
     struct MHD_Response *resp;
@@ -207,12 +216,12 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
         ctx = *con_cls;
         if (strcmp(url, "/api/reboot") == 0)
         {
-            if (!ft_validate_token(smartgreen, connection))
-            {
-                free(ctx);
-                *con_cls = NULL;
-                return (api_send_response(connection, MHD_HTTP_UNAUTHORIZED, "{\"error\":\"Unauthorized\"}"));
-            }
+            // if (!ft_validate_token(smartgreen, connection))
+            // {
+            //     free(ctx);
+            //     *con_cls = NULL;
+            //     return (api_send_response(connection, MHD_HTTP_UNAUTHORIZED, "{\"error\":\"Unauthorized\"}"));
+            // }
             ret = api_post_reboot(smartgreen, connection, ctx->body, ctx->len);
             free(ctx);
             *con_cls = NULL;
@@ -319,6 +328,14 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             return (ret);
         }
         
+        if (strcmp(url, "/api/reset") == 0)
+        {
+            ret = api_post_reset(smartgreen, connection);
+            free(ctx);
+            *con_cls = NULL;
+            return (ret);
+        }
+
         free(ctx);
     }
 

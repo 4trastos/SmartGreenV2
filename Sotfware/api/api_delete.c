@@ -58,9 +58,10 @@ enum MHD_Result api_put_scheduler(t_smartgreen *smartgreen, struct MHD_Connectio
     int             rc;
     char            mode[64] = {0};
     float           target_temp = 0.0f;
+    int             fan_speed = 0;
     sqlite3_stmt    *stmt = NULL;
     const char      *sql = "UPDATE scheduler SET name=?, zone_id=?, active=?, action=?, hour=?, "
-                           "mon=?, tue=?, wed=?, thu=?, fri=?, sat=?, sun=?, mode=?, target_temp=? WHERE id=?;";
+                           "mon=?, tue=?, wed=?, thu=?, fri=?, sat=?, sun=?, mode=?, target_temp=?, fan_speed=? WHERE id=?;";
 
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
@@ -85,6 +86,12 @@ enum MHD_Result api_put_scheduler(t_smartgreen *smartgreen, struct MHD_Connectio
     // Extraer zone_id
     ptr = strstr(body, "\"zone_id\":");
     if (ptr) sscanf(ptr + 10, "%d", &zone_id);
+
+    ptr = strstr(body, "\"fan_speed\":");
+    if (ptr)
+        sscanf(ptr + 12, "%d", &fan_speed);
+    if (fan_speed < 1 || fan_speed > 10)
+        fan_speed = 5;
 
     active = strstr(body, "\"active\":1") ? 1 : 0;
     mon = strstr(body, "\"mon\":1") ? 1 : 0;
@@ -122,7 +129,8 @@ enum MHD_Result api_put_scheduler(t_smartgreen *smartgreen, struct MHD_Connectio
     sqlite3_bind_int (stmt, 12, sun);
     sqlite3_bind_text  (stmt, 13, mode,        -1, SQLITE_TRANSIENT);
     sqlite3_bind_double(stmt, 14, target_temp);
-    sqlite3_bind_int   (stmt, 15, id);
+    sqlite3_bind_int   (stmt, 15, fan_speed);
+    sqlite3_bind_int   (stmt, 16, id);
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
     pthread_mutex_unlock(&smartgreen->data_mutex);

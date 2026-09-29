@@ -195,9 +195,7 @@ enum MHD_Result     api_post_reboot(t_smartgreen *smartgreen, struct MHD_Connect
     (void)body_size;
 
     ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
-    sleep(1);  // dar tiempo a que llegue la respuesta
-    sync();
-    reboot(RB_AUTOBOOT);
+    system("/home/pi/reboot.sh &");
     return (ret);
 }
 
@@ -277,7 +275,8 @@ enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Conn
     int                 sat = 0;
     int                 sun = 0;
     char                mode[64] = {0};
-    float               target_temp = 0.00; 
+    float               target_temp = 0.00;
+    int                 fan_speed; 
 
     if (!body || body_size == 0)
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
@@ -328,6 +327,12 @@ enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Conn
     if (ptr)
         sscanf(ptr + 10, "%d", &zone_id);
 
+    ptr = strstr(body, "\"fan_speed\":");
+    if (ptr)
+        sscanf(ptr + 12, "%d", &fan_speed);
+    if (fan_speed < 1 || fan_speed > 10)
+        fan_speed = 5;
+
     if (name[0] == '\0')
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"name required\"}"));
 
@@ -355,6 +360,7 @@ enum MHD_Result     api_post_scheduler(t_smartgreen *smartgreen, struct MHD_Conn
     schedul.active = 1;
     ft_strcpy(schedul.mode, mode, sizeof(schedul.mode));
     schedul.target_temp = target_temp;
+    schedul.fan_speed = fan_speed;
 
     if (db_save_scheduler(smartgreen, &schedul) == -1)
     {

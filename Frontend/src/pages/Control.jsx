@@ -166,10 +166,19 @@ export default function Control({ data, onImdActivate, connected }) {
           <div className="flex gap-4 flex-1">
             {localZones.map(zone => {
               const fSpeed = zone.on_off === 'ON' ? zone.fan_speed_cmd : 0
+              const zoneCoolers = data.coolers.filter(c => c.zone_id === zone.zone_id)
+              const hasFault = zoneCoolers.some(c => c.alarm_fault || c.fault_present)
+              const hasWarning = zoneCoolers.some(c => c.alarm_water && c.salinity_us <= 10)
               return (
                 <div key={zone.zone_id}
                   className={`flex-1 rounded-3xl border p-6 flex flex-col gap-6 transition-all duration-300
-                    ${zone.on_off === 'ON' ? 'bg-[#004d89]/20 border-[#088fc3]/40' : 'bg-white/2 border-white/8'}`}>
+                  ${hasFault
+                    ? 'bg-gradient-to-br from-red-900/30 to-transparent border-red-500/40'
+                    : hasWarning
+                      ? 'bg-gradient-to-br from-yellow-900/30 to-transparent border-yellow-500/35'
+                      : zone.on_off === 'ON'
+                        ? 'bg-[#004d89]/20 border-[#088fc3]/40'
+                        : 'bg-white/2 border-white/8'}`}>
 
                   {/* Header */}
                   <div className="flex justify-between items-center">

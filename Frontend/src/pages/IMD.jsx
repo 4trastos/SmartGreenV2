@@ -33,6 +33,9 @@ export default function IMD({ data, onExit }) {
   const [section, setSection] = useState('test')
   const [prewetRunning, setPrewetRunning] = useState(false)
   const [config, setConfig] = useState({})
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetProgress, setResetProgress] = useState(0)
   const cooler = data.coolers?.[0]
   const zone = data.zones?.[0]
 
@@ -66,6 +69,18 @@ export default function IMD({ data, onExit }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, value: parseInt(value) })
     })
+    }
+
+    const doReset = async () => {
+        setShowResetConfirm(false)
+        setResetting(true)
+        setResetProgress(0)
+        await fetch(`${API_URL}/reset`, { method: 'POST' }).catch(() => {})
+        for (let i = 1; i <= 15; i++) {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            setResetProgress(Math.round((i / 15) * 100))
+        }
+        setResetting(false)
     }
 
   return (
@@ -262,6 +277,55 @@ export default function IMD({ data, onExit }) {
                 value={config.drain_dry_speed} onChange={v => saveConfig('drain_dry_speed', v)} />
             </div>
             </div>
+
+            {/* RESET */}
+            <div className="bg-red-500/10 rounded-2xl p-4 border border-red-500/30">
+            <p className="text-red-400 text-xs uppercase tracking-wider mb-3">Reset del sistema</p>
+            <button onClick={() => setShowResetConfirm(true)}
+                className="w-full py-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 font-bold text-sm cursor-pointer hover:bg-red-500/30">
+                Resetear instalación
+            </button>
+            </div>
+
+            {/* Modal advertencia reset */}
+            {showResetConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg">
+                <div className="w-[320px] rounded-3xl border border-red-500/40 p-6 bg-[#060c12] shadow-2xl">
+                <p className="text-red-400 text-xs uppercase tracking-wider mb-1 text-center">⚠ Atención</p>
+                <p className="text-white text-xl font-black mb-3 text-center">Resetear instalación</p>
+                <p className="text-white/50 text-sm text-center mb-6">Se borrará toda la configuración y el sistema volverá al estado inicial. Esta acción no se puede deshacer.</p>
+                <div className="flex gap-3">
+                    <button onClick={() => setShowResetConfirm(false)}
+                    className="flex-1 py-3 rounded-xl bg-white/5 text-white/60 font-bold cursor-pointer">
+                    Cancelar
+                    </button>
+                    <button onClick={doReset}
+                    className="flex-1 py-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 font-bold cursor-pointer hover:bg-red-500/30">
+                    Resetear
+                    </button>
+                </div>
+                </div>
+            </div>
+            )}
+
+            {/* Pantalla reseteando */}
+            {resetting && (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060c12]">
+                <div className="relative w-32 h-32 mb-6">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#ffffff20" strokeWidth="10" />
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="#ef4444" strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 42 * resetProgress / 100} ${2 * Math.PI * 42}`} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-white font-black text-2xl">{resetProgress}%</span>
+                </div>
+                </div>
+                <p className="text-white font-black text-xl mb-2">Reseteando sistema</p>
+                <p className="text-white/40 text-sm">Por favor espere...</p>
+            </div>
+            )}
 
         </div>
         )}

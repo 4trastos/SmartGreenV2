@@ -186,7 +186,7 @@ enum MHD_Result api_post_setup_sensors(t_smartgreen *smartgreen, struct MHD_Conn
     }
 
     smartgreen->num_sensors = sensor_count;
-    db_save_config(smartgreen, "num_sensors", sensor_count);
+    db_update_config(smartgreen, "num_sensors", sensor_count);
 
     ptr = body;
     for (int i = 0; i < sensor_count; i++)

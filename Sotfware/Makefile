@@ -46,6 +46,10 @@ debug:fclean $(OBJTS)
 setup:
 	@mkdir -p $(DB_DIR)
 	@sudo chown $$USER:$$USER $(DB_DIR)
+	@cp utils/reboot.sh /home/pi/reboot.sh
+	@chmod +x /home/pi/reboot.sh
+	@cp utils/reset.sh /home/pi/reset.sh
+	@chmod +x /home/pi/reset.sh
 	
 clean:
 	$(RM) $(OBJTS)

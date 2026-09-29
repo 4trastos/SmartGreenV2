@@ -205,19 +205,33 @@ void    scheduler_run(t_smartgreen *smartgreen)
                         ft_auto_humidity_control(smartgreen, z);
                     }
                     // Control FAN — solo ventilador sin bomba
+                    // else if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "FAN") == 0)
+                    // {
+                    //     if (smartgreen->zone_params[z].pump_on)
+                    //     {
+                    //         smartgreen->zone_params[z].pump_on = 0;
+                    //         for (int i = 0; i < smartgreen->num_coolers; i++)
+                    //             if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
+                    //             {
+                    //                 r50 = calculate_register_50(0, 0, ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd);
+                    //                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
+                    //             }
+                    //     }
+                    // }
                     else if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "FAN") == 0)
                     {
+                        // Apagar bomba si estaba encendida
                         if (smartgreen->zone_params[z].pump_on)
                         {
                             smartgreen->zone_params[z].pump_on = 0;
-                            for (int i = 0; i < smartgreen->num_coolers; i++)
-                                if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
-                                {
-                                    // r50 = calculate_register_50(0, 0, smartgreen->zone_params[z].fan_speed_cmd);
-                                    r50 = calculate_register_50(0, 0, ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd);
-                                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-                                }
                         }
+                        // Enviar velocidad siempre
+                        for (int i = 0; i < smartgreen->num_coolers; i++)
+                            if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
+                            {
+                                r50 = calculate_register_50(0, 0, ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd);
+                                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
+                            }
                     }
                     else if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "MANUAL") == 0)
                     {
@@ -301,41 +315,167 @@ void    scheduler_run(t_smartgreen *smartgreen)
         }
 
         // Scheduler horario — cada SCHEDULER_SEQUENCE segundos
+        // if (now - last_scheduler >= SCHEDULER_SEQUENCE)
+        // {
+        //     tm_info = localtime(&now);
+        //     current_day  = (tm_info->tm_wday == 0) ? 7 : tm_info->tm_wday;
+        //     current_hour = tm_info->tm_hour;
+        //     current_min  = tm_info->tm_min;
+
+        //     db_read_scheduler(smartgreen);
+        //     for (int i = 0; i < smartgreen->num_schedulers; i++)
+        //     {
+        //         if (!scheduler_is_active_today(&smartgreen->scheduler[i], current_day))
+        //             continue;
+        //         if (!scheduler_is_active_now(&smartgreen->scheduler[i], current_hour, current_min))
+        //             continue;
+        //         zone_idx = ft_find_zone(smartgreen, smartgreen->scheduler[i].zone_id);
+        //         if (zone_idx != -1)
+        //         {
+        //             pthread_mutex_lock(&smartgreen->data_mutex);
+        //             ft_strcpy(smartgreen->zone_params[zone_idx].on_off, smartgreen->scheduler[i].action, sizeof(smartgreen->zone_params->on_off));
+        //             pthread_mutex_unlock(&smartgreen->data_mutex);
+        //             if (smartgreen->modbus_ctx)
+        //             {
+        //                 on = (strcmp(smartgreen->scheduler[i].action, "ON") == 0) ? 1 : 0;
+        //                 if (!on)
+        //                 {
+        //                     for (int j = 0; j < smartgreen->num_coolers; j++)
+        //                         if (smartgreen->coolers[j].zone_id == smartgreen->scheduler[i].zone_id)
+        //                             ft_cooler_onoff(smartgreen, smartgreen->coolers[j].unit_id, 0);
+        //                 }
+        //                 else if (on && zone_idx != -1)
+        //                 {
+        //                     pthread_mutex_lock(&smartgreen->data_mutex);
+        //                     ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, smartgreen->scheduler[i].mode, sizeof(smartgreen->zone_params->cool_fan_mode));
+        //                     if (smartgreen->scheduler[i].target_temp > 0)
+        //                         smartgreen->zone_params[zone_idx].target_temp = smartgreen->scheduler[i].target_temp;
+        //                     db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
+        //                     pthread_mutex_unlock(&smartgreen->data_mutex);
+
+        //                     // Lanzar prewet
+        //                     int prewet_sel = db_read_config(smartgreen, "prewet_selector");
+        //                     int unit_id = -1;
+        //                     for (int j = 0; j < smartgreen->num_coolers; j++)
+        //                         if (smartgreen->coolers[j].zone_id == smartgreen->scheduler[i].zone_id)
+        //                             { unit_id = smartgreen->coolers[j].unit_id; break; }
+
+        //                     int need_prewet = cooler_need_prewet(smartgreen, zone_idx, unit_id);
+        //                     int already_running = strcmp(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes") == 0;
+
+        //                     if (!already_running)
+        //                     {
+        //                         if (strcmp(smartgreen->scheduler[i].mode, "FAN") == 0)
+        //                         {
+        //                             // FAN — no prewet, arrancar directo con velocidad configurada
+        //                             pthread_mutex_lock(&smartgreen->data_mutex);
+        //                             smartgreen->zone_params[zone_idx].fan_speed_cmd = smartgreen->scheduler[i].fan_speed > 0 ? smartgreen->scheduler[i].fan_speed : 5;
+        //                             pthread_mutex_unlock(&smartgreen->data_mutex);
+        //                             for (int j = 0; j < smartgreen->num_coolers; j++)
+        //                                 if (smartgreen->coolers[j].zone_id == smartgreen->scheduler[i].zone_id)
+        //                                     ft_cooler_onoff(smartgreen, smartgreen->coolers[j].unit_id, 1);
+        //                         }
+        //                         else
+        //                         {
+        //                             t_prewet_args *args = malloc(sizeof(t_prewet_args));
+        //                             if (args)
+        //                             {
+        //                                 args->smartgreen = smartgreen;
+        //                                 args->zone_id = smartgreen->scheduler[i].zone_id;
+        //                                 args->need_prewet = (prewet_sel && need_prewet);
+        //                                 pthread_t tid;
+        //                                 pthread_create(&tid, NULL, prewet_thread, args);
+        //                                 pthread_detach(tid);
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        //     last_scheduler = now;
+        // }
         if (now - last_scheduler >= SCHEDULER_SEQUENCE)
         {
+            static int last_sched_hour = -1;
+            static int last_sched_min  = -1;
+
             tm_info = localtime(&now);
             current_day  = (tm_info->tm_wday == 0) ? 7 : tm_info->tm_wday;
             current_hour = tm_info->tm_hour;
             current_min  = tm_info->tm_min;
 
-            db_read_scheduler(smartgreen);
-            for (int i = 0; i < smartgreen->num_schedulers; i++)
+            if (current_hour != last_sched_hour || current_min != last_sched_min)
             {
-                if (!scheduler_is_active_today(&smartgreen->scheduler[i], current_day))
-                    continue;
-                if (!scheduler_is_active_now(&smartgreen->scheduler[i], current_hour, current_min))
-                    continue;
-                zone_idx = ft_find_zone(smartgreen, smartgreen->scheduler[i].zone_id);
-                if (zone_idx != -1)
+                last_sched_hour = current_hour;
+                last_sched_min  = current_min;
+
+                db_read_scheduler(smartgreen);
+                for (int i = 0; i < smartgreen->num_schedulers; i++)
                 {
-                    pthread_mutex_lock(&smartgreen->data_mutex);
-                    ft_strcpy(smartgreen->zone_params[zone_idx].on_off, smartgreen->scheduler[i].action, sizeof(smartgreen->zone_params->on_off));
-                    pthread_mutex_unlock(&smartgreen->data_mutex);
-                    if (smartgreen->modbus_ctx)
+                    if (!scheduler_is_active_today(&smartgreen->scheduler[i], current_day))
+                        continue;
+                    if (!scheduler_is_active_now(&smartgreen->scheduler[i], current_hour, current_min))
+                        continue;
+                    zone_idx = ft_find_zone(smartgreen, smartgreen->scheduler[i].zone_id);
+                    if (zone_idx != -1)
                     {
-                        on = (strcmp(smartgreen->scheduler[i].action, "ON") == 0) ? 1 : 0;
-                        for (int j = 0; j < smartgreen->num_coolers; j++)
-                            if (smartgreen->coolers[j].zone_id == smartgreen->scheduler[i].zone_id)
-                                ft_cooler_onoff(smartgreen, smartgreen->coolers[j].unit_id, on);
-                        
-                        if (on && zone_idx != -1)
+                        pthread_mutex_lock(&smartgreen->data_mutex);
+                        ft_strcpy(smartgreen->zone_params[zone_idx].on_off, smartgreen->scheduler[i].action, sizeof(smartgreen->zone_params->on_off));
+                        pthread_mutex_unlock(&smartgreen->data_mutex);
+                        if (smartgreen->modbus_ctx)
                         {
-                            pthread_mutex_lock(&smartgreen->data_mutex);
-                            ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, smartgreen->scheduler[i].mode, sizeof(smartgreen->zone_params->cool_fan_mode));
-                            if (smartgreen->scheduler[i].target_temp > 0)
-                                smartgreen->zone_params[zone_idx].target_temp = smartgreen->scheduler[i].target_temp;
-                            db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
-                            pthread_mutex_unlock(&smartgreen->data_mutex);
+                            on = (strcmp(smartgreen->scheduler[i].action, "ON") == 0) ? 1 : 0;
+                            if (!on)
+                            {
+                                for (int j = 0; j < smartgreen->num_coolers; j++)
+                                    if (smartgreen->coolers[j].zone_id == smartgreen->scheduler[i].zone_id)
+                                        ft_cooler_onoff(smartgreen, smartgreen->coolers[j].unit_id, 0);
+                            }
+                            else if (on && zone_idx != -1)
+                            {
+                                pthread_mutex_lock(&smartgreen->data_mutex);
+                                ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, smartgreen->scheduler[i].mode, sizeof(smartgreen->zone_params->cool_fan_mode));
+                                if (smartgreen->scheduler[i].target_temp > 0)
+                                    smartgreen->zone_params[zone_idx].target_temp = smartgreen->scheduler[i].target_temp;
+                                db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
+                                pthread_mutex_unlock(&smartgreen->data_mutex);
+
+                                int prewet_sel = db_read_config(smartgreen, "prewet_selector");
+                                int unit_id = -1;
+                                for (int j = 0; j < smartgreen->num_coolers; j++)
+                                    if (smartgreen->coolers[j].zone_id == smartgreen->scheduler[i].zone_id)
+                                        { unit_id = smartgreen->coolers[j].unit_id; break; }
+
+                                int need_prewet = cooler_need_prewet(smartgreen, zone_idx, unit_id);
+                                int already_running = strcmp(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes") == 0;
+
+                                if (!already_running)
+                                {
+                                    if (strcmp(smartgreen->scheduler[i].mode, "FAN") == 0)
+                                    {
+                                        pthread_mutex_lock(&smartgreen->data_mutex);
+                                        smartgreen->zone_params[zone_idx].fan_speed_cmd = smartgreen->scheduler[i].fan_speed > 0 ? smartgreen->scheduler[i].fan_speed : 5;
+                                        pthread_mutex_unlock(&smartgreen->data_mutex);
+                                        for (int j = 0; j < smartgreen->num_coolers; j++)
+                                            if (smartgreen->coolers[j].zone_id == smartgreen->scheduler[i].zone_id)
+                                                ft_cooler_onoff(smartgreen, smartgreen->coolers[j].unit_id, 1);
+                                    }
+                                    else
+                                    {
+                                        t_prewet_args *args = malloc(sizeof(t_prewet_args));
+                                        if (args)
+                                        {
+                                            args->smartgreen = smartgreen;
+                                            args->zone_id = smartgreen->scheduler[i].zone_id;
+                                            args->need_prewet = (prewet_sel && need_prewet);
+                                            pthread_t tid;
+                                            pthread_create(&tid, NULL, prewet_thread, args);
+                                            pthread_detach(tid);
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -370,7 +510,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
 int     db_read_scheduler(t_smartgreen *smartgreen)
 {
     sqlite3_stmt    *stmt = NULL;
-    const char      *sql = "SELECT id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun, mode, target_temp FROM scheduler WHERE active = 1;";
+    const char      *sql = "SELECT id, name, zone_id, active, action, hour, mon, tue, wed, thu, fri, sat, sun, mode, target_temp, fan_speed FROM scheduler WHERE active = 1;";
     int             rc;
     int             idx = 0;
 
@@ -407,6 +547,7 @@ int     db_read_scheduler(t_smartgreen *smartgreen)
         smartgreen->scheduler[idx].sun = sqlite3_column_int64(stmt, 12);
         ft_strcpy(smartgreen->scheduler[idx].mode, (char *)sqlite3_column_text(stmt, 13), sizeof(smartgreen->scheduler->mode));
         smartgreen->scheduler[idx].target_temp = (float)sqlite3_column_double(stmt, 14);
+        smartgreen->scheduler[idx].fan_speed = sqlite3_column_int(stmt, 15);
         idx++;
     }
     smartgreen->num_schedulers = idx;

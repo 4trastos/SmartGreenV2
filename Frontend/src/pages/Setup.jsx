@@ -18,7 +18,7 @@ const T = {
     sensor_hint: 'Indique si cada sensor es interior o exterior',
     purge_sub: 'Ciclo de purga paneles',
     purge_sub_active: 'Ciclo de purga paneles. ESPERE',
-    purge_body: 'Purgadno paneles el evaporativo es nuevo.',
+    purge_body: 'Purgando paneles el evaporativo es nuevo.',
     purge_hint: 'Esto puede tardar 10 minutos.',
     confirm_sub: 'Resumen de la instalación',
     lang_label: 'Idioma', zones_label: 'Zonas',

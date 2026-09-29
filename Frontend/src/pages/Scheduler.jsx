@@ -3,7 +3,6 @@ import { API_URL } from '../config.js'
 import Keyboard from '../components/Keyboard'
 import HourPicker from '../components/HourPicker'
 
-
 const DAYS = [
   { key: 'mon', label: 'L' },
   { key: 'tue', label: 'M' },
@@ -14,11 +13,12 @@ const DAYS = [
   { key: 'sun', label: 'D' },
 ]
 
-const EMPTY = { name: '', zone_id: 1, active: 1, action: 'ON', hour: '08:00', mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0,  mode: 'AUTO', target_temp: 24 }
+const EMPTY = { name: '', zone_id: 1, active: 1, action: 'ON', hour: '08:00', mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0, mode: 'AUTO', target_temp: 24, fan_speed: 5 }
 
 function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose }) {
   const [showKeyboard, setShowKeyboard] = useState(false)
   const [showHourKeyboard, setShowHourKeyboard] = useState(false)
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
@@ -43,11 +43,9 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
               placeholder="Ej: Encendido mañana"
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60" />
             {showKeyboard && (
-              <Keyboard
-                value={form.name}
+              <Keyboard value={form.name}
                 onChange={val => setForm(f => ({ ...f, name: val }))}
-                onClose={() => setShowKeyboard(false)}
-              />
+                onClose={() => setShowKeyboard(false)} />
             )}
           </div>
 
@@ -72,26 +70,24 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
                 <option value="OFF" style={{ backgroundColor: '#0d1a26' }}>■ Apagar</option>
               </select>
             </div>
-           <div className="flex-1">
-            <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Hora</label>
-            <input value={form.hour}
-              onFocus={() => setShowHourKeyboard(true)}
-              onTouchStart={e => e.stopPropagation()}
-              onClick={e => e.stopPropagation()}
-              readOnly
-              placeholder="08:00"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60" />
-            {showHourKeyboard && (
-              <HourPicker
-                value={form.hour}
-                onChange={val => setForm(f => ({ ...f, hour: val }))}
-                onClose={() => setShowHourKeyboard(false)}
-              />
-            )}
-          </div>
+            <div className="flex-1">
+              <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Hora</label>
+              <input value={form.hour}
+                onFocus={() => setShowHourKeyboard(true)}
+                onTouchStart={e => e.stopPropagation()}
+                onClick={e => e.stopPropagation()}
+                readOnly
+                placeholder="08:00"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60" />
+              {showHourKeyboard && (
+                <HourPicker value={form.hour}
+                  onChange={val => setForm(f => ({ ...f, hour: val }))}
+                  onClose={() => setShowHourKeyboard(false)} />
+              )}
+            </div>
           </div>
 
-          {/* Modo — solo si action es ON */}
+          {/* Modo + parámetros — solo si action es ON */}
           {form.action === 'ON' && (
             <div className="flex gap-3">
               <div className="flex-1">
@@ -99,8 +95,8 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
                 <select value={form.mode || 'AUTO'} onChange={e => setForm(f => ({ ...f, mode: e.target.value }))}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
                   style={{ backgroundColor: '#0d1a26' }}>
-                  <option value="AUTO" style={{ backgroundColor: '#0d1a26' }}>⚙ AUTO</option>
-                  <option value="FAN" style={{ backgroundColor: '#0d1a26' }}>💨 FAN</option>
+                  <option value="AUTO" style={{ backgroundColor: '#0d1a26' }}>AUTO</option>
+                  <option value="FAN" style={{ backgroundColor: '#0d1a26' }}>FAN</option>
                 </select>
               </div>
               {form.mode === 'AUTO' && (
@@ -111,6 +107,18 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
                       className="w-10 h-10 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">−</button>
                     <span className="flex-1 text-center text-white font-bold text-lg">{form.target_temp || 24}°</span>
                     <button onClick={() => setForm(f => ({ ...f, target_temp: Math.min(35, (f.target_temp || 24) + 0.5) }))}
+                      className="w-10 h-10 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">+</button>
+                  </div>
+                </div>
+              )}
+              {form.mode === 'FAN' && (
+                <div className="flex-1">
+                  <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Velocidad fan</label>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setForm(f => ({ ...f, fan_speed: Math.max(1, (f.fan_speed || 5) - 1) }))}
+                      className="w-10 h-10 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">−</button>
+                    <span className="flex-1 text-center text-white font-bold text-lg">{form.fan_speed || 5}</span>
+                    <button onClick={() => setForm(f => ({ ...f, fan_speed: Math.min(10, (f.fan_speed || 5) + 1) }))}
                       className="w-10 h-10 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">+</button>
                   </div>
                 </div>
@@ -140,7 +148,7 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
           <button onClick={onSave} disabled={saving}
             className={`flex-1 py-3 rounded-xl border font-bold cursor-pointer
               ${saving ? 'opacity-50 cursor-not-allowed bg-white/5 border-white/10 text-white/40' :
-                'bg-[#088fc3]/20 border-[#088fc3]/40 text-[#088fc3] hover:bg-[#088fc3]/30'}`}>
+              'bg-[#088fc3]/20 border-[#088fc3]/40 text-[#088fc3] hover:bg-[#088fc3]/30'}`}>
             {saving ? 'Guardando...' : editing ? 'Guardar' : 'Crear'}
           </button>
         </div>
@@ -212,7 +220,7 @@ export default function Scheduler({ data }) {
 
   const openEdit = (s) => {
     setEditing(s)
-    setForm({ ...s })
+    setForm({ ...s, fan_speed: Math.min(10, Math.max(1, s.fan_speed || 5)) })
     setShowModal(true)
   }
 
@@ -264,7 +272,7 @@ export default function Scheduler({ data }) {
                   <p className="text-white/40 text-xs mt-1">{zone?.name || `Zona ${s.zone_id}`}</p>
                   {s.action === 'ON' && (
                     <p className="text-white/30 text-xs mt-0.5">
-                      {s.mode === 'AUTO' ? `AUTO · ${s.target_temp}°` : 'FAN'}
+                      {s.mode === 'AUTO' ? `AUTO · ${s.target_temp}°` : `FAN · ${s.fan_speed || 5}`}
                     </p>
                   )}
                 </div>
