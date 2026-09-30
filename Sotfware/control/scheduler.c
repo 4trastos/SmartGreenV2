@@ -204,20 +204,6 @@ void    scheduler_run(t_smartgreen *smartgreen)
                         }
                         ft_auto_humidity_control(smartgreen, z);
                     }
-                    // Control FAN — solo ventilador sin bomba
-                    // else if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "FAN") == 0)
-                    // {
-                    //     if (smartgreen->zone_params[z].pump_on)
-                    //     {
-                    //         smartgreen->zone_params[z].pump_on = 0;
-                    //         for (int i = 0; i < smartgreen->num_coolers; i++)
-                    //             if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
-                    //             {
-                    //                 r50 = calculate_register_50(0, 0, ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd);
-                    //                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-                    //             }
-                    //     }
-                    // }
                     else if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "FAN") == 0)
                     {
                         // Apagar bomba si estaba encendida
@@ -449,6 +435,9 @@ void    scheduler_run(t_smartgreen *smartgreen)
 
                                 int need_prewet = cooler_need_prewet(smartgreen, zone_idx, unit_id);
                                 int already_running = strcmp(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes") == 0;
+
+                                printf("[SCHEDULER] unit_id=%d need_prewet=%d prewet_sel=%d\n",unit_id, need_prewet, prewet_sel);
+                                fflush(stdout);
 
                                 if (!already_running)
                                 {

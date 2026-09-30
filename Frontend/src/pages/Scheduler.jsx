@@ -15,25 +15,31 @@ const DAYS = [
 
 const EMPTY = { name: '', zone_id: 1, active: 1, action: 'ON', hour: '08:00', mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0, mode: 'AUTO', target_temp: 24, fan_speed: 5 }
 
-function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose }) {
+function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose, error }) {
   const [showKeyboard, setShowKeyboard] = useState(false)
   const [showHourKeyboard, setShowHourKeyboard] = useState(false)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
-        className="w-[420px] rounded-3xl border border-[#088fc3]/30 p-6 bg-[#060c12] shadow-2xl bg-gradient-to-br from-[#004d89]/20 to-transparent">
-        <div className="flex justify-between items-start mb-6">
+        className="w-[420px] rounded-3xl border border-[#088fc3]/30 p-4 bg-[#060c12] shadow-2xl bg-gradient-to-br from-[#004d89]/20 to-transparent">
+        <div className="flex justify-between items-start mb-4">
           <div>
-            <p className="text-white/30 text-xs tracking-widest uppercase mb-1">Programación</p>
-            <p className="text-white text-2xl font-black">{editing ? 'Editar' : 'Nueva'}</p>
+            <p className="text-white/30 text-xs tracking-widest uppercase mb-0.5">Programación</p>
+            <p className="text-white text-xl font-black">{editing ? 'Editar' : 'Nueva'}</p>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white cursor-pointer">✕</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white cursor-pointer">✕</button>
         </div>
 
-        <div className="flex flex-col gap-3">
+        {error && (
+          <div className="mb-3 px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-bold">
+            ⚠ {error}
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2">
           <div>
-            <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Nombre</label>
+            <label className="text-white/30 text-xs uppercase tracking-wider block mb-1">Nombre</label>
             <input value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               onFocus={() => setShowKeyboard(true)}
@@ -41,7 +47,7 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
               onClick={e => e.stopPropagation()}
               readOnly
               placeholder="Ej: Encendido mañana"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60" />
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#088fc3]/60" />
             {showKeyboard && (
               <Keyboard value={form.name}
                 onChange={val => setForm(f => ({ ...f, name: val }))}
@@ -50,9 +56,9 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
           </div>
 
           <div>
-            <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Zona</label>
+            <label className="text-white/30 text-xs uppercase tracking-wider block mb-1">Zona</label>
             <select value={form.zone_id} onChange={e => setForm(f => ({ ...f, zone_id: parseInt(e.target.value) }))}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
               style={{ backgroundColor: '#0d1a26' }}>
               {zones.map(z => (
                 <option key={z.zone_id} value={z.zone_id} style={{ backgroundColor: '#0d1a26' }}>{z.name || `Zona ${z.zone_id}`}</option>
@@ -60,25 +66,25 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
             </select>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <div className="flex-1">
-              <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Acción</label>
+              <label className="text-white/30 text-xs uppercase tracking-wider block mb-1">Acción</label>
               <select value={form.action} onChange={e => setForm(f => ({ ...f, action: e.target.value }))}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
                 style={{ backgroundColor: '#0d1a26' }}>
                 <option value="ON" style={{ backgroundColor: '#0d1a26' }}>▶ Encender</option>
                 <option value="OFF" style={{ backgroundColor: '#0d1a26' }}>■ Apagar</option>
               </select>
             </div>
             <div className="flex-1">
-              <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Hora</label>
+              <label className="text-white/30 text-xs uppercase tracking-wider block mb-1">Hora</label>
               <input value={form.hour}
                 onFocus={() => setShowHourKeyboard(true)}
                 onTouchStart={e => e.stopPropagation()}
                 onClick={e => e.stopPropagation()}
                 readOnly
                 placeholder="08:00"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60" />
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#088fc3]/60" />
               {showHourKeyboard && (
                 <HourPicker value={form.hour}
                   onChange={val => setForm(f => ({ ...f, hour: val }))}
@@ -87,13 +93,12 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
             </div>
           </div>
 
-          {/* Modo + parámetros — solo si action es ON */}
           {form.action === 'ON' && (
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <div className="flex-1">
-                <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Modo</label>
+                <label className="text-white/30 text-xs uppercase tracking-wider block mb-1">Modo</label>
                 <select value={form.mode || 'AUTO'} onChange={e => setForm(f => ({ ...f, mode: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
                   style={{ backgroundColor: '#0d1a26' }}>
                   <option value="AUTO" style={{ backgroundColor: '#0d1a26' }}>AUTO</option>
                   <option value="FAN" style={{ backgroundColor: '#0d1a26' }}>FAN</option>
@@ -101,25 +106,25 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
               </div>
               {form.mode === 'AUTO' && (
                 <div className="flex-1">
-                  <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Temp. objetivo</label>
-                  <div className="flex items-center gap-2">
+                  <label className="text-white/30 text-xs uppercase tracking-wider block mb-1">Temp. objetivo</label>
+                  <div className="flex items-center gap-1">
                     <button onClick={() => setForm(f => ({ ...f, target_temp: Math.max(16, (f.target_temp || 24) - 0.5) }))}
-                      className="w-10 h-10 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">−</button>
-                    <span className="flex-1 text-center text-white font-bold text-lg">{form.target_temp || 24}°</span>
+                      className="w-9 h-9 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">−</button>
+                    <span className="flex-1 text-center text-white font-bold">{form.target_temp || 24}°</span>
                     <button onClick={() => setForm(f => ({ ...f, target_temp: Math.min(35, (f.target_temp || 24) + 0.5) }))}
-                      className="w-10 h-10 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">+</button>
+                      className="w-9 h-9 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">+</button>
                   </div>
                 </div>
               )}
               {form.mode === 'FAN' && (
                 <div className="flex-1">
-                  <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Velocidad fan</label>
-                  <div className="flex items-center gap-2">
+                  <label className="text-white/30 text-xs uppercase tracking-wider block mb-1">Velocidad fan</label>
+                  <div className="flex items-center gap-1">
                     <button onClick={() => setForm(f => ({ ...f, fan_speed: Math.max(1, (f.fan_speed || 5) - 1) }))}
-                      className="w-10 h-10 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">−</button>
-                    <span className="flex-1 text-center text-white font-bold text-lg">{form.fan_speed || 5}</span>
+                      className="w-9 h-9 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">−</button>
+                    <span className="flex-1 text-center text-white font-bold">{form.fan_speed || 5}</span>
                     <button onClick={() => setForm(f => ({ ...f, fan_speed: Math.min(10, (f.fan_speed || 5) + 1) }))}
-                      className="w-10 h-10 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">+</button>
+                      className="w-9 h-9 rounded-xl bg-white/10 text-white font-black cursor-pointer hover:bg-white/20">+</button>
                   </div>
                 </div>
               )}
@@ -127,11 +132,11 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
           )}
 
           <div>
-            <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Días</label>
-            <div className="flex gap-2 justify-between">
+            <label className="text-white/30 text-xs uppercase tracking-wider block mb-1">Días</label>
+            <div className="flex gap-1.5 justify-between">
               {DAYS.map(d => (
                 <button key={d.key} onClick={() => setForm(f => ({ ...f, [d.key]: f[d.key] ? 0 : 1 }))}
-                  className={`flex-1 h-10 rounded-xl text-sm font-bold cursor-pointer transition-all
+                  className={`flex-1 h-9 rounded-xl text-sm font-bold cursor-pointer transition-all
                     ${form[d.key] ? 'bg-[#088fc3] text-white' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
                   {d.label}
                 </button>
@@ -140,13 +145,13 @@ function SchedulerModal({ editing, form, setForm, zones, onSave, saving, onClose
           </div>
         </div>
 
-        <div className="flex gap-3 mt-6">
+        <div className="flex gap-2 mt-4">
           <button onClick={onClose}
-            className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold cursor-pointer hover:bg-white/10">
+            className="flex-1 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 font-bold cursor-pointer hover:bg-white/10 text-sm">
             Cancelar
           </button>
           <button onClick={onSave} disabled={saving}
-            className={`flex-1 py-3 rounded-xl border font-bold cursor-pointer
+            className={`flex-1 py-2 rounded-xl border font-bold cursor-pointer text-sm
               ${saving ? 'opacity-50 cursor-not-allowed bg-white/5 border-white/10 text-white/40' :
               'bg-[#088fc3]/20 border-[#088fc3]/40 text-[#088fc3] hover:bg-[#088fc3]/30'}`}>
             {saving ? 'Guardando...' : editing ? 'Guardar' : 'Crear'}
@@ -163,6 +168,7 @@ export default function Scheduler({ data }) {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
 
   const zones = data?.zones || []
 
@@ -178,6 +184,39 @@ export default function Scheduler({ data }) {
 
   const save = async () => {
     if (saving) return
+
+    // Validación 1 — nombre obligatorio
+    if (!form.name || form.name.trim() === '') {
+      setFormError('El nombre es obligatorio')
+      return
+    }
+
+    // Validación 2 — hora obligatoria
+    if (!form.hour || form.hour === '') {
+      setFormError('La hora es obligatoria')
+      return
+    }
+
+    // Validación 3 — al menos un día
+    if (!form.mon && !form.tue && !form.wed && !form.thu && !form.fri && !form.sat && !form.sun) {
+      setFormError('Selecciona al menos un día')
+      return
+    }
+
+    // Validación 4 — programación duplicada
+    const duplicate = schedulers.find(s =>
+      s.id !== (editing?.id || -1) &&
+      s.zone_id === form.zone_id &&
+      s.action === form.action &&
+      s.hour === form.hour &&
+      DAYS.some(d => s[d.key] && form[d.key])
+    )
+    if (duplicate) {
+      setFormError(`Ya existe "${duplicate.name}" con la misma zona, hora y día`)
+      return
+    }
+
+    setFormError('')
     setSaving(true)
     try {
       if (editing) {
@@ -196,6 +235,7 @@ export default function Scheduler({ data }) {
       setShowModal(false)
       setEditing(null)
       setForm(EMPTY)
+      setFormError('')
       load()
     } catch(e) {
       console.error('Save error:', e)
@@ -221,12 +261,14 @@ export default function Scheduler({ data }) {
   const openEdit = (s) => {
     setEditing(s)
     setForm({ ...s, fan_speed: Math.min(10, Math.max(1, s.fan_speed || 5)) })
+    setFormError('')
     setShowModal(true)
   }
 
   const openNew = () => {
     setEditing(null)
     setForm({ ...EMPTY, zone_id: zones[0]?.zone_id || 1 })
+    setFormError('')
     setShowModal(true)
   }
 
@@ -310,7 +352,8 @@ export default function Scheduler({ data }) {
           zones={zones}
           onSave={save}
           saving={saving}
-          onClose={() => { setShowModal(false); setEditing(null); setForm(EMPTY) }}
+          error={formError}
+          onClose={() => { setShowModal(false); setEditing(null); setForm(EMPTY); setFormError('') }}
         />
       )}
     </div>

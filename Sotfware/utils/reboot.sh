@@ -1,3 +1,3 @@
 #!/bin/bash
 sleep 2
-sudo reboot
+sudo shutdown -r now

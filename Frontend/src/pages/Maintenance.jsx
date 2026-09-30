@@ -27,7 +27,7 @@ function PinModal({ onSuccess, onClose }) {
 
   const check = (newPin) => {
     if (newPin.length < 4) return
-    if (newPin === '1234') {
+    if (newPin === '7378') {
       onSuccess()
     } else {
       setError(true)

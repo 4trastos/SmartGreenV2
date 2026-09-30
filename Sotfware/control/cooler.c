@@ -72,14 +72,6 @@ void    *prewet_test_thread(void *arg)
 
     cooler_prewet(smartgreen, zone_id);
 
-    // Restaurar modo IMD
-    // pthread_mutex_lock(&smartgreen->data_mutex);
-    // ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, args->from_setup ? "AUTO" : "IMD", sizeof(smartgreen->zone_params->cool_fan_mode));
-    // ft_strcpy(smartgreen->zone_params[zone_idx].on_off, "OFF", sizeof(smartgreen->zone_params->on_off));
-    // ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
-    // db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
-    // pthread_mutex_unlock(&smartgreen->data_mutex);
-
     // Restaurar modo — solo si NO es setup (en setup lo hacemos al final)
     if (!args->from_setup)
     {

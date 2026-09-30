@@ -29,23 +29,8 @@ const formatVal = (key, val) => {
   return val
 }
 
-function SettingsModal({ tile, config, onClose, onSave }) {
-  const [editing, setEditing] = useState(null)
-  const [editVal, setEditVal] = useState('')
-  const [saved, setSaved] = useState(null)
-
+function SettingsModal({ tile, config, onClose }) {
   const getVal = (key) => config.find(c => c.key === key)?.value ?? '—'
-
-  const save = async (key) => {
-    await fetch(`${API_URL}/config`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, value: parseInt(editVal) })
-    })
-    onSave(key, editVal)
-    setSaved(key)
-    setEditing(null)
-    setTimeout(() => setSaved(null), 2000)
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
@@ -53,7 +38,7 @@ function SettingsModal({ tile, config, onClose, onSave }) {
         className={`w-[460px] max-h-[80vh] rounded-3xl border p-6 bg-[#060c12] shadow-2xl flex flex-col bg-gradient-to-br ${tile.color} ${tile.border}`}>
         <div className="flex justify-between items-start mb-5 shrink-0">
           <div>
-            <p className="text-white/30 text-xs tracking-widest uppercase mb-1">Configuración</p>
+            <p className="text-white/30 text-xs tracking-widest uppercase mb-1">Información</p>
             <p className="text-white text-2xl font-black">{tile.label}</p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white cursor-pointer">✕</button>
@@ -63,23 +48,14 @@ function SettingsModal({ tile, config, onClose, onSave }) {
           {tile.keys.map(key => (
             <div key={key} className="flex items-center justify-between bg-white/4 rounded-xl px-4 py-3 gap-3">
               <span className="text-white/40 text-xs flex-1">{KEY_LABELS[key] || key}</span>
-              {editing === key ? (
-                <div className="flex items-center gap-2 shrink-0">
-                  <input value={editVal} onChange={e => setEditVal(e.target.value)}
-                    className="w-20 bg-[#004d89]/30 border border-[#088fc3]/40 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none font-mono"
-                    autoFocus onKeyDown={e => e.key === 'Enter' && save(key)} />
-                  <button onClick={() => save(key)} className="text-[#088fc3] text-sm cursor-pointer">✓</button>
-                  <button onClick={() => setEditing(null)} className="text-white/25 text-sm cursor-pointer">✕</button>
-                </div>
-              ) : (
-                <button onClick={() => { setEditing(key); setEditVal(String(getVal(key))) }}
-                  className={`font-mono font-bold text-sm shrink-0 cursor-pointer hover:text-[#088fc3] transition-colors ${saved === key ? 'text-green-400' : 'text-white'}`}>
-                  {saved === key ? '✓' : formatVal(key, getVal(key))}
-                </button>
-              )}
+              <span className="font-mono font-bold text-sm text-white shrink-0">
+                {formatVal(key, getVal(key))}
+              </span>
             </div>
           ))}
         </div>
+
+        <p className="text-white/20 text-xs text-center mt-4 shrink-0">Solo lectura · Modificar desde IMD o servidor</p>
       </div>
     </div>
   )
@@ -93,17 +69,12 @@ export default function Settings() {
     fetch(`${API_URL}/config`).then(r => r.json()).then(setConfig).catch(() => {})
   }, [])
 
-  const handleSave = (key, val) => {
-    setConfig(prev => prev.map(c => c.key === key ? { ...c, value: val } : c))
-  }
-
   const openTile = TILES.find(t => t.id === open)
 
   return (
     <div className="h-full flex flex-col p-4 gap-4 overflow-hidden">
-      <p className="text-white/20 text-xs font-bold tracking-widest uppercase shrink-0">Configuración del sistema</p>
+      <p className="text-white/20 text-xs font-bold tracking-widest uppercase shrink-0">Información del sistema</p>
 
-      {/* Tile grid 3x2 */}
       <div className="grid grid-cols-3 gap-3 flex-1">
         {TILES.map(tile => (
           <button key={tile.id} onClick={() => setOpen(tile.id)}
@@ -122,7 +93,6 @@ export default function Settings() {
           tile={openTile}
           config={config}
           onClose={() => setOpen(null)}
-          onSave={handleSave}
         />
       )}
     </div>

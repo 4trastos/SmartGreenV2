@@ -98,14 +98,25 @@ export default function Control({ data, onImdActivate, connected }) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action })
     })
+    // Si enciende y es FAN o MANUAL — enviar velocidad seleccionada
+    if (action === 'ON' && (zone.cool_fan_mode === 'FAN' || zone.cool_fan_mode === 'MANUAL')) {
+      await fetch(`${API_URL}/zones/${zoneId}/fanspeed`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ speed: zone.fan_speed_cmd || 5 })
+      })
+    }
   }
 
   const setFanSpeed = async (zoneId, speed) => {
     setLocalZones(prev => prev.map(z => z.zone_id === zoneId ? { ...z, fan_speed_cmd: speed } : z))
-    await fetch(`${API_URL}/zones/${zoneId}/fanspeed`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ speed })
-    })
+    // Solo enviar al backend si la zona está ON
+    const zone = localZones.find(z => z.zone_id === zoneId)
+    if (zone?.on_off === 'ON') {
+      await fetch(`${API_URL}/zones/${zoneId}/fanspeed`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ speed })
+      })
+    }
   }
 
   const setTemp = async (zoneId, delta) => {
@@ -226,17 +237,20 @@ export default function Control({ data, onImdActivate, connected }) {
                             <span className="text-[#088fc3] font-mono font-black text-2xl">{fSpeed}<span className="text-white/30 text-sm">/10</span></span>
                           </div>
                           <div className="flex gap-1.5">
-                            {Array.from({ length: 11 }).map((_, i) => (
-                              <button key={i} onClick={() => setFanSpeed(zone.zone_id, i)}
-                                className={`flex-1 h-10 rounded-lg transition-all cursor-pointer font-bold text-sm
-                                  ${i === fSpeed
-                                    ? 'bg-[#088fc3] text-white shadow-[0_0_10px_#088fc360]'
-                                    : i < fSpeed
-                                      ? 'bg-[#004d89]/60 text-[#088fc3]'
-                                      : 'bg-white/5 text-white/20 hover:bg-white/10'}`}>
-                                {i}
-                              </button>
-                            ))}
+                            {Array.from({ length: 10 }).map((_, i) => {
+                              const speed = i + 1  // 1-10, sin el 0
+                              return (
+                                <button key={speed} onClick={() => setFanSpeed(zone.zone_id, speed)}
+                                  className={`flex-1 h-10 rounded-lg transition-all cursor-pointer font-bold text-sm
+                                    ${speed === fSpeed
+                                      ? 'bg-[#088fc3] text-white shadow-[0_0_10px_#088fc360]'
+                                      : speed < fSpeed
+                                        ? 'bg-[#004d89]/60 text-[#088fc3]'
+                                        : 'bg-white/5 text-white/20 hover:bg-white/10'}`}>
+                                  {speed}
+                                </button>
+                              )
+                            })}
                           </div>
                         </div>
                       )}
