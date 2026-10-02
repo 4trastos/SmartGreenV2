@@ -227,7 +227,6 @@ void    scheduler_run(t_smartgreen *smartgreen)
                             for (int i = 0; i < smartgreen->num_coolers; i++)
                                 if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
                                 {
-                                    // r50 = calculate_register_50(0, 1, smartgreen->zone_params[z].fan_speed_cmd);
                                     r50 = calculate_register_50(0, 1, ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd);
                                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
                                 }
@@ -263,7 +262,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
         }
 
         // Drenaje periódico — cada 6 horas
-        if (now - last_drain_check >= (6 * 3600))
+        if (now - last_drain_check >= (4 * 60))
         {
             for (int h = 0; h < smartgreen->num_zones; h++)
             {

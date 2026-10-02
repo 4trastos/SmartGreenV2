@@ -60,6 +60,7 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "drain_dry_minutes",         60);                    // minutos
     db_save_config(smartgreen, "drain_dry_speed",           5);                     // velocidad fan
     db_save_config(smartgreen, "drain_dry_active",          0);
+    db_save_config(smartgreen, "drain_periodic",            30);   
 }
 
 int ft_init_data(t_smartgreen *smartgreen)

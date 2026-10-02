@@ -7,7 +7,7 @@ char    *ft_model_name(int cpmd_code)
     if (cpmd_code == 80)  return ("TBS 520");
     if (cpmd_code == 120) return ("TBS 640");
     if (cpmd_code == 700) return ("Coolair 700");
-    if (cpmd_code == 19) return ("ICON EXH210");
+    if (cpmd_code == 19) return ("ICON 220");
     // añadir más según catálogo Breezair
     return ("Breezair");
 }

@@ -39,18 +39,6 @@ enum MHD_Result api_post_setup_language(t_smartgreen *smartgreen, struct MHD_Con
     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
 }
 
-// enum MHD_Result api_post_setup_zones(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
-// {
-//     (void)body_size;
-//     int num_zones = 0;
-
-//     if (!body || sscanf(body, "{\"num_zones\":%d", &num_zones) != 1 || num_zones < 1 || num_zones > 8)
-//         return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid\"}");
-//     db_update_config(smartgreen, "num_zones", num_zones);
-//     smartgreen->num_zones = num_zones;
-//     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
-// }
-
 enum MHD_Result api_post_setup_zones(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
 {
     (void)body_size;
@@ -95,18 +83,60 @@ enum MHD_Result api_post_setup_zones(t_smartgreen *smartgreen, struct MHD_Connec
     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
 }
 
+// enum MHD_Result api_post_setup_coolers(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
+// {
+//     (void)body_size;
+    
+//     int zone_id = 0, num_coolers = 0;
+
+//     if (!body || sscanf(body, "{\"zone_id\":%d,\"num_coolers\":%d}", &zone_id, &num_coolers) != 2)
+//         return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid\"}");
+//     db_update_config(smartgreen, "num_coolers", num_coolers);
+//     smartgreen->num_coolers = num_coolers;
+//     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+// }
+
 enum MHD_Result api_post_setup_coolers(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
 {
     (void)body_size;
-    
     int zone_id = 0, num_coolers = 0;
 
-    if (!body || sscanf(body, "{\"zone_id\":%d,\"num_coolers\":%d}", &zone_id, &num_coolers) != 2)
+    if (!body || sscanf(body, "{\"zone_id\":%d,\"num_coolers\":%d", &zone_id, &num_coolers) != 2)
         return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid\"}");
+
     db_update_config(smartgreen, "num_coolers", num_coolers);
     smartgreen->num_coolers = num_coolers;
+
+    // Leer unit_ids de los coolers del body y guardarlos en BD
+    const char *ptr = body;
+    int idx = 0;
+    while ((ptr = strstr(ptr, "\"unit_id\":")) != NULL && idx < num_coolers)
+    {
+        int unit_id = 0;
+        sscanf(ptr + 10, "%d", &unit_id);
+        if (unit_id > 0)
+        {
+            // Guardar en cooler_state
+            char sql[256];
+            snprintf(sql, sizeof(sql),
+                "INSERT OR IGNORE INTO cooler_state (unit_id, zone_id) VALUES(%d, %d);",
+                unit_id, zone_id);
+            sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
+
+            // Actualizar en memoria
+            if (idx < smartgreen->num_coolers && smartgreen->coolers)
+            {
+                smartgreen->coolers[idx].unit_id = unit_id;
+                smartgreen->coolers[idx].zone_id = zone_id;
+            }
+            idx++;
+        }
+        ptr++;
+    }
+
     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
 }
+
 
 enum MHD_Result api_post_setup_scan(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {

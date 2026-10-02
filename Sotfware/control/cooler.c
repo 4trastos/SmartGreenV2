@@ -10,8 +10,10 @@ void *ft_drain_dry_thread(void *arg)
     int             minutes = db_read_config(smartgreen, "drain_dry_minutes");
     int             speed   = db_read_config(smartgreen, "drain_dry_speed");
 
-    if (minutes <= 0) minutes = 60;
-    if (speed <= 0 || speed > 10) speed = 5;
+    if (minutes <= 0)
+        minutes = 60;
+    if (speed <= 0 || speed > 10)
+        speed = 5;
 
     printf("[DRAIN_DRY] Iniciando — unit=%d zone=%d minutes=%d speed=%d\n",
         unit_id, zone_id, minutes, speed); fflush(stdout);
@@ -195,15 +197,36 @@ void    *ft_drain_thread(void *arg)
     int             zone_idx = 0;
     int             drain_delay = db_read_config(smartgreen, "salinity_drain_delay");
     int             drain_interval = db_read_config(smartgreen, "salinity_drain_interval");
+    int             drain_periodic = db_read_config(smartgreen, "drain_periodic");
 
     printf("DRAIN THREAD ARRANCADO unit_id=%d reason=%d\n", unit_id, args->reason); fflush(stdout);
 
     if (args->reason == DRAIN_PERIODIC)
     {
-        printf("DRAIN PERIODIC: abrir drain 5s\n"); fflush(stdout);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, 8);                    // solenoid=ON, drain=OPEN (bit3=1, bit4=0)
-        sleep(5);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON);    // solenoid=ON, drain=CLOSED
+        int current_speed = 0;
+        for (int i = 0; i < smartgreen->num_coolers; i++)
+            if (smartgreen->coolers[i].unit_id == unit_id)
+                { current_speed = smartgreen->coolers[i].actual_fan_speed; break; }
+
+        int r49 = calculate_register_50(0, 1, current_speed);
+
+        printf("DRAIN PERIODIC: abrir drain velocidad=%d\n", current_speed); fflush(stdout);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, 9);
+        usleep(500000);  // 500ms — dejar que el cooler procese el drain
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r49);
+        sleep(drain_periodic);
+
+        // Cerrar drain y restaurar velocidad
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r49);
+
+        // Forzar que AUTO recalcule en el siguiente ciclo
+        pthread_mutex_lock(&smartgreen->data_mutex);
+        zone_idx = ft_find_zone(smartgreen, args->zone_id);
+        if (zone_idx != -1)
+            smartgreen->zone_params[zone_idx].fan_speed_cmd = 0;
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+
         printf("DRAIN PERIODIC completado\n"); fflush(stdout);
         free(args);
         return (NULL);
@@ -415,21 +438,6 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
     for (int i = 0; i < smartgreen->num_coolers; i++)
         if (smartgreen->coolers[i].zone_id == zone_id)
             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(1, 1));
-
-    // PASO 3 — esperar agua (max_wait segundos)
-    // printf("PREWET paso 3: esperando agua (max=%ds interval=%ds)\n", max_wait, check_interval); fflush(stdout);
-    // while (elapsed < max_wait)
-    // {
-    //     sleep(check_interval);
-    //     elapsed += check_interval;
-    //     all_water = 1;
-    //     for (int i = 0; i < smartgreen->num_coolers; i++)
-    //         if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].water_present)
-    //             all_water = 0;
-    //     printf("PREWET agua: elapsed=%d all_water=%d\n", elapsed, all_water); fflush(stdout);
-    //     if (all_water)
-    //         break;
-    // }
 
     // PASO 3 — esperar agua (max_wait segundos)
     while (elapsed < max_wait)
