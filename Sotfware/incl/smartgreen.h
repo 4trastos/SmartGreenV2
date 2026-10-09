@@ -449,6 +449,7 @@ int                 cooler_need_prewet(t_smartgreen *smartgreen, int zone_id, in
 int                 ft_auto_fan_speed(t_smartgreen *smartgreen, int zone_idx, float *error);
 void                ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on);
 void                ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on);
+void                ft_cooler_outputs(t_smartgreen *smartgreen, int unit_id, int pump, int solenoid, int speed);
 void                ft_check_alarms(t_smartgreen *smartgreen);
 void                ft_maintenance_alarms(t_smartgreen *smartgreen);
 void                *prewet_thread(void *arg);

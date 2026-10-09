@@ -7,16 +7,15 @@ void *ft_drain_dry_thread(void *arg)
     int             unit_id = args->unit_id;
     int             zone_id = args->zone_id;
     int             zone_idx = ft_find_zone(smartgreen, zone_id);
-    int             minutes = db_read_config(smartgreen, "drain_dry_minutes");
-    int             speed   = db_read_config(smartgreen, "drain_dry_speed");
+    int             minuts = db_read_config(smartgreen, "drain_dry_minutes");
+    int             speed  = db_read_config(smartgreen, "drain_dry_speed");
 
-    if (minutes <= 0)
-        minutes = 60;
+    if (minuts <= 0)
+        minuts = 60;
     if (speed <= 0 || speed > 10)
         speed = 5;
 
-    printf("[DRAIN_DRY] Iniciando — unit=%d zone=%d minutes=%d speed=%d\n",
-        unit_id, zone_id, minutes, speed); fflush(stdout);
+    printf("[DRAIN_DRY] Iniciando - unit=%d zone=%d minutes=%d speed=%d\n", unit_id, zone_id, minuts, speed); fflush(stdout);
 
     // Marcar zona ocupada
     if (zone_idx != -1)
@@ -35,7 +34,7 @@ void *ft_drain_dry_thread(void *arg)
     uint16_t r50 = calculate_register_50(0, 0, speed);
     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r50);
 
-    sleep(minutes * 60);
+    sleep(minuts * 60);
 
     // Cerrar drain y apagar
     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
@@ -184,7 +183,7 @@ int cooler_need_prewet(t_smartgreen *smartgreen, int zone_idx, int  id)
         return (1);
     if (cooler_idx == -1)
         return (1);
-    if ((now - smartgreen->coolers[cooler_idx].last_off) >= (3 * 3600))
+    if ((now - smartgreen->coolers[cooler_idx].last_off) >= (15 * 60))
         return (1);
     return (0);
 }
@@ -197,35 +196,46 @@ void    *ft_drain_thread(void *arg)
     int             zone_idx = 0;
     int             drain_delay = db_read_config(smartgreen, "salinity_drain_delay");
     int             drain_interval = db_read_config(smartgreen, "salinity_drain_interval");
-    int             drain_periodic = db_read_config(smartgreen, "drain_periodic");
+    int             drain_periodic_time = db_read_config(smartgreen, "drain_periodic_time");
 
     printf("DRAIN THREAD ARRANCADO unit_id=%d reason=%d\n", unit_id, args->reason); fflush(stdout);
 
     if (args->reason == DRAIN_PERIODIC)
     {
-        int current_speed = 0;
-        for (int i = 0; i < smartgreen->num_coolers; i++)
-            if (smartgreen->coolers[i].unit_id == unit_id)
-                { current_speed = smartgreen->coolers[i].actual_fan_speed; break; }
+        int skip = 1;
+        int speed = 0;
 
-        int r49 = calculate_register_50(0, 1, current_speed);
-
-        printf("DRAIN PERIODIC: abrir drain velocidad=%d\n", current_speed); fflush(stdout);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, 9);
-        usleep(500000);  // 500ms — dejar que el cooler procese el drain
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r49);
-        sleep(drain_periodic);
-
-        // Cerrar drain y restaurar velocidad
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, r49);
-
-        // Forzar que AUTO recalcule en el siguiente ciclo
         pthread_mutex_lock(&smartgreen->data_mutex);
         zone_idx = ft_find_zone(smartgreen, args->zone_id);
         if (zone_idx != -1)
-            smartgreen->zone_params[zone_idx].fan_speed_cmd = 0;
+        {
+            skip = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") == 0);
+            speed = smartgreen->zone_params[zone_idx].fan_speed_cmd;
+        }
         pthread_mutex_unlock(&smartgreen->data_mutex);
+
+        // Modo FAN — solo ventila, no usa agua: no se drena
+        if (skip)
+        {
+            printf("DRAIN PERIODIC omitido (modo FAN)\n"); fflush(stdout);
+            free(args);
+            return (NULL);
+        }
+
+        int r51 = speed ? ((speed << 12) | 0x0700) : 0;     // formato sniffing MagiTouch
+        int r52 = speed * 0x11;
+
+        // Abrir drain: bomba + solenoide + drenaje abierto, fan a su velocidad
+        printf("DRAIN PERIODIC: abrir drain %ds speed=%d\n", drain_periodic_time, speed); fflush(stdout);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_DRAIN_OPEN_SOLENOID_ON | 0x07);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, r51);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, r52);
+        sleep(drain_periodic_time);
+
+        // Cerrar drain: igual, con drenaje cerrado
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON | 0x07);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, r51);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, r52);
 
         printf("DRAIN PERIODIC completado\n"); fflush(stdout);
         free(args);
@@ -234,29 +244,69 @@ void    *ft_drain_thread(void *arg)
 
     if (args->reason == DRAIN_SAFETY)
     {
-        printf("DRAIN SAFETY: abrir drain\n"); fflush(stdout);
+        int zone_on = 0;
+
+        if (drain_delay <= 0)
+            drain_delay = 60;
+        printf("DRAIN SAFETY: abrir drain %ds\n", drain_delay); fflush(stdout);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, 0);                    // solenoid=OFF, drain=OPEN
-        sleep(drain_delay);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);  // solenoid=OFF, drain=CLOSED
-        printf("DRAIN SAFETY completado\n"); fflush(stdout);
+
+        // Esperar, pero abortar si encienden la zona (el prewet toma el control del R50)
+        for (int s = 0; s < drain_delay && !zone_on; s++)
+        {
+            sleep(1);
+            pthread_mutex_lock(&smartgreen->data_mutex);
+            zone_idx = ft_find_zone(smartgreen, args->zone_id);
+            zone_on = (zone_idx != -1 && strcmp(smartgreen->zone_params[zone_idx].on_off, "ON") == 0);
+            pthread_mutex_unlock(&smartgreen->data_mutex);
+        }
+
+        if (zone_on)
+            printf("DRAIN SAFETY abortado: zona encendida\n");
+        else
+        {
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);  // solenoid=OFF, drain=CLOSED
+            printf("DRAIN SAFETY completado\n");
+        }
+        fflush(stdout);
         free(args);
         return (NULL);
     }
 
     if (args->reason == DRAIN_SALINITY)
     {
+        int skip = 1;
+
+        pthread_mutex_lock(&smartgreen->data_mutex);
+        zone_idx = ft_find_zone(smartgreen, args->zone_id);
+        if (zone_idx != -1)
+        {
+            skip = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") == 0);
+            if (!skip)      // el scheduler no toca la zona mientras drena
+                ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes", sizeof(smartgreen->zone_params->prewet_in_progress));
+        }
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+
+        // Modo FAN — no usa agua: no hay nada que renovar
+        if (skip)
+        {
+            printf("DRAIN SALINITY omitido (modo FAN)\n"); fflush(stdout);
+            free(args);
+            return (NULL);
+        }
+
         printf("DRAIN SALINITY: apagar bomba y fan\n"); fflush(stdout);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_PARADA);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_APAGADO);
+        ft_cooler_outputs(smartgreen, unit_id, 0, 0, 0);                                            // R50=16 + fan 0
         sleep(2);
 
         printf("DRAIN SALINITY paso 1: abrir drain\n"); fflush(stdout);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, 0);                    // solenoid=OFF, drain=OPEN
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_DRAIN_OPEN_SOLENOID_OFF);   // R50=0: drenaje abierto
         sleep(drain_delay);
 
         printf("DRAIN SALINITY paso 2: cerrar drain + abrir solenoide\n"); fflush(stdout);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON);   // solenoid=ON, drain=CLOSED
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON);    // R50=24: cerrado + rellenar
         sleep(drain_interval);
 
         printf("DRAIN SALINITY completado\n"); fflush(stdout);
@@ -270,15 +320,60 @@ void    *ft_drain_thread(void *arg)
                     smartgreen->coolers[i].alarm_salinity = 0;
                     break;
                 }
-            ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
+            // Devolver el control: el scheduler rearranca bomba + fan en su siguiente ciclo
             if (strcmp(smartgreen->zone_params[zone_idx].on_off, "ON") == 0)
-                if (cooler_need_prewet(smartgreen, zone_idx, unit_id))
-                    smartgreen->zone_params[zone_idx].last_prewet = 0;
+            {
+                if (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "MANUAL") == 0)
+                    smartgreen->zone_params[zone_idx].pump_on = 0;          // MANUAL reenvía al ver pump_on = 0
+                else
+                {
+                    smartgreen->zone_params[zone_idx].pump_on = 1;          // AUTO reenvía al ver fan_speed_cmd = 0
+                    smartgreen->zone_params[zone_idx].fan_speed_cmd = 0;
+                }
+            }
+            ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
         }
         pthread_mutex_unlock(&smartgreen->data_mutex);
     }
     free(args);
     return (NULL);
+
+    // if (args->reason == DRAIN_SALINITY)
+    // {
+    //     printf("DRAIN SALINITY: apagar bomba y fan\n"); fflush(stdout);
+    //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_PARADA);
+    //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
+    //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_APAGADO);
+    //     sleep(2);
+
+    //     printf("DRAIN SALINITY paso 1: abrir drain\n"); fflush(stdout);
+    //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, 0);                    // solenoid=OFF, drain=OPEN
+    //     sleep(drain_delay);
+
+    //     printf("DRAIN SALINITY paso 2: cerrar drain + abrir solenoide\n"); fflush(stdout);
+    //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON);   // solenoid=ON, drain=CLOSED
+    //     sleep(drain_interval);
+
+    //     printf("DRAIN SALINITY completado\n"); fflush(stdout);
+    //     pthread_mutex_lock(&smartgreen->data_mutex);
+    //     zone_idx = ft_find_zone(smartgreen, args->zone_id);
+    //     if (zone_idx != -1)
+    //     {
+    //         for (int i = 0; i < smartgreen->num_coolers; i++)
+    //             if (smartgreen->coolers[i].unit_id == unit_id)
+    //             {
+    //                 smartgreen->coolers[i].alarm_salinity = 0;
+    //                 break;
+    //             }
+    //         ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
+    //         if (strcmp(smartgreen->zone_params[zone_idx].on_off, "ON") == 0)
+    //             if (cooler_need_prewet(smartgreen, zone_idx, unit_id))
+    //                 smartgreen->zone_params[zone_idx].last_prewet = 0;
+    //     }
+    //     pthread_mutex_unlock(&smartgreen->data_mutex);
+    // }
+    // free(args);
+    // return (NULL);
 }
 
 void    *prewet_thread(void *arg)
@@ -286,36 +381,8 @@ void    *prewet_thread(void *arg)
     t_prewet_args   *args = (t_prewet_args *)arg;
     t_smartgreen    *smartgreen = args->smartgreen;
     int             zone_id = args->zone_id;
+    int             need_prewet = args->need_prewet;
     int             zone_idx = ft_find_zone(smartgreen, zone_id);
-
-    if (!args->need_prewet)
-    {
-        printf("PREWET THREAD NO ARRANCA [Ya está humedo] zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
-        for (int i = 0; i < smartgreen->num_coolers; i++)
-            if (smartgreen->coolers[i].zone_id == zone_id)
-                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(1, 1));  // solenoid=ON, drain=closed
-        sleep(9);
-        for (int i = 0; i < smartgreen->num_coolers; i++)
-            if (smartgreen->coolers[i].zone_id == zone_id)
-            {
-                int r50 = calculate_register_50(0, 1, 1);  // pump=1 + fan_speed=1
-                int r52 = calculate_register_52(1);         // arranque físico speed 1
-                printf("Escribiendo r50  = %d\n", r50); fflush(stdout);
-                printf("Escribiendo r52  = %d\n", r52); fflush(stdout);
-                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
-            }
-        pthread_mutex_lock(&smartgreen->data_mutex);
-        smartgreen->zone_params[zone_idx].fan_speed_cmd = 1;
-        if (smartgreen->zone_params[zone_idx].last_prewet == 0)
-            smartgreen->zone_params[zone_idx].last_prewet = get_timestamp();
-        db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
-        pthread_mutex_unlock(&smartgreen->data_mutex);
-        free(args);
-        return (NULL);
-    }
-
-    printf("PREWET THREAD ARRANCADO zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
 
     free(args);
     if (zone_idx == -1)
@@ -324,42 +391,155 @@ void    *prewet_thread(void *arg)
         return (NULL);
     }
 
-    pthread_mutex_lock(&smartgreen->data_mutex);
-    ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes", sizeof(smartgreen->zone_params->prewet_in_progress));
-    pthread_mutex_unlock(&smartgreen->data_mutex);
-
-    printf("PREWET iniciando cooler_prewet...\n"); fflush(stdout);
-    cooler_prewet(smartgreen, zone_id);
-
-    pthread_mutex_lock(&smartgreen->data_mutex);
-    for (int i = 0; i < smartgreen->num_coolers; i++)
-        if (smartgreen->coolers[i].zone_id == zone_id)
-            smartgreen->coolers[i].fan_on = 1;
-    pthread_mutex_unlock(&smartgreen->data_mutex);
-
-    ft_ws_broadcast_status(smartgreen);
-
-    // Fan speed ANTES de quitar el flag de prewet
-    for (int i = 0; i < smartgreen->num_coolers; i++)
+    if (!need_prewet)
     {
-        if (smartgreen->coolers[i].zone_id == zone_id)
-        {
-            int r50 = calculate_register_50(0, 1, 1);                                                           // pump=1 + fan_speed=1
-            int r52 = calculate_register_52(1);                                                                 // arranque físico speed 1
-            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
-        }
+        printf("PREWET THREAD NO ARRANCA [Ya está humedo] zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
+        // Sin prewet: AUTO/MANUAL arrancan directamente solenoide + bomba + fan
+        pthread_mutex_lock(&smartgreen->data_mutex);
+        if (smartgreen->zone_params[zone_idx].last_prewet == 0)
+            smartgreen->zone_params[zone_idx].last_prewet = get_timestamp();
+    }
+   /* if (!need_prewet)
+    {
+        printf("PREWET THREAD NO ARRANCA [Ya está humedo] zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
+        // Solenoide ON, drenaje cerrado
+        for (int i = 0; i < smartgreen->num_coolers; i++)
+            if (smartgreen->coolers[i].zone_id == zone_id)
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(1, 1));
+        sleep(9);
+        // Bomba ON, fan parado (lo arranca AUTO/MANUAL)
+        for (int i = 0; i < smartgreen->num_coolers; i++)
+            if (smartgreen->coolers[i].zone_id == zone_id)
+            {
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, REG50_SOLENOID_ON | 0x07);
+                //ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, 1, 0));
+                //ft_cooler_outputs(smartgreen, smartgreen->coolers[i].unit_id, 1, 1, 0);    // R50=31
+            }
+        pthread_mutex_lock(&smartgreen->data_mutex);
+        if (smartgreen->zone_params[zone_idx].last_prewet == 0)
+            smartgreen->zone_params[zone_idx].last_prewet = get_timestamp();
+    } */
+    else
+    {
+        printf("PREWET THREAD ARRANCADO zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
+        pthread_mutex_lock(&smartgreen->data_mutex);
+        ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes", sizeof(smartgreen->zone_params->prewet_in_progress));
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+
+        printf("PREWET iniciando cooler_prewet...\n"); fflush(stdout);
+        cooler_prewet(smartgreen, zone_id);         // termina con bomba ON, fan parado
+
+        printf("PREWET finalizado\n"); fflush(stdout);
+        pthread_mutex_lock(&smartgreen->data_mutex);
     }
 
-    sleep(40);  // esperar que fan arranque físicamente antes de activar alarmas
-
-    printf("PREWET finalizado\n"); fflush(stdout);
-    pthread_mutex_lock(&smartgreen->data_mutex);
+    // Pasar el control a AUTO / MANUAL
+    if (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "MANUAL") == 0)
+    {
+        // MANUAL: bomba ON + fan a la velocidad del usuario, ya
+        int speed = smartgreen->zone_params[zone_idx].fan_speed_cmd;
+        if (ft_is_quiet_mode(smartgreen) && speed > ft_quiet_max_speed(smartgreen))
+            speed = ft_quiet_max_speed(smartgreen);
+        smartgreen->zone_params[zone_idx].pump_on = 1;
+        for (int i = 0; i < smartgreen->num_coolers; i++)
+            if (smartgreen->coolers[i].zone_id == zone_id)
+            {
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, 1, speed));
+                ft_cooler_outputs(smartgreen, smartgreen->coolers[i].unit_id, 1, 1, speed);    // R50=31 + fan del usuario
+            }
+    }
+    else
+    {
+        // AUTO: el scheduler calcula la velocidad en su siguiente ciclo
+        smartgreen->zone_params[zone_idx].pump_on = 1;
+        smartgreen->zone_params[zone_idx].fan_speed_cmd = 0;    // fuerza que AUTO la envíe
+    }
     ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
-    smartgreen->zone_params[zone_idx].fan_speed_cmd = 1;
+    db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
     pthread_mutex_unlock(&smartgreen->data_mutex);
+    ft_ws_broadcast_status(smartgreen);
     return (NULL);
 }
+
+// void    *prewet_thread(void *arg)
+// {
+//     t_prewet_args   *args = (t_prewet_args *)arg;
+//     t_smartgreen    *smartgreen = args->smartgreen;
+//     int             zone_id = args->zone_id;
+//     int             zone_idx = ft_find_zone(smartgreen, zone_id);
+
+//     if (!args->need_prewet)
+//     {
+//         printf("PREWET THREAD NO ARRANCA [Ya está humedo] zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
+//         for (int i = 0; i < smartgreen->num_coolers; i++)
+//             if (smartgreen->coolers[i].zone_id == zone_id)
+//                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(1, 1));  // solenoid=ON, drain=closed
+//         sleep(9);
+//         for (int i = 0; i < smartgreen->num_coolers; i++)
+//             if (smartgreen->coolers[i].zone_id == zone_id)
+//             {
+//                 int r50 = calculate_register_50(0, 1, 1);  // pump=1 + fan_speed=1
+//                 int r52 = calculate_register_52(1);         // arranque físico speed 1
+//                 printf("Escribiendo r50  = %d\n", r50); fflush(stdout);
+//                 printf("Escribiendo r52  = %d\n", r52); fflush(stdout);
+//                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
+//                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
+//             }
+//         pthread_mutex_lock(&smartgreen->data_mutex);
+//         smartgreen->zone_params[zone_idx].fan_speed_cmd = 1;
+//         if (smartgreen->zone_params[zone_idx].last_prewet == 0)
+//             smartgreen->zone_params[zone_idx].last_prewet = get_timestamp();
+//         db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
+//         pthread_mutex_unlock(&smartgreen->data_mutex);
+//         free(args);
+//         return (NULL);
+//     }
+
+//     printf("PREWET THREAD ARRANCADO zone_id=%d zone_idx=%d\n", zone_id, zone_idx); fflush(stdout);
+
+//     free(args);
+//     if (zone_idx == -1)
+//     {
+//         printf("PREWET ERROR: zone_idx=-1\n"); fflush(stdout);
+//         return (NULL);
+//     }
+
+//     pthread_mutex_lock(&smartgreen->data_mutex);
+//     ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes", sizeof(smartgreen->zone_params->prewet_in_progress));
+//     pthread_mutex_unlock(&smartgreen->data_mutex);
+
+//     printf("PREWET iniciando cooler_prewet...\n"); fflush(stdout);
+//     cooler_prewet(smartgreen, zone_id);
+
+//     pthread_mutex_lock(&smartgreen->data_mutex);
+//     for (int i = 0; i < smartgreen->num_coolers; i++)
+//         if (smartgreen->coolers[i].zone_id == zone_id)
+//             smartgreen->coolers[i].fan_on = 1;
+//     pthread_mutex_unlock(&smartgreen->data_mutex);
+
+//     ft_ws_broadcast_status(smartgreen);
+
+//     // Fan speed ANTES de quitar el flag de prewet
+//     for (int i = 0; i < smartgreen->num_coolers; i++)
+//     {
+//         if (smartgreen->coolers[i].zone_id == zone_id)
+//         {
+//             int r50 = calculate_register_50(0, 1, 1);                                                           // pump=1 + fan_speed=1
+//             int r52 = calculate_register_52(1);                                                                 // arranque físico speed 1
+//             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
+//             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
+//         }
+//     }
+
+//     sleep(40);  // esperar que fan arranque físicamente antes de activar alarmas
+
+//     printf("PREWET finalizado\n"); fflush(stdout);
+//     pthread_mutex_lock(&smartgreen->data_mutex);
+//     ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
+//     smartgreen->zone_params[zone_idx].fan_speed_cmd = 1;
+//     pthread_mutex_unlock(&smartgreen->data_mutex);
+//     return (NULL);
+// }
 
 int     cooler_water_management(t_smartgreen *smartgreen) // Control automático de salinidad y Drenaje
 {
@@ -463,12 +643,21 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
     printf("PREWET paso 4: agua detectada, esperando %ds...\n", db_read_config(smartgreen, "prewet_delay_water")); fflush(stdout);
     sleep(db_read_config(smartgreen, "prewet_delay_water"));
 
-    // PASO 5 — encender bomba (R_50 → addr 49)
-    printf("PREWET paso 5: encender bomba (addr=49 val=%d)\n", calculate_register_50(0, 1, 0)); fflush(stdout);
+    // // PASO 5 — encender bomba (R_50 → addr 49)
+    // printf("PREWET paso 5: encender bomba (addr=49 val=%d)\n", calculate_register_50(0, 1, 0)); fflush(stdout);
+    // for (int i = 0; i < smartgreen->num_coolers; i++)
+    //     if (smartgreen->coolers[i].zone_id == zone_id)
+    //         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, 1, 0));
+    
+    // PASO 5 — encender bomba (solenoide sigue ON, drenaje cerrado, fan parado)
+    printf("PREWET paso 5: encender bomba\n"); fflush(stdout);
     for (int i = 0; i < smartgreen->num_coolers; i++)
         if (smartgreen->coolers[i].zone_id == zone_id)
+        {
             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, 1, 0));
-    
+            ft_cooler_outputs(smartgreen, smartgreen->coolers[i].unit_id, 1, 1, 0);    // R50=31
+        }
+
     printf("PREWET esperando %ds con bomba encendida...\n", db_read_config(smartgreen, "prewet_delay_pump")); fflush(stdout);
     sleep(db_read_config(smartgreen, "prewet_delay_pump"));
     

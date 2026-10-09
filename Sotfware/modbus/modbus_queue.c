@@ -126,17 +126,10 @@ void    *ft_modbus_worker(void *arg)
             case CMD_WRITE:
                 modbus_set_slave(smartgreen->modbus_ctx, cmd->unit_id);
                 printf("MODBUS WRITE -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
-                if (cmd->addr == 52)            // FC6 para fan speed individual
-                {
-                    uint16_t val = (uint16_t)cmd->value;
-                    if (modbus_write_register(smartgreen->modbus_ctx, cmd->addr, val) == -1)
-                        printf("MODBUS WRITE error addr=%d: %s\n", cmd->addr, modbus_strerror(errno));
-                }
-                else
-                {
-                    if (modbus_write_registers(smartgreen->modbus_ctx, cmd->addr, 1, (uint16_t[]){(uint16_t)cmd->value}) == -1)
-                        fprintf(stderr, "MODBUS WORKER write error: %s\n", modbus_strerror(errno));
-                }
+                // Todas las escrituras con FC16 (como el MagiTouch). Antes addr 52 iba con FC06 y el cooler no respondía.
+                if (modbus_write_registers(smartgreen->modbus_ctx, cmd->addr, 1, (uint16_t[]){(uint16_t)cmd->value}) == -1)
+                printf("MODBUS WRITE error addr=%d: %s\n", cmd->addr, modbus_strerror(errno));
+                fflush(stdout);
                 break;
 
             case CMD_READ_COOLER:
@@ -146,8 +139,9 @@ void    *ft_modbus_worker(void *arg)
             case CMD_READ_SENSOR:
                 ft_modbus_read_sensor(smartgreen, cmd->unit_id);
                 break;
-        }
-        free(cmd);
+            }
+            usleep(150000);
+            free(cmd);
     }
 
     printf("MODBUS WORKER: parado\n"); fflush(stdout);
