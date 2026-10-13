@@ -36,7 +36,7 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "free_cooling_temp",         0);                     // temperatura free cooling (0=desactivado)
     db_save_config(smartgreen, "min_setpoint_temp",         18);                    // temperatura mínima setpoint
     db_save_config(smartgreen, "max_setpoint_temp",         35);                    // temperatura máxima setpoint
-    db_save_config(smartgreen, "min_setpoint_fan",          0);                     // velocidad mínima ventilador
+    db_save_config(smartgreen, "min_setpoint_fan",          1);                     // velocidad mínima ventilador
     db_save_config(smartgreen, "max_setpoint_fan",          10);                    // velocidad máxima ventilador
     db_save_config(smartgreen, "min_setpoint_hum",          20);                    // humedad mínima setpoint
     db_save_config(smartgreen, "max_setpoint_hum",          85);                    // humedad máxima setpoint
@@ -60,7 +60,9 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "drain_dry_minutes",         60);                    // minutos
     db_save_config(smartgreen, "drain_dry_speed",           5);                     // velocidad fan
     db_save_config(smartgreen, "drain_dry_active",          0);
-    db_save_config(smartgreen, "drain_periodic",            30);   
+    db_save_config(smartgreen, "drain_periodic",            65);                    // intervalo drenaje periódico (min) — crea la clave si no existe
+    db_save_config(smartgreen, "drain_periodic_time",       30);                    // duración drenaje periódico (s)
+    db_save_config(smartgreen, "drain_safety_hours",        72);                    // horas apagado antes del DRAIN SAFETY
 }
 
 int ft_init_data(t_smartgreen *smartgreen)

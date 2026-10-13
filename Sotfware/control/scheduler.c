@@ -5,27 +5,69 @@
 
 int ft_is_quiet_mode(t_smartgreen *smartgreen)
 {
-    int quiet_mode  = db_read_config(smartgreen, "quiet_mode");
-    if (quiet_mode == 0) return 0;  // OFF
+    static int  quiet_mode = -1;        // leídos UNA vez: tras cambiar la config se reinicia el controlador
+    static int  start;
+    static int  end;
+    time_t      now;
+    struct tm   tm_info;
+    int         current;
 
-    if (quiet_mode == 1) return 1;  // 24H — siempre activo
+    if (quiet_mode == -1)
+    {
+        quiet_mode = db_read_config(smartgreen, "quiet_mode");
+        start      = db_read_config(smartgreen, "quiet_start");
+        end        = db_read_config(smartgreen, "quiet_end");
+        if (quiet_mode < 0)
+            quiet_mode = 0;             // clave inexistente → OFF
+    }
+
+    if (quiet_mode == 0)
+        return (0);                     // OFF
+    if (quiet_mode == 1)
+        return (1);                     // 24H — siempre activo
 
     // TIME — comprobar horario
-    time_t      now = get_timestamp();
-    struct tm   *tm_info = localtime(&now);
-    int         current = tm_info->tm_hour * 100 + tm_info->tm_min;
-    int         start = db_read_config(smartgreen, "quiet_start");
-    int         end   = db_read_config(smartgreen, "quiet_end");
+    now = get_timestamp();
+    localtime_r(&now, &tm_info);        // localtime_r: se llama desde varios hilos (scheduler y API)
+    current = tm_info.tm_hour * 100 + tm_info.tm_min;
 
     if (start <= end)
         return (current >= start && current < end);
-    else  // cruza medianoche ej: 2200 → 0600
-        return (current >= start || current < end);
+    return (current >= start || current < end);     // cruza medianoche ej: 2200 → 0600
 }
+
+// int ft_is_quiet_mode(t_smartgreen *smartgreen)
+// {
+//     int quiet_mode  = db_read_config(smartgreen, "quiet_mode");
+//     if (quiet_mode == 0) return 0;  // OFF
+
+//     if (quiet_mode == 1) return 1;  // 24H — siempre activo
+
+//     // TIME — comprobar horario
+//     time_t      now = get_timestamp();
+//     struct tm   *tm_info = localtime(&now);
+//     int         current = tm_info->tm_hour * 100 + tm_info->tm_min;
+//     int         start = db_read_config(smartgreen, "quiet_start");
+//     int         end   = db_read_config(smartgreen, "quiet_end");
+
+//     if (start <= end)
+//         return (current >= start && current < end);
+//     else  // cruza medianoche ej: 2200 → 0600
+//         return (current >= start || current < end);
+// }
 
 int ft_quiet_max_speed(t_smartgreen *smartgreen)
 {
-    return db_read_config(smartgreen, "quiet_max_speed");
+    static int  max_speed = -1;         // leído UNA vez
+
+    if (max_speed == -1)
+    {
+        max_speed = db_read_config(smartgreen, "quiet_max_speed");
+        if (max_speed < 1 || max_speed > 10)
+            max_speed = 3;              // clave inexistente o valor fuera de rango
+    }
+    return (max_speed);
+    // return db_read_config(smartgreen, "quiet_max_speed");
 }
 
 int     scheduler_is_active_now(t_scheduler_entry *scheduler, int hour, int min)
@@ -88,6 +130,8 @@ void    scheduler_run(t_smartgreen *smartgreen)
     int         read_interval = db_read_config(smartgreen, "refresh_interval");
     int         sensor_interval = db_read_config(smartgreen, "refresh_sensor_interval");
     int         history_interval = db_read_config(smartgreen, "history_interval");
+    int         safety_h = db_read_config(smartgreen, "drain_safety_hours");
+    int         drain_periodic = db_read_config(smartgreen, "drain_periodic");
     int         current_day;
     int         current_hour;
     int         current_min;
@@ -121,7 +165,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
                 for (int i = 0; i < smartgreen->num_coolers; i++)
                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
                 
-                // DRAIN SAFETY — vaciar la cubeta a las 3 h de estar apagado (una sola vez por apagado)
+                // DRAIN SAFETY — vaciar la cubeta a las 72h (por defecto) de estar apagado (una sola vez por apagado)
                 for (int h = 0; h < smartgreen->num_zones; h++)
                 {
                     if (strcmp(smartgreen->zone_params[h].on_off, "OFF") != 0)
@@ -130,7 +174,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
                     {
                         if (smartgreen->coolers[i].zone_id != smartgreen->zone_params[h].zone_id)
                             continue;
-                        if (smartgreen->coolers[i].last_off > 0 && (now - smartgreen->coolers[i].last_off) >= (3 * 3600))   // PRUEBA: 3 min. Real: 3 * 3600
+                        if (smartgreen->coolers[i].last_off > 0 && (now - smartgreen->coolers[i].last_off) >= (safety_h * 3600))
                         {
                             char sql_drain[128];
 
@@ -183,9 +227,6 @@ void    scheduler_run(t_smartgreen *smartgreen)
                                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, 0, 0));
                                     ft_cooler_outputs(smartgreen, smartgreen->coolers[i].unit_id, 0, 1, 0);    // R50=24: bomba y fan OFF
                                 }
-                            // for (int i = 0; i < smartgreen->num_coolers; i++)
-                            //     if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
-                            //         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, 0, 0));
                         }
                         else
                         {
@@ -229,8 +270,6 @@ void    scheduler_run(t_smartgreen *smartgreen)
                                 r50 = calculate_register_50(0, 0, sq);
                                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
                                 ft_cooler_outputs(smartgreen, smartgreen->coolers[i].unit_id, 0, 0, sq);   // R50=16: sin agua
-                                // r50 = calculate_register_50(0, 0, ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd);
-                                // ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
                             }
                     }
                     else if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "MANUAL") == 0)
@@ -245,8 +284,6 @@ void    scheduler_run(t_smartgreen *smartgreen)
                                     r50 = calculate_register_50(0, 1, sq);
                                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
                                     ft_cooler_outputs(smartgreen, smartgreen->coolers[i].unit_id, 1, 1, sq);   // R50=31
-                                    // r50 = calculate_register_50(0, 1, ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd);
-                                    // ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
                                 }
                         }
                     }
@@ -279,8 +316,8 @@ void    scheduler_run(t_smartgreen *smartgreen)
             last_sensor_read = now;
         }
 
-        // Drenaje periódico — cada 3 horas
-        if (now - last_drain_check >= (3 * 60 * 60))
+        // Drenaje periódico — cada 65 minutos por defecto
+        if (now - last_drain_check >= (drain_periodic * 60))
         {
             for (int h = 0; h < smartgreen->num_zones; h++)
             {

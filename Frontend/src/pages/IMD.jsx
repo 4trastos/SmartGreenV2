@@ -27,6 +27,23 @@ function ConfigParam({ label, unit, value, onChange }) {
   )
 }
 
+function OptionParam({ label, value, options, onChange }) {
+  return (
+    <div className="bg-white/4 rounded-xl p-3 col-span-2">
+      <p className="text-white/30 text-xs uppercase tracking-wider mb-2">{label}</p>
+      <div className="flex gap-1.5">
+        {options.map(o => (
+          <button key={o.value} onClick={() => onChange(o.value)}
+            className={`flex-1 py-2 rounded-lg text-sm font-bold cursor-pointer transition-all
+              ${Number(value) === o.value ? 'bg-[#088fc3] text-white' : 'bg-white/8 text-white/60 hover:bg-white/15'}`}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const SECTIONS = ['test', 'config', 'info']
 
 export default function IMD({ data, onExit }) {
@@ -36,6 +53,7 @@ export default function IMD({ data, onExit }) {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [resetProgress, setResetProgress] = useState(0)
+  const [showRestart, setShowRestart] = useState(false)
   const cooler = data.coolers?.[0]
   const zone = data.zones?.[0]
 
@@ -64,6 +82,7 @@ export default function IMD({ data, onExit }) {
 
     const saveConfig = async (key, value) => {
     setConfig(prev => ({...prev, [key]: value}))
+    setShowRestart(true) 
     await fetch(`${API_URL}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -198,7 +217,6 @@ export default function IMD({ data, onExit }) {
         {/* Config técnica */}
         {section === 'config' && (
         <div className="flex-1 overflow-y-auto space-y-4 pb-4">
-
             {/* SENSORES */}
             <div className="bg-white/4 rounded-2xl p-4">
             <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Sensores</p>
@@ -249,9 +267,19 @@ export default function IMD({ data, onExit }) {
             <div className="bg-white/4 rounded-2xl p-4">
             <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Drenaje</p>
             <div className="grid grid-cols-2 gap-3">
+                <OptionParam label="Drenaje de seguridad (equipo apagado)"
+                    value={config.drain_safety_hours ?? 72}
+                    options={[{label:'72h',value:72},{label:'48h',value:48},{label:'24h',value:24},{label:'4h',value:4}]}
+                    onChange={v => saveConfig('drain_safety_hours', v)} />
+                <OptionParam label="Drenaje periódico (equipo encendido)"
+                    value={config.drain_periodic ?? 65}
+                    options={[{label:'10h',value:600},{label:'4h',value:240},{label:'2h',value:120},{label:'65m',value:65}]}
+                    onChange={v => saveConfig('drain_periodic', v)} />
+                <ConfigParam key="salinity_drain_delay" label="Drenaje por salinidad" unit="s"
+                    value={config.salinity_drain_delay ?? 120} onChange={v => saveConfig('salinity_drain_delay', v)} />
                 {[
-                { key: 'salinity_trigger',     label: 'Trigger salinidad', unit: 'uS' },
-                { key: 'salinity_drain_delay', label: 'Delay drenaje',     unit: 's'  },
+                { key: 'salinity_trigger',     label: 'Trigger salinidad',  unit: 'uS' },
+                { key: 'salinity_drain_delay', label: 'Delay drenaje sal.', unit: 's'  },
                 ].map(({ key, label, unit }) => (
                 <ConfigParam key={key} label={label} unit={unit}
                     value={config[key]} onChange={v => saveConfig(key, v)} />
@@ -324,6 +352,30 @@ export default function IMD({ data, onExit }) {
                 </div>
                 <p className="text-white font-black text-xl mb-2">Reseteando sistema</p>
                 <p className="text-white/40 text-sm">Por favor espere...</p>
+            </div>
+            )}
+
+            {/* POP-UP REINICIO */}
+            {showRestart && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-lg">
+                <div className="w-[340px] rounded-3xl border border-yellow-500/40 p-6 bg-[#060c12] shadow-2xl">
+                <p className="text-yellow-400 text-xs uppercase tracking-wider mb-1 text-center">⚠ Reinicio necesario</p>
+                <p className="text-white text-xl font-black mb-3 text-center">Cambio guardado</p>
+                <p className="text-white/50 text-sm text-center mb-6">Se aplicará al reiniciar el controlador. Hazlo con el equipo parado.</p>
+                <div className="flex gap-3">
+                    <button onClick={() => setShowRestart(false)}
+                    className="flex-1 py-3 rounded-xl bg-white/5 text-white/60 font-bold cursor-pointer">
+                    Más tarde
+                    </button>
+                    <button onClick={async () => {
+                        setShowRestart(false)
+                        await fetch(`${API_URL}/reboot`, { method: 'POST' }).catch(() => {})
+                        }}
+                    className="flex-1 py-3 rounded-xl bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 font-bold cursor-pointer hover:bg-yellow-500/30">
+                    Reiniciar
+                    </button>
+                </div>
+                </div>
             </div>
             )}
 
