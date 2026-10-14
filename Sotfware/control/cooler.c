@@ -260,12 +260,12 @@ void    *ft_drain_thread(void *arg)
     int             unit_id = args->unit_id;
     int             zone_idx = 0;
     int             drain_delay = db_read_config(smartgreen, "salinity_drain_delay");
-    int             drain_interval = db_read_config(smartgreen, "salinity_drain_interval");
+    // int             drain_interval = db_read_config(smartgreen, "salinity_drain_interval");
     int             drain_periodic_time = db_read_config(smartgreen, "drain_periodic_time");
 
     printf("DRAIN THREAD ARRANCADO unit_id=%d reason=%d\n", unit_id, args->reason); fflush(stdout);
 
-    if (args->reason == DRAIN_PERIODIC)
+    if (args->reason == DRAIN_PERIODIC || args->reason == DRAIN_SALINITY)
     {
         int skip = 1;
         int speed = 0;
@@ -274,7 +274,7 @@ void    *ft_drain_thread(void *arg)
         zone_idx = ft_find_zone(smartgreen, args->zone_id);
         if (zone_idx != -1)
         {
-            skip = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") == 0);
+            skip = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") == 0) || (strcmp(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes") == 0);         // prewet en marcha: no mezclar
             speed = smartgreen->zone_params[zone_idx].fan_speed_cmd;
         }
         pthread_mutex_unlock(&smartgreen->data_mutex);
@@ -282,7 +282,7 @@ void    *ft_drain_thread(void *arg)
         // Modo FAN — solo ventila, no usa agua: no se drena
         if (skip)
         {
-            printf("DRAIN PERIODIC omitido (modo FAN)\n"); fflush(stdout);
+            printf("DRAIN PERIODIC/SALINITY omitido omitido (modo FAN)\n"); fflush(stdout);
             free(args);
             return (NULL);
         }
@@ -291,7 +291,7 @@ void    *ft_drain_thread(void *arg)
         int r52 = speed * 0x11;
 
         // Abrir drain: bomba + solenoide + drenaje abierto, fan a su velocidad
-        printf("DRAIN PERIODIC: abrir drain %ds speed=%d\n", drain_periodic_time, speed); fflush(stdout);
+        printf("DRAIN PERIODIC o DRAIN SALINITY: abrir drain %ds speed=%d\n", drain_periodic_time, speed); fflush(stdout);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_DRAIN_OPEN_SOLENOID_ON | 0x07);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, r51);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, r52);
@@ -302,7 +302,7 @@ void    *ft_drain_thread(void *arg)
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, r51);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, r52);
 
-        printf("DRAIN PERIODIC completado\n"); fflush(stdout);
+        printf("DRAIN PERIODIC o DRAIN SALINITY completado\n"); fflush(stdout);
         free(args);
         return (NULL);
     }
@@ -338,68 +338,68 @@ void    *ft_drain_thread(void *arg)
         return (NULL);
     }
 
-    if (args->reason == DRAIN_SALINITY)
-    {
-        int skip = 1;
+    // if (args->reason == DRAIN_SALINITY)
+    // {
+    //     int skip = 1;
 
-        pthread_mutex_lock(&smartgreen->data_mutex);
-        zone_idx = ft_find_zone(smartgreen, args->zone_id);
-        if (zone_idx != -1)
-        {
-            skip = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") == 0);
-            if (!skip)      // el scheduler no toca la zona mientras drena
-                ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes", sizeof(smartgreen->zone_params->prewet_in_progress));
-        }
-        pthread_mutex_unlock(&smartgreen->data_mutex);
+    //     pthread_mutex_lock(&smartgreen->data_mutex);
+    //     zone_idx = ft_find_zone(smartgreen, args->zone_id);
+    //     if (zone_idx != -1)
+    //     {
+    //         skip = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") == 0);
+    //         if (!skip)      // el scheduler no toca la zona mientras drena
+    //             ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes", sizeof(smartgreen->zone_params->prewet_in_progress));
+    //     }
+    //     pthread_mutex_unlock(&smartgreen->data_mutex);
 
-        // Modo FAN — no usa agua: no hay nada que renovar
-        if (skip)
-        {
-            printf("DRAIN SALINITY omitido (modo FAN)\n"); fflush(stdout);
-            free(args);
-            return (NULL);
-        }
+    //     // Modo FAN — no usa agua: no hay nada que renovar
+    //     if (skip)
+    //     {
+    //         printf("DRAIN SALINITY omitido (modo FAN)\n"); fflush(stdout);
+    //         free(args);
+    //         return (NULL);
+    //     }
 
-        printf("DRAIN SALINITY: apagar bomba y fan\n"); fflush(stdout);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_PARADA);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_APAGADO);
-        ft_cooler_outputs(smartgreen, unit_id, 0, 0, 0);                                            // R50=16 + fan 0
-        sleep(2);
+    //     printf("DRAIN SALINITY: apagar bomba y fan\n"); fflush(stdout);
+    //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_PARADA);
+    //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_APAGADO);
+    //     ft_cooler_outputs(smartgreen, unit_id, 0, 0, 0);                                            // R50=16 + fan 0
+    //     sleep(2);
 
-        printf("DRAIN SALINITY paso 1: abrir drain\n"); fflush(stdout);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_DRAIN_OPEN_SOLENOID_OFF);   // R50=0: drenaje abierto
-        sleep(drain_delay);
+    //     printf("DRAIN SALINITY paso 1: abrir drain\n"); fflush(stdout);
+    //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_DRAIN_OPEN_SOLENOID_OFF);   // R50=0: drenaje abierto
+    //     sleep(drain_delay);
 
-        printf("DRAIN SALINITY paso 2: cerrar drain + abrir solenoide\n"); fflush(stdout);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON);    // R50=24: cerrado + rellenar
-        sleep(drain_interval);
+    //     printf("DRAIN SALINITY paso 2: cerrar drain + abrir solenoide\n"); fflush(stdout);
+    //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON);    // R50=24: cerrado + rellenar
+    //     sleep(drain_interval);
 
-        printf("DRAIN SALINITY completado\n"); fflush(stdout);
-        pthread_mutex_lock(&smartgreen->data_mutex);
-        zone_idx = ft_find_zone(smartgreen, args->zone_id);
-        if (zone_idx != -1)
-        {
-            for (int i = 0; i < smartgreen->num_coolers; i++)
-                if (smartgreen->coolers[i].unit_id == unit_id)
-                {
-                    smartgreen->coolers[i].alarm_salinity = 0;
-                    break;
-                }
-            // Devolver el control: el scheduler rearranca bomba + fan en su siguiente ciclo
-            if (strcmp(smartgreen->zone_params[zone_idx].on_off, "ON") == 0)
-            {
-                if (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "MANUAL") == 0)
-                    smartgreen->zone_params[zone_idx].pump_on = 0;          // MANUAL reenvía al ver pump_on = 0
-                else
-                {
-                    smartgreen->zone_params[zone_idx].pump_on = 1;          // AUTO reenvía al ver fan_speed_cmd = 0
-                    smartgreen->zone_params[zone_idx].fan_speed_cmd = 0;
-                }
-            }
-            ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
-        }
-        pthread_mutex_unlock(&smartgreen->data_mutex);
-    }
+    //     printf("DRAIN SALINITY completado\n"); fflush(stdout);
+    //     pthread_mutex_lock(&smartgreen->data_mutex);
+    //     zone_idx = ft_find_zone(smartgreen, args->zone_id);
+    //     if (zone_idx != -1)
+    //     {
+    //         for (int i = 0; i < smartgreen->num_coolers; i++)
+    //             if (smartgreen->coolers[i].unit_id == unit_id)
+    //             {
+    //                 smartgreen->coolers[i].alarm_salinity = 0;
+    //                 break;
+    //             }
+    //         // Devolver el control: el scheduler rearranca bomba + fan en su siguiente ciclo
+    //         if (strcmp(smartgreen->zone_params[zone_idx].on_off, "ON") == 0)
+    //         {
+    //             if (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "MANUAL") == 0)
+    //                 smartgreen->zone_params[zone_idx].pump_on = 0;          // MANUAL reenvía al ver pump_on = 0
+    //             else
+    //             {
+    //                 smartgreen->zone_params[zone_idx].pump_on = 1;          // AUTO reenvía al ver fan_speed_cmd = 0
+    //                 smartgreen->zone_params[zone_idx].fan_speed_cmd = 0;
+    //             }
+    //         }
+    //         ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
+    //     }
+    //     pthread_mutex_unlock(&smartgreen->data_mutex);
+    // }
     free(args);
     return (NULL);
 

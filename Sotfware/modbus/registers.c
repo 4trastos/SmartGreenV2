@@ -70,20 +70,41 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     state->avg_tank_fill = (regs[43]);
 
     // Estados y bits
-    state->drain_valve_open  = (regs[49] >> 0) & 0x01;                   
-    state->cool_mode_on      = (regs[49] >> 1) & 0x01;
-    state->pump_on           = state->cool_mode_on;                               
+    // R50 (verificado): bits 0-2 = bomba, bit 3 = solenoide, bit 4 = 1 → drenaje CERRADO
+    state->pump_on           = ((regs[50] & 0x07) == 0x07);              // bomba real (antes: bit 1 de R49)
+    state->cool_mode_on      = state->pump_on;                           // frío = bomba en marcha
+    state->solenoid_on       = (regs[50] >> 3) & 0x01;
+    state->inlet_valve_open  = state->solenoid_on;                       // el solenoide ES la válvula de entrada (antes: bit 4 de R49 = un bit del fan)
+    state->drain_valve_open  = ((regs[50] >> 4) & 0x01) ? 0 : 1;         // bit 4 = 1 → cerrado (antes: bit 0 de R49)
+    state->drain_valve_confirm = (regs[50] >> 4) & 0x01;
+
+    // R51 (verificado): bits 12-15 = velocidad del fan
+    state->fan_speed_confirmed = (regs[51] >> 12) & 0x0F;                // antes: (regs[50] >> 8), siempre 0
+
+    // R49: lo dejamos para fallos y velocidad, que es lo que el resto del código espera
     state->fault_present     = (regs[49] >> 3) & 0x01;
-    state->actual_fan_speed  = (regs[49] >> 4) & 0x0F;                  
-    state->fan_on            = state->actual_fan_speed > 0 ? 1 : 0;     
-    state->fan_running       = state->fan_on;                           
-    state->inlet_valve_open  = (regs[49] >> 4) & 0x01;                  
+    state->actual_fan_speed  = (regs[49] >> 4) & 0x0F;
+    state->fan_on            = state->actual_fan_speed > 0 ? 1 : 0;
+    state->fan_running       = state->fan_on;
     state->most_recent_fault = (regs[49] >> 12) & 0x0F;
 
     state->extended_status  = (regs[52]);
-    state->drain_valve_confirm = (regs[50] >> 4) & 0x01;            
-    state->fan_speed_confirmed = (regs[50] >> 8) & 0x0F;            
-    state->solenoid_on         = (regs[50] >> 3) & 0x01;
+    
+    // Estados y bits
+    // state->drain_valve_open  = (regs[49] >> 0) & 0x01;                   
+    //state->cool_mode_on      = (regs[49] >> 1) & 0x01;
+    //state->pump_on           = state->cool_mode_on;                               
+    // state->fault_present     = (regs[49] >> 3) & 0x01;
+    //state->actual_fan_speed  = (regs[49] >> 4) & 0x0F;                  
+    // state->fan_on            = state->actual_fan_speed > 0 ? 1 : 0;     
+    // state->fan_running       = state->fan_on;                           
+    // state->inlet_valve_open  = (regs[49] >> 4) & 0x01;                  
+    //state->most_recent_fault = (regs[49] >> 12) & 0x0F;
+
+    // state->extended_status  = (regs[52]);
+    // state->drain_valve_confirm = (regs[50] >> 4) & 0x01;            
+    // state->fan_speed_confirmed = (regs[50] >> 8) & 0x0F;            
+    // state->solenoid_on         = (regs[50] >> 3) & 0x01;
 
     state->water_present = decode_water_present_zone(regs[53], state->zone_id);
 

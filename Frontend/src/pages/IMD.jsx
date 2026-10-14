@@ -271,19 +271,23 @@ export default function IMD({ data, onExit }) {
                     value={config.drain_safety_hours ?? 72}
                     options={[{label:'72h',value:72},{label:'48h',value:48},{label:'24h',value:24},{label:'4h',value:4}]}
                     onChange={v => saveConfig('drain_safety_hours', v)} />
-                <OptionParam label="Drenaje periódico (equipo encendido)"
+                <OptionParam label="Renovación de agua (equipo encendido)"
+                    value={config.drain_type ?? 1}
+                    options={[{label:'Por tiempo',value:1},{label:'Por salinidad',value:0}]}
+                    onChange={v => saveConfig('drain_type', v)} />
+                {Number(config.drain_type ?? 1) === 1 ? (
+                <OptionParam label="Renovar cada"
                     value={config.drain_periodic ?? 65}
                     options={[{label:'10h',value:600},{label:'4h',value:240},{label:'2h',value:120},{label:'65m',value:65}]}
                     onChange={v => saveConfig('drain_periodic', v)} />
-                <ConfigParam key="salinity_drain_delay" label="Drenaje por salinidad" unit="s"
+                ) : (
+                <ConfigParam key="salinity_trigger" label="Trigger salinidad" unit="uS"
+                    value={config.salinity_trigger} onChange={v => saveConfig('salinity_trigger', v)} />
+                )}
+                <ConfigParam key="drain_periodic_time" label="Duración renovación" unit="s"
+                    value={config.drain_periodic_time ?? 30} onChange={v => saveConfig('drain_periodic_time', v)} />
+                <ConfigParam key="salinity_drain_delay" label="Vaciado de seguridad" unit="s"
                     value={config.salinity_drain_delay ?? 120} onChange={v => saveConfig('salinity_drain_delay', v)} />
-                {[
-                { key: 'salinity_trigger',     label: 'Trigger salinidad',  unit: 'uS' },
-                { key: 'salinity_drain_delay', label: 'Delay drenaje sal.', unit: 's'  },
-                ].map(({ key, label, unit }) => (
-                <ConfigParam key={key} label={label} unit={unit}
-                    value={config[key]} onChange={v => saveConfig(key, v)} />
-                ))}
             </div>
             </div>
 

@@ -132,6 +132,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
     int         history_interval = db_read_config(smartgreen, "history_interval");
     int         safety_h = db_read_config(smartgreen, "drain_safety_hours");
     int         drain_periodic = db_read_config(smartgreen, "drain_periodic");
+    int         drain_type = db_read_config(smartgreen, "drain_type");
     int         current_day;
     int         current_hour;
     int         current_min;
@@ -317,7 +318,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
         }
 
         // Drenaje periódico — cada 65 minutos por defecto
-        if (now - last_drain_check >= (drain_periodic * 60))
+        if (now - last_drain_check >= (drain_periodic * 60) && drain_type == 1)
         {
             for (int h = 0; h < smartgreen->num_zones; h++)
             {

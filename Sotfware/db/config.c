@@ -63,6 +63,7 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "drain_periodic",            65);                    // intervalo drenaje periódico (min) — crea la clave si no existe
     db_save_config(smartgreen, "drain_periodic_time",       30);                    // duración drenaje periódico (s)
     db_save_config(smartgreen, "drain_safety_hours",        72);                    // horas apagado antes del DRAIN SAFETY
+    db_save_config(smartgreen, "drain_type",                1);                     // drain_peridic=1 drain_salinty=0
 }
 
 int ft_init_data(t_smartgreen *smartgreen)

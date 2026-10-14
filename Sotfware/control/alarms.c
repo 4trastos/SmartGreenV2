@@ -6,6 +6,7 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
     time_t              now = get_timestamp();
     char                msg[256];
     t_drain_args        *drain_args = NULL;
+    int                 drain_type = db_read_config(smartgreen, "drain_type");
 
     // Alarma Modbus
     if (!smartgreen->modbus_ctx && !g_alarm_modbus)
@@ -152,26 +153,73 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
             smartgreen->coolers[i].alarm_comms = 0;
 
         // 🟡 salinidad alta
-        if (smartgreen->coolers[i].water_present && smartgreen->coolers[i].salinity_us >= db_read_config(smartgreen, "salinity_trigger") && !smartgreen->coolers[i].alarm_salinity)
-        {
-            snprintf(msg, sizeof(msg), "🟡 AVISO: Salinidad alta cooler unit_id=%d (%.1f uS)", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].salinity_us);
-            db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
-            smartgreen->coolers[i].alarm_salinity = 1;
-            drain_args = malloc(sizeof(t_drain_args));
-            if (drain_args)
-            {
-                drain_args->smartgreen = smartgreen;
-                drain_args->unit_id = smartgreen->coolers[i].unit_id;
-                drain_args->zone_id = smartgreen->coolers[i].zone_id;
-                drain_args->reason = DRAIN_SALINITY;
-                pthread_t   tid;
-                pthread_create(&tid, NULL, ft_drain_thread, drain_args);
-                pthread_detach(tid);
-            }
+        // if (smartgreen->coolers[i].water_present && smartgreen->coolers[i].salinity_us >= db_read_config(smartgreen, "salinity_trigger") && !smartgreen->coolers[i].alarm_salinity
+        //     && drain_type == 0 && (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0))
+        // {
+        //     snprintf(msg, sizeof(msg), "🟡 AVISO: Salinidad alta cooler unit_id=%d (%.1f uS)", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].salinity_us);
+        //     db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
+        //     smartgreen->coolers[i].alarm_salinity = 1;
+        //     drain_args = malloc(sizeof(t_drain_args));
+        //     if (drain_args)
+        //     {
+        //         drain_args->smartgreen = smartgreen;
+        //         drain_args->unit_id = smartgreen->coolers[i].unit_id;
+        //         drain_args->zone_id = smartgreen->coolers[i].zone_id;
+        //         drain_args->reason = DRAIN_SALINITY;
+        //         pthread_t   tid;
+        //         pthread_create(&tid, NULL, ft_drain_thread, drain_args);
+        //         pthread_detach(tid);
+        //     }
             
+        // }
+        // else if ((!smartgreen->coolers[i].water_present || smartgreen->coolers[i].salinity_us < db_read_config(smartgreen, "salinity_trigger")) && smartgreen->coolers[i].alarm_salinity)
+        //     smartgreen->coolers[i].alarm_salinity = 0;
+
+        // 🟡 salinidad alta → renovar agua (solo si drain_type = por salinidad)
+        if (smartgreen->coolers[i].water_present && smartgreen->coolers[i].salinity_us >= db_read_config(smartgreen, "salinity_trigger") && !smartgreen->coolers[i].alarm_salinity
+            && drain_type == 0 && (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0))
+        {
+            static int  sal_trigger = -1;           // leídos UNA vez: tras cambiar la config se reinicia el controlador
+            static int  sal_drain_type = -1;
+            int         z = ft_find_zone(smartgreen, smartgreen->coolers[i].zone_id);
+
+            if (sal_trigger == -1)
+            {
+                sal_trigger    = db_read_config(smartgreen, "salinity_trigger");
+                sal_drain_type = db_read_config(smartgreen, "drain_type");
+                if (sal_trigger <= 0)
+                    sal_trigger = 4275;
+            }
+
+            if (z != -1
+                && sal_drain_type == 0                                                          // renovación por salinidad
+                && strcmp(smartgreen->zone_params[z].on_off, "ON") == 0                         // zona encendida
+                && strcmp(smartgreen->zone_params[z].cool_fan_mode, "FAN") != 0                // FAN no usa agua
+                && strcmp(smartgreen->zone_params[z].prewet_in_progress, "yes") != 0            // sin prewet en marcha
+                && smartgreen->coolers[i].pump_on                                               // ESTE cooler con la bomba en marcha
+                && smartgreen->coolers[i].water_present
+                && smartgreen->coolers[i].salinity_us >= sal_trigger
+                && !smartgreen->coolers[i].alarm_salinity)
+            {
+                snprintf(msg, sizeof(msg), "🟡 AVISO: Salinidad alta cooler unit_id=%d (%.1f uS)", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].salinity_us);
+                db_save_error(smartgreen, smartgreen->coolers[i].unit_id, msg);
+                smartgreen->coolers[i].alarm_salinity = 1;
+                drain_args = malloc(sizeof(t_drain_args));
+                if (drain_args)
+                {
+                    drain_args->smartgreen = smartgreen;
+                    drain_args->unit_id = smartgreen->coolers[i].unit_id;
+                    drain_args->zone_id = smartgreen->coolers[i].zone_id;
+                    drain_args->reason = DRAIN_SALINITY;
+                    pthread_t   tid;
+                    pthread_create(&tid, NULL, ft_drain_thread, drain_args);
+                    pthread_detach(tid);
+                }
+            }
+            else if ((!smartgreen->coolers[i].water_present || smartgreen->coolers[i].salinity_us < sal_trigger)
+                && smartgreen->coolers[i].alarm_salinity)
+                smartgreen->coolers[i].alarm_salinity = 0;          // rearme: la salinidad ha bajado
         }
-        else if ((!smartgreen->coolers[i].water_present || smartgreen->coolers[i].salinity_us < db_read_config(smartgreen, "salinity_trigger")) && smartgreen->coolers[i].alarm_salinity)
-            smartgreen->coolers[i].alarm_salinity = 0;
 
         // 🟡 sin agua
         if (smartgreen->coolers[i].salinity_us < 10.0 && !smartgreen->coolers[i].alarm_water)
