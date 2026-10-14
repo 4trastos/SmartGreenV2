@@ -260,8 +260,12 @@ void    *ft_drain_thread(void *arg)
     int             unit_id = args->unit_id;
     int             zone_idx = 0;
     int             drain_delay = db_read_config(smartgreen, "salinity_drain_delay");
-    // int             drain_interval = db_read_config(smartgreen, "salinity_drain_interval");
+    int             trigger = db_read_config(smartgreen, "salinity_trigger");
     int             drain_periodic_time = db_read_config(smartgreen, "drain_periodic_time");
+    int             max_time = 600;
+    int             elapsed;
+    float           sal = 0.0f;
+    float           target = trigger - 200;
 
     printf("DRAIN THREAD ARRANCADO unit_id=%d reason=%d\n", unit_id, args->reason); fflush(stdout);
 
@@ -291,18 +295,49 @@ void    *ft_drain_thread(void *arg)
         int r52 = speed * 0x11;
 
         // Abrir drain: bomba + solenoide + drenaje abierto, fan a su velocidad
-        printf("DRAIN PERIODIC o DRAIN SALINITY: abrir drain %ds speed=%d\n", drain_periodic_time, speed); fflush(stdout);
+        printf("DRAIN %s: abrir drain speed=%d\n", args->reason == DRAIN_PERIODIC ? "PERIODIC" : "SALINITY", speed); fflush(stdout);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_DRAIN_OPEN_SOLENOID_ON | 0x07);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, r51);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, r52);
-        sleep(drain_periodic_time);
 
-        // Cerrar drain: igual, con drenaje cerrado
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON | 0x07);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, r51);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, r52);
+        if (args->reason == DRAIN_PERIODIC)
+            sleep(drain_periodic_time);
+        else
+        {
+            // SALINITY: drenar hasta 200 uS por debajo del máximo (límite de seguridad: 10 min)
+            int cooler_idx = ft_find_cooler(smartgreen, unit_id);
+            elapsed = 0;
+            while (elapsed < max_time)
+            {
+                sleep(5);           // la salinidad se actualiza en cada lectura
+                elapsed += 5;
+                pthread_mutex_lock(&smartgreen->data_mutex);
+                sal = (cooler_idx != -1) ? smartgreen->coolers[cooler_idx].salinity_us : 0.0f;
+                pthread_mutex_unlock(&smartgreen->data_mutex);
+                printf("DRAIN SALINITY: %ds sal=%.1f objetivo<=%.1f\n", elapsed, sal, target); fflush(stdout);
+                if (sal <= target)
+                    break;
+            }
+            if (elapsed >= max_time)
+                printf("DRAIN SALINITY: tiempo máximo alcanzado (sal=%.1f)\n", sal);
+        }
 
-        printf("DRAIN PERIODIC o DRAIN SALINITY completado\n"); fflush(stdout);
+        // Cerrar drain — solo si la zona sigue encendida (si no, R50=31 + fan volvería a encender todo)   // ←
+        pthread_mutex_lock(&smartgreen->data_mutex);
+        int zone_on = (zone_idx != -1 && strcmp(smartgreen->zone_params[zone_idx].on_off, "ON") == 0);
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+        if (zone_on)
+        {
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON | 0x07);
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, r51);
+            ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, r52);
+            printf("DRAIN %s completado\n", args->reason == DRAIN_PERIODIC ? "PERIODIC" : "SALINITY"); fflush(stdout);
+        }
+        else
+        {
+            printf("DRAIN %s terminado: zona apagada, no se reenciende\n", args->reason == DRAIN_PERIODIC ? "PERIODIC" : "SALINITY"); fflush(stdout);
+        }
+        
         free(args);
         return (NULL);
     }

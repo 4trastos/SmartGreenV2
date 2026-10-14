@@ -197,9 +197,14 @@ export default function Control({ data, onImdActivate, connected }) {
                       <p className="text-[#088fc3] text-xs font-bold tracking-widest uppercase">{zone.name || 'Zona'}</p>
                       <p className="text-white text-4xl font-black">{zone.zone_id}</p>
                     </div>
-                    <button onClick={() => toggle(zone.zone_id)}
-                      className={`relative w-16 h-8 rounded-full transition-all duration-300 cursor-pointer
-                        ${zone.on_off === 'ON' ? 'bg-[#088fc3] shadow-[0_0_20px_#088fc340]' : 'bg-white/10'}`}>
+                    <button
+                      onClick={() => zone.prewet_in_progress !== 'yes' && toggle(zone.zone_id)}
+                      className={`relative w-16 h-8 rounded-full transition-all duration-300
+                        ${zone.prewet_in_progress === 'yes'
+                          ? 'opacity-30 cursor-not-allowed bg-white/10'
+                          : zone.on_off === 'ON'
+                            ? 'bg-[#088fc3] shadow-[0_0_20px_#088fc340] cursor-pointer'
+                            : 'bg-white/10 cursor-pointer'}`}>
                       <span className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-lg transition-all duration-300
                         ${zone.on_off === 'ON' ? 'left-9' : 'left-1'}`} />
                     </button>
