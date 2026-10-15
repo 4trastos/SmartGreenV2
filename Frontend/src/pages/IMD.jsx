@@ -44,6 +44,23 @@ function OptionParam({ label, value, options, onChange }) {
   )
 }
 
+function SelectParam({ label, unit, value, options, onChange }) {
+  return (
+    <div className="bg-white/4 rounded-xl p-3">
+      <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{label}</p>
+      <div className="flex items-center gap-1">
+        <select value={String(value)} onChange={e => onChange(Number(e.target.value))}
+          className="w-full bg-transparent text-white font-bold text-lg cursor-pointer focus:outline-none">
+          {options.map(o => (
+            <option key={o} value={o} className="bg-[#060c12] text-white">{o}</option>
+          ))}
+        </select>
+        {unit && <span className="text-white/30 text-xs">{unit}</span>}
+      </div>
+    </div>
+  )
+}
+
 const SECTIONS = ['test', 'config', 'info']
 
 export default function IMD({ data, onExit }) {
@@ -290,12 +307,16 @@ export default function IMD({ data, onExit }) {
                         value={config.salinity_trigger ?? 4275}
                         options={[{label:'4275',value:4275},{label:'3620',value:3620},{label:'2960',value:2960},{label:'2305',value:2305}]}
                         onChange={v => saveConfig('salinity_trigger', v)} />
-                    <ConfigParam key="drain_max_time" label="Máx. drenaje salinidad" unit="s"
-                        value={config.drain_max_time ?? 600} onChange={v => saveConfig('drain_max_time', v)} />
+                    <SelectParam label="Máx. drenaje salinidad" unit="s"
+                        value={config.drain_max_time ?? 600}
+                        options={[60, 180, 360, 600]}
+                        onChange={v => saveConfig('drain_max_time', v)} />
                 </>
                 )}
-                <ConfigParam key="salinity_drain_delay" label="Vaciado de seguridad" unit="s"
-                    value={config.salinity_drain_delay ?? 120} onChange={v => saveConfig('salinity_drain_delay', v)} />
+                <SelectParam label="Vaciado de seguridad" unit="s"
+                    value={config.salinity_drain_delay ?? 120}
+                    options={[30, 60, 120, 180, 240]}
+                    onChange={v => saveConfig('salinity_drain_delay', v)} />
             </div>
             </div>
 

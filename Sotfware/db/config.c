@@ -65,6 +65,7 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "drain_safety_hours",        72);                    // horas apagado antes del DRAIN SAFETY
     db_save_config(smartgreen, "drain_type",                1);                     // drain_peridic=1 drain_salinty=0
     db_save_config(smartgreen, "drain_max_time",            600);                   // Tiempo maximo de drenado (salinidad)
+    db_save_config(smartgreen, "broken_cooler",             0);                     // Averia en Cooler (ligado al númeor del cooler)
 }
 
 int ft_init_data(t_smartgreen *smartgreen)
