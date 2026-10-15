@@ -262,7 +262,7 @@ void    *ft_drain_thread(void *arg)
     int             drain_delay = db_read_config(smartgreen, "salinity_drain_delay");
     int             trigger = db_read_config(smartgreen, "salinity_trigger");
     int             drain_periodic_time = db_read_config(smartgreen, "drain_periodic_time");
-    int             max_time = 600;
+    int             max_time = db_read_config(smartgreen, "drain_max_time");
     int             elapsed;
     float           sal = 0.0f;
     float           target = trigger - 200;
@@ -273,6 +273,8 @@ void    *ft_drain_thread(void *arg)
     {
         int skip = 1;
         int speed = 0;
+        int sensor_fault = 0;
+        int cooler_idx = 0;
 
         pthread_mutex_lock(&smartgreen->data_mutex);
         zone_idx = ft_find_zone(smartgreen, args->zone_id);
@@ -300,12 +302,12 @@ void    *ft_drain_thread(void *arg)
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, r51);
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, r52);
 
+        cooler_idx = ft_find_cooler(smartgreen, unit_id);
         if (args->reason == DRAIN_PERIODIC)
             sleep(drain_periodic_time);
         else
         {
             // SALINITY: drenar hasta 200 uS por debajo del máximo (límite de seguridad: 10 min)
-            int cooler_idx = ft_find_cooler(smartgreen, unit_id);
             elapsed = 0;
             while (elapsed < max_time)
             {
@@ -319,7 +321,34 @@ void    *ft_drain_thread(void *arg)
                     break;
             }
             if (elapsed >= max_time)
-                printf("DRAIN SALINITY: tiempo máximo alcanzado (sal=%.1f)\n", sal);
+            {
+                printf("DRAIN SALINITY [AVERIA]: tiempo máximo alcanzado (sal=%.1f)\n", sal);
+                sensor_fault = 1;
+            }
+        }
+
+        // 🔴 Avería sensor de salinidad: no ha bajado en drain_max_time → parar el cooler
+        if (sensor_fault)
+        {
+            char    msg[128];
+
+            snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d averia sensor de salinidad", unit_id);
+            db_save_error(smartgreen, unit_id, msg);
+            pthread_mutex_lock(&smartgreen->data_mutex);
+            if (cooler_idx != -1)
+            {
+                smartgreen->coolers[cooler_idx].alarm_fault = 1;
+                smartgreen->coolers[cooler_idx].last_off = get_timestamp();             // para el DRAIN SAFETY
+            }
+            if (zone_idx != -1)
+            {
+                ft_strcpy(smartgreen->zone_params[zone_idx].on_off, "OFF", sizeof(smartgreen->zone_params->on_off));
+                db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
+            }
+            pthread_mutex_unlock(&smartgreen->data_mutex);
+            ft_cooler_onoff(smartgreen, unit_id, 0);                                // cierra drenaje, para bomba y fan
+            free(args);
+            return (NULL);
         }
 
         // Cerrar drain — solo si la zona sigue encendida (si no, R50=31 + fan volvería a encender todo)   // ←

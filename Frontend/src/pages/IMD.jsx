@@ -276,16 +276,24 @@ export default function IMD({ data, onExit }) {
                     options={[{label:'Por tiempo',value:1},{label:'Por salinidad',value:0}]}
                     onChange={v => saveConfig('drain_type', v)} />
                 {Number(config.drain_type ?? 1) === 1 ? (
-                <OptionParam label="Renovar cada"
-                    value={config.drain_periodic ?? 65}
-                    options={[{label:'10h',value:600},{label:'4h',value:240},{label:'2h',value:120},{label:'65m',value:65}]}
-                    onChange={v => saveConfig('drain_periodic', v)} />
+                <>
+                    <OptionParam label="Renovar cada"
+                        value={config.drain_periodic ?? 65}
+                        options={[{label:'10h',value:600},{label:'4h',value:240},{label:'2h',value:120},{label:'65m',value:65}]}
+                        onChange={v => saveConfig('drain_periodic', v)} />
+                    <ConfigParam key="drain_periodic_time" label="Duración renovación" unit="s"
+                        value={config.drain_periodic_time ?? 30} onChange={v => saveConfig('drain_periodic_time', v)} />
+                </>
                 ) : (
-                <ConfigParam key="salinity_trigger" label="Trigger salinidad" unit="uS"
-                    value={config.salinity_trigger} onChange={v => saveConfig('salinity_trigger', v)} />
+                <>
+                    <OptionParam label="Trigger salinidad (µS)"
+                        value={config.salinity_trigger ?? 4275}
+                        options={[{label:'4275',value:4275},{label:'3620',value:3620},{label:'2960',value:2960},{label:'2305',value:2305}]}
+                        onChange={v => saveConfig('salinity_trigger', v)} />
+                    <ConfigParam key="drain_max_time" label="Máx. drenaje salinidad" unit="s"
+                        value={config.drain_max_time ?? 600} onChange={v => saveConfig('drain_max_time', v)} />
+                </>
                 )}
-                <ConfigParam key="drain_periodic_time" label="Duración renovación" unit="s"
-                    value={config.drain_periodic_time ?? 30} onChange={v => saveConfig('drain_periodic_time', v)} />
                 <ConfigParam key="salinity_drain_delay" label="Vaciado de seguridad" unit="s"
                     value={config.salinity_drain_delay ?? 120} onChange={v => saveConfig('salinity_drain_delay', v)} />
             </div>
