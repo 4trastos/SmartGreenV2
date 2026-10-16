@@ -193,7 +193,7 @@ export default function App() {
             )}
           </div>
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-            <img src="/logo_australair_connect_Mini.png" alt="Australair" className="h-5 brightness-0 invert opacity-80" />
+            <img src="/logo_australair_connect_Mini.png" alt="Australair" className="h-5 opacity-80" />
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {alarmCount > 0 && (

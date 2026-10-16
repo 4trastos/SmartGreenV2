@@ -460,7 +460,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
         }
 
         if (smartgreen->ws_context)
-            lws_service(smartgreen->ws_context, 0);
+            lws_service(smartgreen->ws_context, -1);
 
         sleep(1);
     }
