@@ -89,6 +89,7 @@ const char *SCHEMA_SQL =
     "    fan_zero_ticks         INTEGER DEFAULT 0,\n"
     "    fan_running            INTEGER DEFAULT 0,\n"
     "    last_off               INTEGER DEFAULT 0,\n"
+    "    broken_cooler          INTEGER DEFAULT 0,\n"
     "    FOREIGN KEY (zone_id) REFERENCES zones(id)\n"
     ");\n"
     "\n"

@@ -3,7 +3,7 @@ import { API_URL } from '../config.js'
 
 const TILES = [
   { id: 'sistema',   label: 'Sistema',      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>,       color: 'from-[#004d89]/40 to-[#088fc3]/10', border: 'border-[#088fc3]/30', keys: ['num_coolers','num_sensors','num_zones','refresh_interval','history_interval','modbus_retries'] },
-  { id: 'salinidad', label: 'Salinidad',     icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>, color: 'from-blue-900/30 to-transparent',   border: 'border-blue-500/25',    keys: ['salinity_trigger','salinity_drain_delay','salinity_drain_interval'] },
+  { id: 'salinidad', label: 'Drenaje',       icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>, color: 'from-blue-900/30 to-transparent', border: 'border-blue-500/25', keys: ['drain_type','drain_periodic','drain_periodic_time','salinity_trigger','drain_max_time','salinity_drain_delay','drain_safety_hours'] },
   { id: 'prewet',    label: 'Pre-mojado',    icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>,                                       color: 'from-cyan-900/25 to-transparent',   border: 'border-cyan-500/20',    keys: ['prewet_selector','prewet_delay_pump','prewet_delay_solenoid','prewet_delay_water','prewet_max_wait','prewet_check_interval'] },
   { id: 'garantia',  label: 'Garantía',      icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,                              color: 'from-green-900/25 to-transparent',  border: 'border-green-500/20',   keys: ['warranty_months','install_date'] },
   { id: 'maint',     label: 'Mantenimiento', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>, color: 'from-orange-900/25 to-transparent', border: 'border-orange-500/20',  keys: ['maint_plan','maint_legionella','maint_closing_date','maint_opening_date','maint_legionella_date'] },
@@ -13,7 +13,7 @@ const TILES = [
 const KEY_LABELS = {
   num_coolers: 'Nº Coolers', num_sensors: 'Nº Sensores', num_zones: 'Nº Zonas',
   refresh_interval: 'Intervalo lectura (s)', history_interval: 'Intervalo histórico (s)', modbus_retries: 'Reintentos Modbus',
-  salinity_trigger: 'Umbral salinidad (μS)', salinity_drain_delay: 'Tiempo drenaje (s)', salinity_drain_interval: 'Intervalo drenaje (s)',
+  salinity_trigger: 'Umbral salinidad (μS)',
   prewet_selector: 'Pre-mojado activo', prewet_delay_pump: 'Delay bomba (s)', prewet_delay_solenoid: 'Delay solenoide (s)',
   prewet_delay_water: 'Delay agua (s)', prewet_max_wait: 'Espera máx (s)', prewet_check_interval: 'Check intervalo (s)',
   warranty_months: 'Meses garantía', install_date: 'Fecha instalación',
@@ -21,6 +21,9 @@ const KEY_LABELS = {
   maint_closing_date: 'Fecha cierre', maint_opening_date: 'Fecha apertura', maint_legionella_date: 'Fecha legionela',
   water_manager: 'Gestor agua', water_seal_opening_speed: 'Vel. apertura sello',
   auto_restart: 'Auto reinicio', temperature_unit: 'Unidad temp (0=C, 1=F)', tank_drain_delay: 'Delay drenaje tanque',
+  drain_type: 'Renovación (1=tiempo, 0=salinidad)', drain_periodic: 'Renovar cada (min)',
+  drain_periodic_time: 'Duración renovación (s)', drain_max_time: 'Máx. drenaje salinidad (s)',
+  drain_safety_hours: 'Drenaje seguridad (h apagado)', salinity_drain_delay: 'Vaciado seguridad (s)',
 }
 
 const formatVal = (key, val) => {

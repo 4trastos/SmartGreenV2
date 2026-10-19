@@ -1,5 +1,34 @@
 #include "../incl/smartgreen.h"
 
+// Rearme de avería grave por el técnico: el cooler vuelve a poder encenderse (sin reiniciar)
+enum MHD_Result api_post_cooler_rearm(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id)
+{
+    int     idx = ft_find_cooler(smartgreen, unit_id);
+    char    sql[128];
+    char    msg[128];
+
+    if (idx == -1)
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Cooler not found\"}"));
+
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    smartgreen->coolers[idx].broken_cooler = 0;
+    smartgreen->coolers[idx].alarm_fault = 0;
+    smartgreen->coolers[idx].fan_zero_ticks = 0;
+    smartgreen->coolers[idx].solenoid_zero_ticks = 0;
+    smartgreen->coolers[idx].pump_zero_ticks = 0;
+    smartgreen->coolers[idx].drain_zero_ticks = 0;
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+
+    snprintf(sql, sizeof(sql), "UPDATE cooler_state SET broken_cooler=0 WHERE unit_id=%d", unit_id);
+    sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
+
+    snprintf(msg, sizeof(msg), "🟢 Avería rearmada por el técnico unit_id=%d", unit_id);
+    db_save_error(smartgreen, unit_id, msg);
+    printf("[AVERIA] %s\n", msg); fflush(stdout);
+
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
+
 enum MHD_Result api_post_cooler_raw(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, int reg, const char *body, size_t body_size)
 {
     int value = 0;
@@ -430,115 +459,6 @@ enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Co
     return(api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
 
-// enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size)
-// {
-//     t_prewet_args   *args;
-//     char            action[8] = {0};
-//     char            cool_fan_mode[8];
-//     char            sql_off[128];
-//     int             zone_idx;
-//     int             on;
-//     int             prewet_sel;
-//     int             need_prewet;
-//     int             unit_id;
-//     int             already_running;
-
-//     if (!body || body_size == 0)
-//         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
-
-//     if (sscanf(body, "{\"action\":\"%7[^\"]\"}", action) != 1)
-//         return(api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON ONOFF\"}"));
-    
-//     zone_idx = ft_find_zone(smartgreen, id);
-//     if (zone_idx == -1)
-//         return(api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
-//     if (strcmp(action, "ON") != 0 && strcmp(action, "OFF") != 0)
-//         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"action must be ON or OFF\"}"));
-
-//     on = (strcmp(action, "ON") == 0) ? 1 :0;
-
-//     pthread_mutex_lock(&smartgreen->data_mutex);
-//     ft_strcpy(smartgreen->zone_params[zone_idx].on_off, action, sizeof(smartgreen->zone_params->on_off));
-
-//     if (smartgreen->modbus_ctx)
-//     {
-//         for (int i = 0; i < smartgreen->num_coolers; i++)
-//         {
-//             if (smartgreen->coolers[i].zone_id == id)
-//                 ft_cooler_onoff(smartgreen, smartgreen->coolers[i].unit_id, on);
-//         }
-//     }
-//     // pthread_mutex_unlock(&smartgreen->data_mutex);
-
-//     int ret = db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
-//     printf("db_update_zone_params ret=%d on_off=%s pump=%d zone_id=%d\n", ret, smartgreen->zone_params[zone_idx].on_off, smartgreen->zone_params[zone_idx].pump_on, smartgreen->zone_params[zone_idx].zone_id);
-//     fflush(stdout);
-
-//     pthread_mutex_unlock(&smartgreen->data_mutex);
-   
-//     ft_strcpy(cool_fan_mode, smartgreen->zone_params[zone_idx].cool_fan_mode, sizeof(smartgreen->zone_params->cool_fan_mode));
-//     if (on && smartgreen->modbus_ctx)
-//     {
-//         // Modo FAN — solo ventilador sin agua ni prewet
-//         if (strcmp(cool_fan_mode, "FAN") == 0)
-//         {
-//             for (int i = 0; i < smartgreen->num_coolers; i++)
-//                 if (smartgreen->coolers[i].zone_id == id)
-//                 {
-//                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, 16); // fan=1, pump=OFF, drain=0
-//                     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, REG50_SOLENOID_OFF); // solenoid=OFF
-//                 }
-//         }
-//         else
-//         {
-//             prewet_sel = db_read_config(smartgreen, "prewet_selector");
-//             unit_id = -1;
-//             for (int i = 0; i < smartgreen->num_coolers; i++)
-//                 if (smartgreen->coolers[i].zone_id == id)
-//                     { unit_id = smartgreen->coolers[i].unit_id; break; }
-            
-//             need_prewet = cooler_need_prewet(smartgreen, zone_idx, unit_id);
-//             printf("DEBUG onoff: on=%d prewet_sel=%d need_prewet=%d last_prewet=%ld\n", on, prewet_sel, need_prewet, (long)smartgreen->zone_params[zone_idx].last_prewet); fflush(stdout);
-    
-//             pthread_mutex_lock(&smartgreen->data_mutex);
-//             already_running = strcmp(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes") == 0;
-//             if (!already_running && (prewet_sel && need_prewet))
-//                 ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "yes",
-//                         sizeof(smartgreen->zone_params->prewet_in_progress));
-//             pthread_mutex_unlock(&smartgreen->data_mutex);
-    
-//             if (!already_running)
-//             {
-//                 args = malloc(sizeof(t_prewet_args));
-//                 if (args)
-//                 {
-//                     args->smartgreen = smartgreen;
-//                     args->zone_id = id;
-//                     args->need_prewet = (prewet_sel && need_prewet);
-//                     pthread_t tid;
-//                     pthread_create(&tid, NULL, prewet_thread, args);
-//                     pthread_detach(tid);
-//                 }
-//             }
-//         }
-//     }
-//     if (!on)
-//     {
-//         pthread_mutex_lock(&smartgreen->data_mutex);
-//         for (int i = 0; i < smartgreen->num_coolers; i++)
-//             if (smartgreen->coolers[i].zone_id == id)
-//             {
-//                 smartgreen->coolers[i].last_off = get_timestamp();
-//                 snprintf(sql_off, sizeof(sql_off), "UPDATE cooler_state SET last_off=%ld WHERE unit_id=%d", (long)smartgreen->coolers[i].last_off, smartgreen->coolers[i].unit_id);
-//                 sqlite3_exec(smartgreen->db, sql_off, NULL, NULL, NULL);
-//                 //db_save_cooler(smartgreen, &smartgreen->coolers[i]);
-//             }
-//         pthread_mutex_unlock(&smartgreen->data_mutex);
-//     }
-
-//     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
-// }
-
 enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Connection *connection, int id, const char *body, size_t body_size)
 {
     t_prewet_args   *args;
@@ -662,7 +582,6 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
     int zone_idx;
     int speed = 0;
     int r50 = 0;
-    //int r52 = 0;
     int pump = 0;
 
     if (!body || body_size == 0)
@@ -689,13 +608,6 @@ enum MHD_Result     api_post_zone_fanspeed(t_smartgreen *smartgreen, struct MHD_
     {
         for (int i = 0; i < smartgreen->num_coolers; i++)
         {
-            // if (smartgreen->coolers[i].zone_id == id)
-            // {
-            //     r50 = calculate_register_50(0, pump, speed);
-            //     r52 = calculate_register_52(speed);
-            //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-            //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, r52);
-            // }
             if (smartgreen->coolers[i].zone_id == id)
             {
                 r50 = calculate_register_50(0, pump, speed);

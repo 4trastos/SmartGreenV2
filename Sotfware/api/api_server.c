@@ -266,6 +266,8 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
                 ret = api_post_cooler_raw(smartgreen, connection, id, 50, ctx->body, ctx->len);
             else if (strcmp(action, "r52") == 0)
                 ret = api_post_cooler_raw(smartgreen, connection, id, 52, ctx->body, ctx->len);
+            else if (strcmp(action, "rearm") == 0)
+                ret = api_post_cooler_rearm(smartgreen, connection, id);
             else if (strcmp(action, "heartbeat") == 0)
             {
                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_HEARTBEAT, id, 400, 300);
@@ -273,31 +275,73 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
             }
             else if (strcmp(action, "prewet") == 0)
             {
-                t_prewet_args *args = malloc(sizeof(t_prewet_args));
-                if (args) {
-                    args->smartgreen = smartgreen;
-                    args->zone_id = smartgreen->coolers[ft_find_cooler(smartgreen, id)].zone_id;
-                    args->need_prewet = 1;
-                    pthread_t tid;
-                    pthread_create(&tid, NULL, prewet_thread, args);
-                    pthread_detach(tid);
+                int idx = ft_find_cooler(smartgreen, id);
+                if (idx == -1)
+                    ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Cooler not found\"}");
+                else
+                {
+                    t_prewet_args *args = malloc(sizeof(t_prewet_args));
+                    if (args)
+                    {
+                        args->smartgreen  = smartgreen;
+                        args->zone_id     = smartgreen->coolers[idx].zone_id;
+                        args->need_prewet = 1;
+                        args->from_setup  = 0;          // antes sin inicializar
+                        pthread_t tid;
+                        pthread_create(&tid, NULL, prewet_thread, args);
+                        pthread_detach(tid);
+                    }
+                    ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
                 }
-                ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
             }
             else if (strcmp(action, "drain_cycle") == 0)
             {
-                t_drain_args *drain_args = malloc(sizeof(t_drain_args));
-                if (drain_args) {
-                    drain_args->smartgreen = smartgreen;
-                    drain_args->unit_id = id;
-                    drain_args->zone_id = smartgreen->coolers[ft_find_cooler(smartgreen, id)].zone_id;
-                    drain_args->reason = DRAIN_SALINITY;
-                    pthread_t tid;
-                    pthread_create(&tid, NULL, ft_drain_thread, drain_args);
-                    pthread_detach(tid);
+                int idx = ft_find_cooler(smartgreen, id);
+                if (idx == -1)
+                    ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Cooler not found\"}");
+                else
+                {
+                    t_drain_args *drain_args = malloc(sizeof(t_drain_args));
+                    if (drain_args)
+                    {
+                        drain_args->smartgreen = smartgreen;
+                        drain_args->unit_id    = id;
+                        drain_args->zone_id    = smartgreen->coolers[idx].zone_id;
+                        drain_args->reason     = DRAIN_SALINITY;
+                        pthread_t tid;
+                        pthread_create(&tid, NULL, ft_drain_thread, drain_args);
+                        pthread_detach(tid);
+                    }
+                    ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
                 }
-                ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
             }
+            // else if (strcmp(action, "prewet") == 0)
+            // {
+            //     t_prewet_args *args = malloc(sizeof(t_prewet_args));
+            //     if (args) {
+            //         args->smartgreen = smartgreen;
+            //         args->zone_id = smartgreen->coolers[ft_find_cooler(smartgreen, id)].zone_id;
+            //         args->need_prewet = 1;
+            //         pthread_t tid;
+            //         pthread_create(&tid, NULL, prewet_thread, args);
+            //         pthread_detach(tid);
+            //     }
+            //     ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+            // }
+            // else if (strcmp(action, "drain_cycle") == 0)
+            // {
+            //     t_drain_args *drain_args = malloc(sizeof(t_drain_args));
+            //     if (drain_args) {
+            //         drain_args->smartgreen = smartgreen;
+            //         drain_args->unit_id = id;
+            //         drain_args->zone_id = smartgreen->coolers[ft_find_cooler(smartgreen, id)].zone_id;
+            //         drain_args->reason = DRAIN_SALINITY;
+            //         pthread_t tid;
+            //         pthread_create(&tid, NULL, ft_drain_thread, drain_args);
+            //         pthread_detach(tid);
+            //     }
+            //     ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+            // }
             else if (strcmp(action, "prewet_test") == 0)
             {
                 int idx = ft_find_cooler(smartgreen, id);

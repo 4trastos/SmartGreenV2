@@ -1,5 +1,40 @@
 #include "../incl/smartgreen.h"
 
+void    ft_cooler_fault(t_smartgreen *smartgreen, int cooler_idx, const char *msg, int grave)
+{
+    t_cooler_state  *c = &smartgreen->coolers[cooler_idx];
+    int             z = ft_find_zone(smartgreen, c->zone_id);
+    int             healthy = 0;
+    char            sql[128];
+
+    db_save_error(smartgreen, c->unit_id, msg);
+    printf("[AVERIA%s] %s\n", grave ? " GRAVE" : "", msg); fflush(stdout);
+
+    ft_cooler_onoff(smartgreen, c->unit_id, 0);         // primero apagar ESTE cooler
+
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    c->alarm_fault = 1;
+    c->last_off = get_timestamp();
+    if (grave)
+        c->broken_cooler = 1;
+    // Zona OFF solo si no queda ningún cooler sano en ella
+    for (int j = 0; j < smartgreen->num_coolers; j++)
+        if (smartgreen->coolers[j].zone_id == c->zone_id && !smartgreen->coolers[j].broken_cooler)
+            healthy++;
+    if (z != -1 && healthy == 0)
+    {
+        ft_strcpy(smartgreen->zone_params[z].on_off, "OFF", sizeof(smartgreen->zone_params->on_off));
+        db_update_zone_params(smartgreen, &smartgreen->zone_params[z]);
+    }
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+
+    if (grave)
+    {
+        snprintf(sql, sizeof(sql), "UPDATE cooler_state SET broken_cooler=1, last_off=%ld WHERE unit_id=%d", (long)c->last_off, c->unit_id);
+        sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
+    }
+}
+
 void    ft_check_alarms(t_smartgreen *smartgreen)
 {
     time_t              warranty_end;

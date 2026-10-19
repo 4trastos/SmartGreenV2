@@ -76,6 +76,85 @@ function Clock() {
   )
 }
 
+function BrokenScreen({ coolers, onUnlock }) {
+  const [showPin, setShowPin] = useState(false)
+  const [pin, setPin] = useState('')
+  const [pinError, setPinError] = useState(false)
+
+  const confirmPin = async (pinValue) => {
+    const res = await fetch(`${API_URL}/imd/unlock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pinValue })
+    }).catch(() => null)
+    if (res && res.ok) {
+      setShowPin(false)
+      setPin('')
+      setPinError(false)
+      onUnlock()
+    } else {
+      setPinError(true)
+      setPin('')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-red-900">
+      <p className="text-8xl mb-6">⚠</p>
+      <p className="text-white text-4xl font-black mb-3 text-center">AVERÍA GRAVE</p>
+      <p className="text-white/80 text-xl text-center mb-2">Llame al servicio técnico</p>
+      <p className="text-white/50 text-sm text-center mb-10">
+        Cooler{coolers.length > 1 ? 'es' : ''} {coolers.map(c => `#${c.unit_id}`).join(', ')} parado{coolers.length > 1 ? 's' : ''}
+      </p>
+      <button onClick={() => { setShowPin(true); setPin(''); setPinError(false) }}
+        className="px-6 py-3 rounded-xl bg-white/10 border border-white/30 text-white/70 text-sm font-bold cursor-pointer hover:bg-white/20">
+        Acceso técnico
+      </button>
+
+      {/* Modal PIN — igual que en Control */}
+      {showPin && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 backdrop-blur-lg"
+          onClick={() => setShowPin(false)}>
+          <div onClick={e => e.stopPropagation()}
+            className="w-[300px] rounded-3xl border border-white/10 p-6 bg-[#060c12] shadow-2xl">
+            <p className="text-white/30 text-xs tracking-widest uppercase mb-1 text-center">Acceso restringido</p>
+            <p className="text-white text-xl font-black mb-6 text-center">Modo IMD</p>
+            <div className="flex justify-center gap-3 mb-6">
+              {[0,1,2,3].map(i => (
+                <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all
+                  ${pinError ? 'border-red-500 bg-red-500' :
+                    pin.length > i ? 'border-[#088fc3] bg-[#088fc3]' : 'border-white/20 bg-transparent'}`} />
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[1,2,3,4,5,6,7,8,9,'⌫',0,''].map((k, i) => (
+                k === '' ? <div key={i} /> :
+                <button key={i} onClick={() => {
+                  if (k === '⌫') { setPin(p => p.slice(0,-1)); setPinError(false); return }
+                  if (pin.length >= 4) return
+                  const newPin = pin + k
+                  setPin(newPin)
+                  setPinError(false)
+                  if (newPin.length === 4) confirmPin(newPin)
+                }}
+                  className={`h-12 rounded-xl font-bold text-lg cursor-pointer transition-all
+                    ${k === '⌫' ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-white/8 text-white hover:bg-white/15'}`}>
+                  {k}
+                </button>
+              ))}
+            </div>
+            {pinError && <p className="text-red-400 text-xs text-center mt-3">PIN incorrecto</p>}
+            <button onClick={() => { setShowPin(false); setPin(''); setPinError(false) }}
+              className="w-full mt-4 py-2 rounded-xl bg-white/5 text-white/40 text-sm cursor-pointer hover:bg-white/10">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const [page, setPage] = useState('control')
   const [showReboot, setShowReboot] = useState(false)
@@ -126,6 +205,7 @@ export default function App() {
     s.alarm_signal || s.alarm_temp
   ).length
 
+  const brokenCoolers = data.coolers.filter(c => Number(c.broken_cooler) === 1)
   const isPrewet = !imdActive && data.zones.some(z => z.prewet_in_progress === 'yes')
   const pages = { dashboard: Dashboard, control: Control, alarms: Alarms, maint: Maintenance, settings: Settings, scheduler: Scheduler, quiet: Quiet }
   const PageComponent = pages[page]
@@ -233,6 +313,18 @@ export default function App() {
       </main>
 
       {showReboot && <RebootModal onClose={() => setShowReboot(false)} />}
+      
+      {/* AVERÍA GRAVE — por encima de cualquier pantalla (salvo en el IMD, donde el técnico rearma) */}
+      {brokenCoolers.length > 0 && !imdActive && (
+        <BrokenScreen
+          coolers={brokenCoolers}
+          onUnlock={() => {
+            const zoneId = brokenCoolers[0].zone_id
+            fetch(`${API_URL}/zones/${zoneId}/mode`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mode: 'IMD'}) })
+            setImdActive(true)
+            setImdZoneId(zoneId)
+          }} />
+      )}
     </div>
   )
 }

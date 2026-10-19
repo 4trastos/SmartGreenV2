@@ -124,13 +124,37 @@ void    *ft_modbus_worker(void *arg)
         {
             case CMD_HEARTBEAT:
             case CMD_WRITE:
+            {                                  
+                int cidx = ft_find_cooler(smartgreen, cmd->unit_id);
+                if (cidx != -1 && smartgreen->coolers[cidx].broken_cooler && !ft_is_safe_write(cmd->addr, cmd->value))
+                {
+                    printf("MODBUS BLOQUEADO (averia) -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
+                    break;
+                }
                 modbus_set_slave(smartgreen->modbus_ctx, cmd->unit_id);
                 printf("MODBUS WRITE -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
-                // Todas las escrituras con FC16 (como el MagiTouch). Antes addr 52 iba con FC06 y el cooler no respondía.
-                if (modbus_write_registers(smartgreen->modbus_ctx, cmd->addr, 1, (uint16_t[]){(uint16_t)cmd->value}) == -1)
-                printf("MODBUS WRITE error addr=%d: %s\n", cmd->addr, modbus_strerror(errno));
+                printf("MODBUS WRITE -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
+                {
+                    int tries = 0;
+                    int rc;
+
+                    do
+                    {
+                        rc = modbus_write_registers(smartgreen->modbus_ctx, cmd->addr, 1, (uint16_t[]){(uint16_t)cmd->value});
+                        if (rc == -1)
+                        {
+                            printf("MODBUS WRITE error addr=%d (intento %d/3): %s\n", cmd->addr, tries + 1, modbus_strerror(errno)); fflush(stdout);
+                            modbus_flush(smartgreen->modbus_ctx);       // descarta restos de la trama fallida
+                            usleep(300000);                             // 300 ms antes de reintentar
+                        }
+                    } while (rc == -1 && ++tries < 3);
+
+                    if (rc == -1)
+                        printf("MODBUS WRITE FALLIDA definitivamente addr=%d value=%d\n", cmd->addr, cmd->value);
+                }
                 fflush(stdout);
                 break;
+            }                         
 
             case CMD_READ_COOLER:
                 ft_modbus_read_cooler(smartgreen, cmd->unit_id);
@@ -139,9 +163,9 @@ void    *ft_modbus_worker(void *arg)
             case CMD_READ_SENSOR:
                 ft_modbus_read_sensor(smartgreen, cmd->unit_id);
                 break;
-            }
-            usleep(150000);
-            free(cmd);
+        }
+        usleep(150000);
+        free(cmd);
     }
 
     printf("MODBUS WORKER: parado\n"); fflush(stdout);

@@ -43,8 +43,8 @@
 /*  SQL */
 # define SQL_INSERT_COOLER      "INSERT OR IGNORE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, drain_valve_confirm, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, fan_speed_confirmed, most_recent_fault, " \
                                 "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod, alarm_fault, alarm_salinity, alarm_water, alarm_comms, alarm_warranty, alarm_maint_opening, alarm_maint_closing, alarm_maint_legionella, hours_running, " \
-                                "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config, prev_fan_starts, fan_zero_ticks, fan_running, last_off) " \
-                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                                "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config, prev_fan_starts, fan_zero_ticks, fan_running, last_off, broken_cooler) " \
+                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 # define SQL_INSERT_SENSOR      "INSERT OR IGNORE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, humidity_offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
@@ -294,6 +294,7 @@ typedef struct  s_cooler_state
     int                 drain_cmd;                      // lo que mandamos
     int                 drain_zero_ticks;
     int                 pump_zero_ticks;
+    int                 broken_cooler;      // 1 = avería grave: no se puede encender hasta que el técnico rearme
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
@@ -415,6 +416,7 @@ int                 calculate_register_52(int fan_speed);
 double              calculate_salinity_ppm(int raw_value);
 double              calculate_salinity_us(int raw_value);
 char                *ft_model_name(int cpmd_code);
+int                 ft_is_safe_write(int addr, int value);
 
 /*  DATABASE    */
 int                 db_init(t_smartgreen *smartgreen);
@@ -460,6 +462,7 @@ void                ft_auto_humidity_control(t_smartgreen *smartgreen, int zone_
 int                 ft_is_quiet_mode(t_smartgreen *smartgreen);
 int                 ft_quiet_max_speed(t_smartgreen *smartgreen);
 void                *ft_drain_dry_thread(void *arg);
+void                ft_cooler_fault(t_smartgreen *smartgreen, int cooler_idx, const char *msg, int grave);
 
 
 /*  UTILS   */
@@ -514,6 +517,7 @@ enum MHD_Result     api_post_setup_purge(t_smartgreen *smartgreen, struct MHD_Co
 enum MHD_Result     api_post_setup_sensors(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t len);
 enum MHD_Result     api_post_setup_purge_stop(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_post_reset(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_post_cooler_rearm(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id);
 
 /*  WEBSOCKET   */
 int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);

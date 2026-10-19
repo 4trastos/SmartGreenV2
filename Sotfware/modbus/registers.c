@@ -1,5 +1,15 @@
 #include "../incl/smartgreen.h"
 
+// Escrituras permitidas a un cooler averiado: solo las que NO encienden nada
+int  ft_is_safe_write(int addr, int value)
+{
+    if (addr == 50)
+        return ((value & 0x0F) == 0);           // sin bomba (0x07) ni solenoide (0x08)
+    if (addr == 51 || addr == 52 || addr == 49)
+        return (value == 0);                    // fan 0
+    return (1);                                 // heartbeat, R0...
+}
+
 char    *ft_model_name(int cpmd_code)
 {
     if (cpmd_code == 100) return ("TBS 580");

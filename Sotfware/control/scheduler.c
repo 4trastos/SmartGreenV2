@@ -36,26 +36,6 @@ int ft_is_quiet_mode(t_smartgreen *smartgreen)
     return (current >= start || current < end);     // cruza medianoche ej: 2200 → 0600
 }
 
-// int ft_is_quiet_mode(t_smartgreen *smartgreen)
-// {
-//     int quiet_mode  = db_read_config(smartgreen, "quiet_mode");
-//     if (quiet_mode == 0) return 0;  // OFF
-
-//     if (quiet_mode == 1) return 1;  // 24H — siempre activo
-
-//     // TIME — comprobar horario
-//     time_t      now = get_timestamp();
-//     struct tm   *tm_info = localtime(&now);
-//     int         current = tm_info->tm_hour * 100 + tm_info->tm_min;
-//     int         start = db_read_config(smartgreen, "quiet_start");
-//     int         end   = db_read_config(smartgreen, "quiet_end");
-
-//     if (start <= end)
-//         return (current >= start && current < end);
-//     else  // cruza medianoche ej: 2200 → 0600
-//         return (current >= start || current < end);
-// }
-
 int ft_quiet_max_speed(t_smartgreen *smartgreen)
 {
     static int  max_speed = -1;         // leído UNA vez

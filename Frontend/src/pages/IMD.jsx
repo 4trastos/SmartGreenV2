@@ -133,6 +133,20 @@ export default function IMD({ data, onExit }) {
         </button>
         </div>
 
+        {/* AVERÍA GRAVE — rearme */}
+        {cooler && Number(cooler.broken_cooler) === 1 && (
+        <div className="shrink-0 bg-red-500/15 rounded-2xl p-4 border border-red-500/40 flex items-center justify-between gap-3">
+            <div>
+            <p className="text-red-400 text-xs uppercase tracking-wider font-bold">⚠ Avería grave activa</p>
+            <p className="text-white/60 text-sm">Cooler #{cooler.unit_id} bloqueado. Revisa el historial de alarmas antes de rearmar.</p>
+            </div>
+            <button onClick={() => sendCmd(`/coolers/${cooler.unit_id}/rearm`, {})}
+            className="shrink-0 px-4 py-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 text-sm font-bold cursor-pointer hover:bg-red-500/30">
+            Rearmar avería
+            </button>
+        </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-2 shrink-0">
         {[{id:'test',label:'Test'},{id:'config',label:'Config'},{id:'info',label:'ℹInfo'}].map(s => (

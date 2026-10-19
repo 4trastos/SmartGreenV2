@@ -121,59 +121,6 @@ void    *prewet_test_thread(void *arg)
     return (NULL);
 }
 
-// int ft_auto_fan_speed(t_smartgreen *smartgreen, int zone_idx, float *error)
-// {
-//     float   temp_actual;
-//     float   target_temp;
-//     float   p_term;
-//     float   speed;
-//     int     min_speed;
-//     int     max_speed;
-//     int     sensor_idx;
-
-//     // Buscar sensor INT de la zona
-//     sensor_idx = -1;
-//     for (int i = 0; i < smartgreen->num_sensors; i++)
-//         if (smartgreen->sensors[i].zone_id == smartgreen->zone_params[zone_idx].zone_id && strcmp(smartgreen->sensors[i].type, "INT") == 0)
-//             { sensor_idx = i; break; }
-//     if (sensor_idx == -1 || !smartgreen->sensors[sensor_idx].valid)
-//         return(3);                                                   // Velocidad por defecto si no hay sensor
-
-//     temp_actual = smartgreen->sensors[sensor_idx].temperature;
-//     target_temp = smartgreen->zone_params[zone_idx].target_temp;
-//     min_speed = db_read_config(smartgreen, "min_setpoint_fan");
-//     max_speed = db_read_config(smartgreen, "max_setpoint_fan");
-
-//     // Control proporcional
-//     *error = temp_actual - target_temp;
-
-//     if (*error <= 0.0f)
-//         smartgreen->zone_params[zone_idx].integral = 0.0f;
-//     else
-//     {
-//         smartgreen->zone_params[zone_idx].integral += *error * 0.05f;
-    
-//         // Anti-windup 
-//         if (smartgreen->zone_params[zone_idx].integral > 3.0f)
-//             smartgreen->zone_params[zone_idx].integral = 3.0f;
-//         if (smartgreen->zone_params[zone_idx].integral < 0.0f)
-//             smartgreen->zone_params[zone_idx].integral = 0.0f;
-//     }
-
-//     p_term = *error * 0.8f;      // Kp = 1.5
-//     speed = 1.0f + p_term + smartgreen->zone_params[zone_idx].integral;
-
-//     // Clamp 1-10
-//     if (speed < min_speed)
-//         speed = min_speed;
-//     if (speed > max_speed)
-//         speed = max_speed;
-
-//     printf("[AUTO] temp=%.1f target=%.1f error=%.1f speed=%d\n", temp_actual, target_temp, *error, (int)speed); fflush(stdout);
-    
-//     return ((int)speed);
-// }
-
 int ft_auto_fan_speed(t_smartgreen *smartgreen, int zone_idx, float *error)
 {
     static int  min_speed = -1;         // leídos UNA vez: tras cambiar la config se reinicia el controlador
@@ -327,29 +274,39 @@ void    *ft_drain_thread(void *arg)
             }
         }
 
-        // 🔴 Avería sensor de salinidad: no ha bajado en drain_max_time → parar el cooler
+        // 🔴 Avería GRAVE sensor de salinidad: no ha bajado en drain_max_time → parar el cooler
         if (sensor_fault)
         {
-            char    msg[128];
+            char msg[128];
 
             snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d averia sensor de salinidad", unit_id);
-            db_save_error(smartgreen, unit_id, msg);
-            pthread_mutex_lock(&smartgreen->data_mutex);
             if (cooler_idx != -1)
-            {
-                smartgreen->coolers[cooler_idx].alarm_fault = 1;
-                smartgreen->coolers[cooler_idx].last_off = get_timestamp();             // para el DRAIN SAFETY
-            }
-            if (zone_idx != -1)
-            {
-                ft_strcpy(smartgreen->zone_params[zone_idx].on_off, "OFF", sizeof(smartgreen->zone_params->on_off));
-                db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
-            }
-            pthread_mutex_unlock(&smartgreen->data_mutex);
-            ft_cooler_onoff(smartgreen, unit_id, 0);                                // cierra drenaje, para bomba y fan
+                ft_cooler_fault(smartgreen, cooler_idx, msg, 1);       // grave: para el cooler, broken_cooler = 1
             free(args);
             return (NULL);
         }
+        // if (sensor_fault)
+        // {
+        //     char    msg[128];
+
+        //     snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d averia sensor de salinidad", unit_id);
+        //     db_save_error(smartgreen, unit_id, msg);
+        //     pthread_mutex_lock(&smartgreen->data_mutex);
+        //     if (cooler_idx != -1)
+        //     {
+        //         smartgreen->coolers[cooler_idx].alarm_fault = 1;
+        //         smartgreen->coolers[cooler_idx].last_off = get_timestamp();             // para el DRAIN SAFETY
+        //     }
+        //     if (zone_idx != -1)
+        //     {
+        //         ft_strcpy(smartgreen->zone_params[zone_idx].on_off, "OFF", sizeof(smartgreen->zone_params->on_off));
+        //         db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
+        //     }
+        //     pthread_mutex_unlock(&smartgreen->data_mutex);
+        //     ft_cooler_onoff(smartgreen, unit_id, 0);                                // cierra drenaje, para bomba y fan
+        //     free(args);
+        //     return (NULL);
+        // }
 
         // Cerrar drain — solo si la zona sigue encendida (si no, R50=31 + fan volvería a encender todo)   // ←
         pthread_mutex_lock(&smartgreen->data_mutex);
