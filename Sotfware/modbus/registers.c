@@ -99,22 +99,6 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
     state->most_recent_fault = (regs[49] >> 12) & 0x0F;
 
     state->extended_status  = (regs[52]);
-    
-    // Estados y bits
-    // state->drain_valve_open  = (regs[49] >> 0) & 0x01;                   
-    //state->cool_mode_on      = (regs[49] >> 1) & 0x01;
-    //state->pump_on           = state->cool_mode_on;                               
-    // state->fault_present     = (regs[49] >> 3) & 0x01;
-    //state->actual_fan_speed  = (regs[49] >> 4) & 0x0F;                  
-    // state->fan_on            = state->actual_fan_speed > 0 ? 1 : 0;     
-    // state->fan_running       = state->fan_on;                           
-    // state->inlet_valve_open  = (regs[49] >> 4) & 0x01;                  
-    //state->most_recent_fault = (regs[49] >> 12) & 0x0F;
-
-    // state->extended_status  = (regs[52]);
-    // state->drain_valve_confirm = (regs[50] >> 4) & 0x01;            
-    // state->fan_speed_confirmed = (regs[50] >> 8) & 0x0F;            
-    // state->solenoid_on         = (regs[50] >> 3) & 0x01;
 
     state->water_present = decode_water_present_zone(regs[53], state->zone_id);
 
@@ -123,6 +107,14 @@ void    decode_cooler_state(uint16_t *regs, t_cooler_state *state)
 
     ft_strcpy(state->model, ft_model_name(regs[4]), sizeof(state->model));
     state->firmware = regs[1];
+
+    // Huella de la placa (fijos en el tiempo, distintos entre placas — verificado con dos TBS 580)
+    state->board_fw  = regs[1];
+    state->board_r10 = regs[10];
+    state->board_r16 = regs[16];
+    state->board_r17 = regs[17];
+    state->board_r44 = regs[44];
+    state->last_ok_read = time(NULL);       // decode solo se llama con lectura correcta
 }
 
 void    decode_sensor_state(uint16_t *regs, t_sensor_state *state)

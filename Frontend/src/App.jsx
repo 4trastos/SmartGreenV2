@@ -76,7 +76,7 @@ function Clock() {
   )
 }
 
-function BrokenScreen({ coolers, onUnlock }) {
+function BrokenScreen({ coolers, comms, onUnlock }) {
   const [showPin, setShowPin] = useState(false)
   const [pin, setPin] = useState('')
   const [pinError, setPinError] = useState(false)
@@ -98,13 +98,24 @@ function BrokenScreen({ coolers, onUnlock }) {
     }
   }
 
+  const plural = coolers.length > 1
+  const ids = coolers.map(c => `#${c.unit_id}`).join(', ')
+
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-red-900">
       <p className="text-8xl mb-6">⚠</p>
-      <p className="text-white text-4xl font-black mb-3 text-center">AVERÍA GRAVE</p>
-      <p className="text-white/80 text-xl text-center mb-2">Llame al servicio técnico</p>
+      <p className="text-white text-4xl font-black mb-3 text-center">
+        {comms ? 'SIN COMUNICACIÓN' : 'AVERÍA GRAVE'}
+      </p>
+      <p className="text-white/80 text-xl text-center mb-2 px-8">
+        {comms
+          ? 'Revise la alimentación del equipo. Si persiste, llame al servicio técnico'
+          : 'Llame al servicio técnico'}
+      </p>
       <p className="text-white/50 text-sm text-center mb-10">
-        Cooler{coolers.length > 1 ? 'es' : ''} {coolers.map(c => `#${c.unit_id}`).join(', ')} parado{coolers.length > 1 ? 's' : ''}
+        {comms
+          ? `Cooler${plural ? 'es' : ''} ${ids} sin respuesta`
+          : `Cooler${plural ? 'es' : ''} ${ids} parado${plural ? 's' : ''}`}
       </p>
       <button onClick={() => { setShowPin(true); setPin(''); setPinError(false) }}
         className="px-6 py-3 rounded-xl bg-white/10 border border-white/30 text-white/70 text-sm font-bold cursor-pointer hover:bg-white/20">
@@ -206,6 +217,7 @@ export default function App() {
   ).length
 
   const brokenCoolers = data.coolers.filter(c => Number(c.broken_cooler) === 1)
+  const commsCoolers  = data.coolers.filter(c => Number(c.comms_lost) === 1 && Number(c.broken_cooler) !== 1)
   const isPrewet = !imdActive && data.zones.some(z => z.prewet_in_progress === 'yes')
   const pages = { dashboard: Dashboard, control: Control, alarms: Alarms, maint: Maintenance, settings: Settings, scheduler: Scheduler, quiet: Quiet }
   const PageComponent = pages[page]
@@ -315,11 +327,12 @@ export default function App() {
       {showReboot && <RebootModal onClose={() => setShowReboot(false)} />}
       
       {/* AVERÍA GRAVE — por encima de cualquier pantalla (salvo en el IMD, donde el técnico rearma) */}
-      {brokenCoolers.length > 0 && !imdActive && (
+      {(brokenCoolers.length > 0 || commsCoolers.length > 0) && !imdActive && (
         <BrokenScreen
-          coolers={brokenCoolers}
+          coolers={brokenCoolers.length > 0 ? brokenCoolers : commsCoolers}
+          comms={brokenCoolers.length === 0}
           onUnlock={() => {
-            const zoneId = brokenCoolers[0].zone_id
+            const zoneId = (brokenCoolers[0] || commsCoolers[0]).zone_id
             fetch(`${API_URL}/zones/${zoneId}/mode`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mode: 'IMD'}) })
             setImdActive(true)
             setImdZoneId(zoneId)

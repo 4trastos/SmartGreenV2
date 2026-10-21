@@ -195,6 +195,11 @@ enum MHD_Result api_post_setup_confirm(t_smartgreen *smartgreen, struct MHD_Conn
     smartgreen->setup_mode = 0;
     // Reinicializar datos con la nueva configuración
     ft_init_data(smartgreen);
+    db_load_cooler_faults(smartgreen);
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
+    for (int i = 0; i < smartgreen->num_sensors; i++)
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_SENSOR, smartgreen->sensors[i].sensor_id, 0, 0);
     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
 }
 

@@ -134,7 +134,7 @@ export default function IMD({ data, onExit }) {
         </div>
 
         {/* AVERÍA GRAVE — rearme */}
-        {cooler && Number(cooler.broken_cooler) === 1 && (
+        {cooler && (Number(cooler.broken_cooler) === 1 || Number(cooler.fault_solenoid) === 1 || Number(cooler.fault_pump) === 1) && (
         <div className="shrink-0 bg-red-500/15 rounded-2xl p-4 border border-red-500/40 flex items-center justify-between gap-3">
             <div>
             <p className="text-red-400 text-xs uppercase tracking-wider font-bold">⚠ Avería grave activa</p>

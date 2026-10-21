@@ -132,6 +132,26 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].fan_running  = 0;
             smartgreen->coolers[i].last_off = 0;
             smartgreen->coolers[i].broken_cooler = 0;
+            smartgreen->coolers[i].fault_solenoid = 0;
+            smartgreen->coolers[i].fault_pump = 0;
+            smartgreen->coolers[i].board_fw = 0;
+            smartgreen->coolers[i].board_r10 = 0;
+            smartgreen->coolers[i].board_r16 = 0;
+            smartgreen->coolers[i].board_r17 = 0;
+            smartgreen->coolers[i].board_r44 = 0;
+            smartgreen->coolers[i].fp_fw = 0;
+            smartgreen->coolers[i].fp_r10 = 0;
+            smartgreen->coolers[i].fp_r16 = 0;
+            smartgreen->coolers[i].fp_r17 = 0;
+            smartgreen->coolers[i].fp_r44 = 0;
+            smartgreen->coolers[i].last_ok_read = 0;
+            smartgreen->coolers[i].comms_lost = 0;
+            smartgreen->coolers[i].comms_lost_since = 0;
+            smartgreen->coolers[i].comms_events = 0;
+            smartgreen->coolers[i].comms_events_since = 0;
+            smartgreen->coolers[i].need_resync = 0;
+            smartgreen->coolers[i].hb_fail = 0;
+            smartgreen->coolers[i].hb_disabled = 0;
 
             if (db_save_cooler(smartgreen, &smartgreen->coolers[i]) == -1)
                 return (-1);

@@ -1,5 +1,38 @@
 #include "../incl/smartgreen.h"
 
+void    db_load_cooler_faults(t_smartgreen *smartgreen)
+{
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+    {
+        sqlite3_stmt *st = NULL;
+
+        if (sqlite3_prepare_v2(smartgreen->db, "SELECT broken_cooler, fault_solenoid, fault_pump, board_fw, board_r10, board_r16, board_r17, board_r44 FROM cooler_state WHERE unit_id = ?", -1, &st, NULL) == SQLITE_OK)
+        {
+            sqlite3_bind_int(st, 1, smartgreen->coolers[i].unit_id);
+            if (sqlite3_step(st) == SQLITE_ROW)
+            {
+                smartgreen->coolers[i].broken_cooler  = sqlite3_column_int(st, 0);
+                smartgreen->coolers[i].fault_solenoid = sqlite3_column_int(st, 1);
+                smartgreen->coolers[i].fault_pump     = sqlite3_column_int(st, 2);
+                smartgreen->coolers[i].fp_fw          = sqlite3_column_int(st, 3);
+                smartgreen->coolers[i].fp_r10         = sqlite3_column_int(st, 4);
+                smartgreen->coolers[i].fp_r16         = sqlite3_column_int(st, 5);
+                smartgreen->coolers[i].fp_r17         = sqlite3_column_int(st, 6);
+                smartgreen->coolers[i].fp_r44         = sqlite3_column_int(st, 7);
+            }
+            sqlite3_finalize(st);
+        }
+        else
+            fprintf(stderr, "db_load_cooler_faults prepare error: ( %s )\n", sqlite3_errmsg(smartgreen->db));
+        printf("[ESTADO] cooler %d: broken=%d solenoide=%d bomba=%d huella=%04X-%04X-%04X-%04X fw=%04X\n",
+            smartgreen->coolers[i].unit_id, smartgreen->coolers[i].broken_cooler,
+            smartgreen->coolers[i].fault_solenoid, smartgreen->coolers[i].fault_pump,
+            smartgreen->coolers[i].fp_r10, smartgreen->coolers[i].fp_r16,
+            smartgreen->coolers[i].fp_r17, smartgreen->coolers[i].fp_r44, smartgreen->coolers[i].fp_fw);
+        fflush(stdout);
+    }
+}
+
 void    db_load_coolers_state(t_smartgreen *smartgreen)
 {
     sqlite3_stmt    *stmt = NULL;

@@ -43,8 +43,12 @@
 /*  SQL */
 # define SQL_INSERT_COOLER      "INSERT OR IGNORE INTO cooler_state (unit_id, zone_id, is_extractor, error_count, drain_valve_open, drain_valve_confirm, cool_mode_on, fan_on, fault_present, inlet_valve_open, actual_fan_speed, fan_speed_confirmed, most_recent_fault, " \
                                 "water_present, pump_on, solenoid_on, salinity_ppm, salinity_us, last_read, last_mod, alarm_fault, alarm_salinity, alarm_water, alarm_comms, alarm_warranty, alarm_maint_opening, alarm_maint_closing, alarm_maint_legionella, hours_running, " \
-                                "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config, prev_fan_starts, fan_zero_ticks, fan_running, last_off, broken_cooler) " \
-                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                                "install_date, warranty_months, disabled, ramp_rate, cold_starts, fan_starts, fan_hours, tank_drains, avg_tank_fill, fan_speed_z1, fan_speed_z2, fan_speed_z3, fan_speed_z4, fan_speed_z5, extended_status, modbus_addr, r0_config, prev_fan_starts, fan_zero_ticks, fan_running, last_off) " \
+                                "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " \
+                                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " \
+                                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " \
+                                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " \
+                                "?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_INSERT_SENSOR      "INSERT OR IGNORE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, humidity_offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
@@ -71,11 +75,14 @@
 # define MODBUS_SENSOR_ADDR     299
 # define MODBUS_CMD_ADDR        400
 # define MODBUS_CMD_VALUE       300
-# define MODBUS_MAX_UNIT_ID     247    // límite protocolo Modbus RTU
-# define MODBUS_MAX_COOLERS     32     // límite práctico RS485 en un bus
-# define MODBUS_MIN_UNIT_ID     1      // dirección mínima válida (0=broadcast)
+# define MODBUS_MAX_UNIT_ID     247             // límite protocolo Modbus RTU
+# define MODBUS_MAX_COOLERS     32              // límite práctico RS485 en un bus
+# define MODBUS_MIN_UNIT_ID     1               // dirección mínima válida (0=broadcast)
 # define MODBUS_FIRST_SENSOR    175
 # define MODBUS_FIRST_COOLER    2
+# define COMMS_LOST_SECONDS     60              // sin respuesta → aviso de comunicación
+# define COMMS_MAX_EVENTS       3               // cortes en la ventana → avería grave
+# define COMMS_WINDOW           (24 * 3600)
 
 /*  LIMITS  */
 # define SENSOR_NO_SIGNAL       -200
@@ -294,7 +301,19 @@ typedef struct  s_cooler_state
     int                 drain_cmd;                      // lo que mandamos
     int                 drain_zero_ticks;
     int                 pump_zero_ticks;
-    int                 broken_cooler;      // 1 = avería grave: no se puede encender hasta que el técnico rearme
+    int                 broken_cooler;                  // 1 = avería grave: no se puede encender hasta que el técnico rearme
+    int                 fault_solenoid;                 // 1 = aviso: sin suministro de agua → solo modo FAN
+    int                 fault_pump;                     // 1 = aviso: bomba → solo modo FAN (se detectará más adelante)
+    int                 board_fw, board_r10, board_r16, board_r17, board_r44;   // Huella de la placa: leída ahora (board_*) y la registrada en la BD (fp_*)
+    int                 fp_fw, fp_r10, fp_r16, fp_r17, fp_r44;
+    time_t              last_ok_read;           // última lectura correcta
+    int                 comms_lost;             // 1 = sin comunicación (pantalla roja, se quita sola)
+    time_t              comms_lost_since;
+    int                 comms_events;           // cortes en la ventana de 24 h
+    time_t              comms_events_since;
+    int                 need_resync;            // 1 = reenviar el estado (placa recuperada o sustituida)
+    int                 hb_fail;                // heartbeats fallidos seguidos (con la placa contestando)
+    int                 hb_disabled;            // 1 = la placa no acepta heartbeat → no se envía
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
@@ -440,6 +459,7 @@ int                 db_update_zone_params(t_smartgreen *smartgreen, t_zone_param
 int                 db_load_zone_params(t_smartgreen *smartgreen);
 void                db_cleanup_error_log(t_smartgreen *smartgreen);
 void                db_load_coolers_state(t_smartgreen *smartgreen);
+void                db_load_cooler_faults(t_smartgreen *smartgreen);
 
 /*  CONTROL */
 int                 cooler_water_management(t_smartgreen *smartgreen);
@@ -463,6 +483,10 @@ int                 ft_is_quiet_mode(t_smartgreen *smartgreen);
 int                 ft_quiet_max_speed(t_smartgreen *smartgreen);
 void                *ft_drain_dry_thread(void *arg);
 void                ft_cooler_fault(t_smartgreen *smartgreen, int cooler_idx, const char *msg, int grave);
+void                ft_cooler_warning(t_smartgreen *smartgreen, int cooler_idx, const char *msg, int is_pump);
+int                 ft_zone_fan_only(t_smartgreen *smartgreen, int zone_id);
+void                ft_check_comms(t_smartgreen *smartgreen, int i, time_t now);
+void                ft_check_board(t_smartgreen *smartgreen, int i);
 
 
 /*  UTILS   */

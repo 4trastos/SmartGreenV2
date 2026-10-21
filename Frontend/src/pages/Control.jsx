@@ -179,7 +179,11 @@ export default function Control({ data, onImdActivate, connected }) {
               const fSpeed = zone.on_off === 'ON' ? zone.fan_speed_cmd : 0
               const zoneCoolers = data.coolers.filter(c => c.zone_id === zone.zone_id)
               const hasFault = zoneCoolers.some(c => c.alarm_fault || c.fault_present)
-              const hasWarning = zoneCoolers.some(c => c.alarm_water && c.salinity_us <= 10)
+              // 🟡 Avisos que limitan los modos
+              const fanOnly = zoneCoolers.some(c => Number(c.fault_solenoid) === 1 || Number(c.fault_pump) === 1)
+              const sensorFail = data.sensors.some(s => (s.zone_id ?? zone.zone_id) === zone.zone_id && s.type === 'INT' && !s.valid)
+              const hasWarning = fanOnly || sensorFail || zoneCoolers.some(c => c.alarm_water && c.salinity_us <= 10)
+              const modeDisabled = m => (fanOnly && (m === 'AUTO' || m === 'MANUAL')) || (sensorFail && m === 'AUTO')
               return (
                 <div key={zone.zone_id}
                   className={`flex-1 rounded-3xl border p-6 flex flex-col gap-6 transition-all duration-300
@@ -279,13 +283,27 @@ export default function Control({ data, onImdActivate, connected }) {
                         <span className="text-white/40 text-xs uppercase tracking-wider block mb-3">Modo</span>
                         <div className="grid grid-cols-4 gap-2">
                           {MODES.map(m => (
-                            <button key={m} onClick={() => handleModeClick(zone.zone_id, m)}
-                              className={`py-2 rounded-xl text-xs font-bold transition-all cursor-pointer
-                                ${zone.cool_fan_mode === m ? 'bg-[#088fc3] text-white' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
+                            <button key={m}
+                              disabled={modeDisabled(m)}
+                              onClick={() => !modeDisabled(m) && handleModeClick(zone.zone_id, m)}
+                              className={`py-2 rounded-xl text-xs font-bold transition-all
+                                ${modeDisabled(m)
+                                  ? 'bg-white/3 text-white/15 cursor-not-allowed line-through'
+                                  : zone.cool_fan_mode === m ? 'bg-[#088fc3] text-white cursor-pointer' : 'bg-white/5 text-white/30 hover:bg-white/10 cursor-pointer'}`}>
                               {m}
                             </button>
                           ))}
                         </div>
+                        {fanOnly && (
+                          <div className="mt-2 py-2 px-3 rounded-xl bg-yellow-500/15 border border-yellow-500/40 text-yellow-400 text-xs font-bold text-center">
+                            ⚠️ Avería en el sistema de agua — solo modo FAN. Llame al servicio técnico
+                          </div>
+                        )}
+                        {!fanOnly && sensorFail && (
+                          <div className="mt-2 py-2 px-3 rounded-xl bg-yellow-500/15 border border-yellow-500/40 text-yellow-400 text-xs font-bold text-center">
+                            ⚠️ Sensor de temperatura sin señal — modo AUTO no disponible
+                          </div>
+                        )}
                         {showImdWarning && (
                           <div className="mt-2 py-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-bold text-center">
                             ⚠️ Apaga el cooler antes de entrar en modo IMD

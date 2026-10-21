@@ -120,17 +120,22 @@ void    scheduler_run(t_smartgreen *smartgreen)
     int         on = 0;
     int         new_speed = 0;
     int         r50 = 0;
-    // int         startup_drain_done = 0;
     static int  heartbeat_tick = 0;
     float       error = 0.0f;
 
-    if (read_interval < 0)
+    if (safety_h <= 0)
+        safety_h = 72;
+    if (drain_periodic <= 0)
+        drain_periodic = 65;
+    if (read_interval <= 0)
         read_interval = SCHEDULER_READ_MIN;
     if (history_interval < 0)
         history_interval = HISTORY_INTERVAL;
-    if (sensor_interval < 0)
+    if (sensor_interval <= 0)
         sensor_interval = 30;
     smartgreen->read_interval = read_interval;
+
+    db_load_cooler_faults(smartgreen);      // averías, avisos y huella guardados
 
     while (!g_sigint_received && !g_sigterm_received && !g_update_pending)
     {
@@ -179,9 +184,41 @@ void    scheduler_run(t_smartgreen *smartgreen)
                     }
                 }
 
+                static int      fan_sent[16];           // velocidad enviada + 1 (0 = nada enviado)
+                static time_t   fan_sent_at[16];        // cuándo se envió
+
+                // Reenviar estado a placas recuperadas o sustituidas (arrancan con valores por defecto)
+                for (int i = 0; i < smartgreen->num_coolers; i++)
+                {
+                    int zr;
+
+                    if (!smartgreen->coolers[i].need_resync || smartgreen->coolers[i].comms_lost)
+                        continue;
+                    zr = ft_find_zone(smartgreen, smartgreen->coolers[i].zone_id);
+                    if (zr == -1 || strcmp(smartgreen->zone_params[zr].on_off, "ON") != 0)
+                    {
+                        // Zona apagada: todo parado y DRENAJE CERRADO
+                        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, REG50_SOLENOID_OFF);
+                        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, 0);
+                        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, 0);
+                    }
+                    else if (strcmp(smartgreen->zone_params[zr].cool_fan_mode, "AUTO") == 0)
+                        smartgreen->zone_params[zr].fan_speed_cmd = 0;          // el AUTO reenvía
+                    else if (strcmp(smartgreen->zone_params[zr].cool_fan_mode, "MANUAL") == 0)
+                        smartgreen->zone_params[zr].pump_on = 0;                // el MANUAL reenvía
+                    else if (strcmp(smartgreen->zone_params[zr].cool_fan_mode, "FAN") == 0 && zr < 16)
+                        fan_sent[zr] = 0;                                       // el FAN reenvía
+                    smartgreen->coolers[i].need_resync = 0;
+                    printf("[RESYNC] cooler %d: estado reenviado\n", smartgreen->coolers[i].unit_id); fflush(stdout);
+                }
+            
                 // ← Control AUTO por zona
                 for (int z = 0; z < smartgreen->num_zones; z++)
                 {
+                    // Fuera de FAN encendida: olvidar lo enviado, para reenviar al volver
+                    if (z < 16 && !(strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "FAN") == 0))
+                        fan_sent[z] = 0;
+                    
                     if (strcmp(smartgreen->zone_params[z].prewet_in_progress, "yes") == 0)
                         continue;
                     if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "AUTO") == 0)
@@ -240,18 +277,23 @@ void    scheduler_run(t_smartgreen *smartgreen)
                     {
                         // Apagar bomba si estaba encendida
                         if (smartgreen->zone_params[z].pump_on)
-                        {
                             smartgreen->zone_params[z].pump_on = 0;
+
+                        int sq = ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd;
+
+                        // Enviar SOLO si cambia la velocidad, o cada 60 s por seguridad (antes: en cada ciclo)
+                        if (z < 16 && (fan_sent[z] != sq + 1 || now - fan_sent_at[z] >= 60))
+                        {
+                            for (int i = 0; i < smartgreen->num_coolers; i++)
+                                if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
+                                {
+                                    r50 = calculate_register_50(0, 0, sq);
+                                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
+                                    ft_cooler_outputs(smartgreen, smartgreen->coolers[i].unit_id, 0, 0, sq);   // R50=16: sin agua
+                                }
+                            fan_sent[z] = sq + 1;
+                            fan_sent_at[z] = now;
                         }
-                        // Enviar velocidad siempre
-                        for (int i = 0; i < smartgreen->num_coolers; i++)
-                            if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id)
-                            {
-                                int sq = ft_is_quiet_mode(smartgreen) ? MIN(smartgreen->zone_params[z].fan_speed_cmd, ft_quiet_max_speed(smartgreen)) : smartgreen->zone_params[z].fan_speed_cmd;
-                                r50 = calculate_register_50(0, 0, sq);
-                                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, r50);
-                                ft_cooler_outputs(smartgreen, smartgreen->coolers[i].unit_id, 0, 0, sq);   // R50=16: sin agua
-                            }
                     }
                     else if (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0 && strcmp(smartgreen->zone_params[z].cool_fan_mode, "MANUAL") == 0)
                     {

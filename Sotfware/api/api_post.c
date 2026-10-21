@@ -17,9 +17,13 @@ enum MHD_Result api_post_cooler_rearm(t_smartgreen *smartgreen, struct MHD_Conne
     smartgreen->coolers[idx].solenoid_zero_ticks = 0;
     smartgreen->coolers[idx].pump_zero_ticks = 0;
     smartgreen->coolers[idx].drain_zero_ticks = 0;
+    smartgreen->coolers[idx].fault_solenoid = 0;
+    smartgreen->coolers[idx].fault_pump = 0;
+    smartgreen->coolers[idx].comms_events = 0;
+    smartgreen->coolers[idx].comms_lost = 0;
     pthread_mutex_unlock(&smartgreen->data_mutex);
 
-    snprintf(sql, sizeof(sql), "UPDATE cooler_state SET broken_cooler=0 WHERE unit_id=%d", unit_id);
+    snprintf(sql, sizeof(sql), "UPDATE cooler_state SET broken_cooler=0, fault_solenoid=0, fault_pump=0 WHERE unit_id=%d", unit_id);
     sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
 
     snprintf(msg, sizeof(msg), "🟢 Avería rearmada por el técnico unit_id=%d", unit_id);
@@ -200,6 +204,9 @@ enum MHD_Result     api_post_zone_mode(t_smartgreen *smartgreen, struct MHD_Conn
     sscanf(body, "{\"mode\":\"%7[^\"]\"}", mode);
     if (mode[0] == '\0')
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"mode required\"}"));
+
+    if (strcmp(mode, "FAN") != 0 && strcmp(mode, "IMD") != 0 && ft_zone_fan_only(smartgreen, id))
+        return (api_send_response(connection, MHD_HTTP_FORBIDDEN, "{\"error\":\"Averia solenoide/bomba: solo modo FAN\"}"));
     
     zone_idx = ft_find_zone(smartgreen, id);
     if (zone_idx == -1)
@@ -485,6 +492,10 @@ enum MHD_Result     api_post_zone_onoff(t_smartgreen *smartgreen, struct MHD_Con
         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"action must be ON or OFF\"}"));
 
     on = (strcmp(action, "ON") == 0) ? 1 :0;
+
+    // Aviso solenoide/bomba: solo se puede encender en modo FAN
+    if (on && ft_zone_fan_only(smartgreen, id) && strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN") != 0)
+        return (api_send_response(connection, MHD_HTTP_FORBIDDEN, "{\"error\":\"Averia solenoide/bomba: solo modo FAN\"}"));
 
     pthread_mutex_lock(&smartgreen->data_mutex);
     ft_strcpy(smartgreen->zone_params[zone_idx].on_off, action, sizeof(smartgreen->zone_params->on_off));

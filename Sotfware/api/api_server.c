@@ -315,33 +315,6 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
                     ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
                 }
             }
-            // else if (strcmp(action, "prewet") == 0)
-            // {
-            //     t_prewet_args *args = malloc(sizeof(t_prewet_args));
-            //     if (args) {
-            //         args->smartgreen = smartgreen;
-            //         args->zone_id = smartgreen->coolers[ft_find_cooler(smartgreen, id)].zone_id;
-            //         args->need_prewet = 1;
-            //         pthread_t tid;
-            //         pthread_create(&tid, NULL, prewet_thread, args);
-            //         pthread_detach(tid);
-            //     }
-            //     ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
-            // }
-            // else if (strcmp(action, "drain_cycle") == 0)
-            // {
-            //     t_drain_args *drain_args = malloc(sizeof(t_drain_args));
-            //     if (drain_args) {
-            //         drain_args->smartgreen = smartgreen;
-            //         drain_args->unit_id = id;
-            //         drain_args->zone_id = smartgreen->coolers[ft_find_cooler(smartgreen, id)].zone_id;
-            //         drain_args->reason = DRAIN_SALINITY;
-            //         pthread_t tid;
-            //         pthread_create(&tid, NULL, ft_drain_thread, drain_args);
-            //         pthread_detach(tid);
-            //     }
-            //     ret = api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
-            // }
             else if (strcmp(action, "prewet_test") == 0)
             {
                 int idx = ft_find_cooler(smartgreen, id);
