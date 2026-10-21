@@ -85,6 +85,7 @@ int main(int argc, char **argv)
         return (1);
     memset(smartgreen, 0, sizeof(t_smartgreen));
     pthread_mutex_init(&smartgreen->data_mutex, NULL);
+    pthread_mutex_init(&smartgreen->modbus_mutex, NULL);
     ft_modbus_queue_init(&smartgreen->modbus_queue);
 
     init_signal();
@@ -134,6 +135,7 @@ int main(int argc, char **argv)
     }
     
     pthread_mutex_destroy(&smartgreen->data_mutex);
+    pthread_mutex_destroy(&smartgreen->modbus_mutex);
     ft_free_modbus(smartgreen);
     ft_free_structs(smartgreen);
 
@@ -147,55 +149,3 @@ int main(int argc, char **argv)
     }
     return (0);
 }
-
-
-/*
-
-
-## Pendiente inmediato (laboratorio)
-```
-⬜ 1. cooler_prewet — revisar e implementar popup en frontend
-⬜ 2. Lectura de Bomba — revisar que lee bien (ahora no lee)
-⬜ 3. Lectura de Solenoide — revisar que lee bien (ahora no lee)
-⬜ 4. Dashboard — logo/spinner hasta tener datos reales
-⬜ 5. Lectura de agua — revisar que lee bien
-⬜ 6. Sensor 177/178 — verificar en laboratorio
-⬜ 7. ON/OFF individual por cooler en dashboard
-```
-
-## Funcionalidades frontend pendientes
-```
-⬜ 8. Programador horario — nueva página con icono calendario en menú lateral
-⬜ 9. Botones COOL/FAN/AUTO/IMD — hacerlos funcionales en pantalla Control
-⬜ 10. Modo test — verificar cada actuador individualmente (popup desde dashboard)
-⬜ 11. Multi-idioma — español, inglés, catalán
-```
-
-## Funcionalidades avanzadas
-```
-⬜ 12. Consumo energético estimado — por zona y por cooler
-⬜ 13. Free cooling — usar aire exterior cuando temperatura < setpoint
-⬜ 14. Modo vacaciones — apagado programado por fechas
-⬜ 15. Alertas mantenimiento preventivo:
-        - Limpieza filtros
-        - Limpieza bandejas
-        - Revisión correas ventilador
-        - Revisión bomba
-        - Tratamiento antilegionela
-        - Revisión válvulas
-        - Análisis agua (salinidad manual)
-        - Revisión eléctrica anual
-```
-
-## Infraestructura pendiente
-```
-⬜ 16. Servidor central Australair (API + PostgreSQL + mapa España/Portugal)
-⬜ 17. NIVEL 4 — Portal Admin Aaron
-⬜ 18. NIVEL 2 — Portal Cliente
-⬜ 19. NIVEL 3 — Portal Técnico SAT + academy.australair.com
-⬜ 20. Hash SHA256/bcrypt passwords
-⬜ 21. Validar token en cada petición
-⬜ 22. Logo arranque Pi (resolver en IXHUB producción)
-```
-
-*/

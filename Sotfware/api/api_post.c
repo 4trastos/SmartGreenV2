@@ -1,5 +1,46 @@
 #include "../incl/smartgreen.h"
 
+// Cambia la dirección Modbus de una placa: {"from":1,"to":2}
+enum MHD_Result api_post_imd_assign(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
+{
+    int         from;
+    int         to;
+    uint16_t    reg;
+
+    if (!body || body_size == 0 || sscanf(body, "{\"from\":%d,\"to\":%d}", &from, &to) != 2)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
+    if (from < 1 || from > 247 || to < 1 || to > 247 || from == to)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Direccion no valida\"}"));
+    if (!smartgreen->modbus_ctx)
+        return (api_send_response(connection, MHD_HTTP_SERVICE_UNAVAILABLE, "{\"error\":\"Bus Modbus no disponible todavia\"}"));
+
+    // 1. La dirección destino tiene que estar libre (2 intentos: no dar por libre una ocupada)
+    if (ft_probe_retry(smartgreen, to, 0, 1, &reg, 2) == 0)
+        return (api_send_response(connection, MHD_HTTP_CONFLICT, "{\"error\":\"Direccion ocupada por otra placa\"}"));
+    // 2. Cambiar la dirección (una sola vez)
+    int sa = ft_modbus_set_address(smartgreen, from, to);
+    if (sa == -1)
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"La placa no contesta en la direccion de origen. Pulse Buscar placas y repita\"}"));
+    if (sa == -2)
+        return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"La placa rechaza el cambio de direccion\"}"));
+    // 3. La dirección ya está escrita: es una intervención del técnico (no cuenta como avería)
+    int idx = ft_find_cooler(smartgreen, to);
+    if (idx != -1)
+    {
+        char msg[128];
+
+        smartgreen->coolers[idx].comms_events = 0;
+        snprintf(msg, sizeof(msg), "🔧 Placa asignada al cooler %d por el técnico (dirección %d → %d)", to, from, to);
+        db_save_error(smartgreen, to, msg);
+        printf("[PLACA] %s\n", msg); fflush(stdout);
+    }
+
+    // 4. ¿Contesta ya en la nueva? (3 intentos). Si no, hay que quitarle y darle tensión
+    if (ft_probe_retry(smartgreen, to, 0, 1, &reg, 3) == 0)
+        return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true,\"answering\":true}"));
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true,\"answering\":false}"));
+}
+
 // Rearme de avería grave por el técnico: el cooler vuelve a poder encenderse (sin reiniciar)
 enum MHD_Result api_post_cooler_rearm(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id)
 {

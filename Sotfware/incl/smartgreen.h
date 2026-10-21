@@ -98,10 +98,11 @@
 # define SCHEDULER_READ_MIN     900
 # define SCHEDULER_WRITE_MIN    10
 # define SCHEDULER_WRITE_MAX    30
-# define SCHEDULER_SEQUENCE     15      // Mirar el horario cada 15 segundos
+# define SCHEDULER_SEQUENCE     15              // Mirar el horario cada 15 segundos
 # define HISTORY_INTERVAL       300
 # define DB_MAX_RETRIES         10
-# define DB_RETRY_DELAY         500000  // microsegundos (500ms)
+# define DB_RETRY_DELAY         500000          // microsegundos (500ms)
+# define NO_WATER_FAULT_SECONDS 120             // sin agua funcionando → aviso de agua (solo FAN)
 
 /*  MAINTENACE  */
 # define MAINT_OPENING          "opening"      // Apertura / inicio temporada
@@ -306,14 +307,16 @@ typedef struct  s_cooler_state
     int                 fault_pump;                     // 1 = aviso: bomba → solo modo FAN (se detectará más adelante)
     int                 board_fw, board_r10, board_r16, board_r17, board_r44;   // Huella de la placa: leída ahora (board_*) y la registrada en la BD (fp_*)
     int                 fp_fw, fp_r10, fp_r16, fp_r17, fp_r44;
-    time_t              last_ok_read;           // última lectura correcta
-    int                 comms_lost;             // 1 = sin comunicación (pantalla roja, se quita sola)
+    time_t              last_ok_read;                   // última lectura correcta
+    int                 comms_lost;                     // 1 = sin comunicación (pantalla roja, se quita sola)
     time_t              comms_lost_since;
-    int                 comms_events;           // cortes en la ventana de 24 h
+    int                 comms_events;                   // cortes en la ventana de 24 h
     time_t              comms_events_since;
-    int                 need_resync;            // 1 = reenviar el estado (placa recuperada o sustituida)
-    int                 hb_fail;                // heartbeats fallidos seguidos (con la placa contestando)
-    int                 hb_disabled;            // 1 = la placa no acepta heartbeat → no se envía
+    int                 need_resync;                    // 1 = reenviar el estado (placa recuperada o sustituida)
+    int                 hb_fail;                        // heartbeats fallidos seguidos (con la placa contestando)
+    int                 hb_disabled;                    // 1 = la placa no acepta heartbeat → no se envía
+    int                 prev_cold_starts;
+    time_t              no_water_since;                 // desde cuándo falta agua funcionando (0 = hay agua)
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
@@ -353,6 +356,7 @@ typedef struct s_smartgreen
     t_thread_ctrl       modbus_thread;
     t_modbus_queue      modbus_queue;
     pthread_mutex_t     data_mutex;
+    pthread_mutex_t     modbus_mutex;               // un solo usuario del bus a la vez (worker, escaneo, asignación)
     int                 num_coolers;
     int                 num_sensors;
     int                 num_zones;
@@ -360,8 +364,8 @@ typedef struct s_smartgreen
     int                 read_interval;
     int                 ws_num_clients;
     int                 setup_mode;
-    char                active_token[65];   // token activo
-    time_t              token_expiry;       // timestamp expiración
+    char                active_token[65];           // token activo
+    time_t              token_expiry;               // timestamp expiración
 }   t_smartgreen;
 
 typedef struct s_prewet_args
@@ -423,6 +427,8 @@ void                ft_modbus_queue_destroy(t_modbus_queue *queue);
 void                ft_modbus_queue_stop(t_modbus_queue *queue);
 void                *ft_modbus_worker(void *arg);
 t_modbus_cmd        *ft_modbus_dequeue(t_modbus_queue *queue);
+int                 ft_modbus_probe(t_smartgreen *smartgreen, int addr, int start, int count, uint16_t *regs);
+int                 ft_modbus_set_address(t_smartgreen *smartgreen, int from, int to);
 
 /*  REGISTERS   */
 void                decode_cooler_state(uint16_t *regs, t_cooler_state *state);
@@ -487,6 +493,8 @@ void                ft_cooler_warning(t_smartgreen *smartgreen, int cooler_idx, 
 int                 ft_zone_fan_only(t_smartgreen *smartgreen, int zone_id);
 void                ft_check_comms(t_smartgreen *smartgreen, int i, time_t now);
 void                ft_check_board(t_smartgreen *smartgreen, int i);
+int                 ft_probe_retry(t_smartgreen *smartgreen, int addr, int start, int count, uint16_t *regs, int tries);
+
 
 
 /*  UTILS   */
@@ -542,6 +550,8 @@ enum MHD_Result     api_post_setup_sensors(t_smartgreen *smartgreen, struct MHD_
 enum MHD_Result     api_post_setup_purge_stop(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_post_reset(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_post_cooler_rearm(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id);
+enum MHD_Result     api_get_imd_boards(t_smartgreen *smartgreen, struct MHD_Connection *connection);
+enum MHD_Result     api_post_imd_assign(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
 
 /*  WEBSOCKET   */
 int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);

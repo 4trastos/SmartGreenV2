@@ -1,5 +1,53 @@
 #include "../incl/smartgreen.h"
 
+// Probe con reintentos: una placa a veces no contesta a una pregunta suelta
+int ft_probe_retry(t_smartgreen *smartgreen, int addr, int start, int count, uint16_t *regs, int tries)
+{
+    for (int t = 0; t < tries; t++)
+        if (ft_modbus_probe(smartgreen, addr, start, count, regs) == 0)
+            return (0);
+    return (-1);
+}
+
+// Busca placas en las direcciones 1-16 y devuelve firmware, id y si están configuradas
+enum MHD_Result api_get_imd_boards(t_smartgreen *smartgreen, struct MHD_Connection *connection)
+{
+    char        buf[4096];
+    int         off = 0;
+    int         first = 1;
+    uint16_t    r[45];
+
+    if (!smartgreen->modbus_ctx)
+        return (api_send_response(connection, MHD_HTTP_SERVICE_UNAVAILABLE, "{\"error\":\"Bus Modbus no disponible todavia. Espere unos segundos y repita\"}"));
+
+    off += snprintf(buf + off, sizeof(buf) - off, "{\"boards\":[");
+    for (int addr = 1; addr <= 16; addr++)
+    {
+        uint16_t probe;
+
+        if (ft_probe_retry(smartgreen, addr, 0, 1, &probe, 2) == -1)    // ¿hay alguien? (2 intentos)
+            continue;
+        if (ft_probe_retry(smartgreen, addr, 0, 45, r, 3) == -1)        // sí: leer firmware, id y modelo (3 intentos)
+            continue;
+        off += snprintf(buf + off, sizeof(buf) - off,
+            "%s{\"addr\":%d,\"fw\":\"%d.%d\",\"id\":\"%04X-%04X-%04X-%04X\",\"model\":%d,\"configured\":%d}",
+            first ? "" : ",", addr, r[1] >> 8, r[1] & 0xFF, r[10], r[16], r[17], r[44], r[4],
+            ft_find_cooler(smartgreen, addr) != -1);
+        first = 0;
+    }
+    // Coolers configurados que NO contestan: candidatos para la placa nueva
+    off += snprintf(buf + off, sizeof(buf) - off, "],\"missing\":[");
+    first = 1;
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+        if (smartgreen->coolers[i].comms_lost)
+        {
+            off += snprintf(buf + off, sizeof(buf) - off, "%s%d", first ? "" : ",", smartgreen->coolers[i].unit_id);
+            first = 0;
+        }
+    off += snprintf(buf + off, sizeof(buf) - off, "]}");
+    return (api_send_response(connection, MHD_HTTP_OK, buf));
+}
+
 enum MHD_Result api_get_cooler(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id)
 {
     t_maintenance_log   last_maint;
@@ -44,6 +92,7 @@ enum MHD_Result api_get_cooler(t_smartgreen *smartgreen, struct MHD_Connection *
         "\"fan_speed_z1\":%d,\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
         "\"extended_status\":%d,\"modbus_addr\":%d,\"r0_config\":%d,"
         "\"prev_fan_starts\":%d,\"fan_zero_ticks\":%d,\"fan_running\":%d,\"last_off\":%ld,\"broken_cooler\":%d,\"fault_solenoid\":%d,\"fault_pump\":%d,"
+        "\"board_id\":\"%04X-%04X-%04X-%04X\",\"comms_events\":%d,\"hb_disabled\":%d,"
         "\"comms_lost\":%d,\"model\":\"%s\""
         "}",
         smartgreen->coolers[idx].unit_id, smartgreen->coolers[idx].zone_id, smartgreen->coolers[idx].is_extractor,
@@ -67,7 +116,10 @@ enum MHD_Result api_get_cooler(t_smartgreen *smartgreen, struct MHD_Connection *
         smartgreen->coolers[idx].extended_status, smartgreen->coolers[idx].modbus_addr, smartgreen->coolers[idx].r0_config,
         smartgreen->coolers[idx].prev_fan_starts, smartgreen->coolers[idx].fan_zero_ticks,
         smartgreen->coolers[idx].fan_running, smartgreen->coolers[idx].last_off, smartgreen->coolers[idx].broken_cooler,
-        smartgreen->coolers[idx].fault_solenoid, smartgreen->coolers[idx].fault_pump, smartgreen->coolers[idx].comms_lost,
+        smartgreen->coolers[idx].fault_solenoid, smartgreen->coolers[idx].fault_pump,
+        smartgreen->coolers[idx].board_r10, smartgreen->coolers[idx].board_r16, smartgreen->coolers[idx].board_r17, smartgreen->coolers[idx].board_r44,
+        smartgreen->coolers[idx].comms_events, smartgreen->coolers[idx].hb_disabled,
+        smartgreen->coolers[idx].comms_lost,
         smartgreen->coolers[idx].model);
 
     pthread_mutex_unlock(&smartgreen->data_mutex);
@@ -354,6 +406,7 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
             "\"fan_hours\":%d,\"tank_drains\":%d,\"avg_tank_fill\":%d,\"fan_speed_z1\":%d,"
             "\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
             "\"extended_status\":%d,\"modbus_addr\":%d,\"r0_config\":%d,\"prev_fan_starts\":%d,\"fan_zero_ticks\":%d,\"fan_running\":%d,\"last_off\":%ld,\"broken_cooler\":%d,\"fault_solenoid\":%d,\"fault_pump\":%d,"
+            "\"board_id\":\"%04X-%04X-%04X-%04X\",\"comms_events\":%d,\"hb_disabled\":%d,"
             "\"comms_lost\":%d,\"model\":\"%s\""
             "}",
             i > 0 ? "," : "",
@@ -412,6 +465,8 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
             smartgreen->coolers[i].broken_cooler,
             smartgreen->coolers[i].fault_solenoid,
             smartgreen->coolers[i].fault_pump,
+            smartgreen->coolers[i].board_r10, smartgreen->coolers[i].board_r16, smartgreen->coolers[i].board_r17, smartgreen->coolers[i].board_r44,
+            smartgreen->coolers[i].comms_events, smartgreen->coolers[i].hb_disabled,
             smartgreen->coolers[i].comms_lost,
             smartgreen->coolers[i].model
         );

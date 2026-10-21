@@ -138,54 +138,88 @@ enum MHD_Result api_post_setup_coolers(t_smartgreen *smartgreen, struct MHD_Conn
 }
 
 
+// enum MHD_Result api_post_setup_scan(t_smartgreen *smartgreen, struct MHD_Connection *connection)
+// {
+//     char        buf[4096] = {0};
+//     int         offset = 0;
+
+//     offset += snprintf(buf + offset, sizeof(buf) - offset, "{\"coolers\":[");
+//     int first = 1;
+    
+//     // Usar timeout corto temporalmente
+//     modbus_set_response_timeout(smartgreen->modbus_ctx, 0, 200000);
+
+//     for (int addr = 1; addr <= 20; addr++)
+//     {
+//         uint16_t reg;
+//         pthread_mutex_lock(&smartgreen->data_mutex);
+//         int found = 0;
+//         if (modbus_set_slave(smartgreen->modbus_ctx, addr) != -1)
+//             if (modbus_read_registers(smartgreen->modbus_ctx, 0, 1, &reg) != -1)
+//                 found = 1;
+//         pthread_mutex_unlock(&smartgreen->data_mutex);
+
+//         usleep(15000);
+//         if (found)
+//         {
+//             offset += snprintf(buf + offset, sizeof(buf) - offset, "%s{\"unit_id\":%d}", first ? "" : ",", addr);
+//             first = 0;
+//         }
+//     }
+//     offset += snprintf(buf + offset, sizeof(buf) - offset, "],\"sensors\":[");
+//     first = 1;
+//     for (int addr = 160; addr <= 180; addr++)
+//     {
+//         uint16_t reg;
+//         pthread_mutex_lock(&smartgreen->data_mutex);
+//         int found = 0;
+//         if (modbus_set_slave(smartgreen->modbus_ctx, addr) != -1)
+//             if (modbus_read_registers(smartgreen->modbus_ctx, MODBUS_SENSOR_ADDR, 1, &reg) != -1)
+//                 found = 1;
+//         pthread_mutex_unlock(&smartgreen->data_mutex);
+//         if (found)
+//         {
+//             offset += snprintf(buf + offset, sizeof(buf) - offset, "%s{\"unit_id\":%d}", first ? "" : ",", addr);
+//             first = 0;
+//         }
+//     }
+//     modbus_set_response_timeout(smartgreen->modbus_ctx, 1, 0);
+//     offset += snprintf(buf + offset, sizeof(buf) - offset, "]}");
+//     return api_send_response(connection, MHD_HTTP_OK, buf);
+// }
+
+
 enum MHD_Result api_post_setup_scan(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {
     char        buf[4096] = {0};
     int         offset = 0;
+    int         first = 1;
+    uint16_t    reg;
 
+    // Coolers (direcciones 1-20)
     offset += snprintf(buf + offset, sizeof(buf) - offset, "{\"coolers\":[");
-    int first = 1;
-    
-    // Usar timeout corto temporalmente
-    modbus_set_response_timeout(smartgreen->modbus_ctx, 0, 200000);
-
     for (int addr = 1; addr <= 20; addr++)
     {
-        uint16_t reg;
-        pthread_mutex_lock(&smartgreen->data_mutex);
-        int found = 0;
-        if (modbus_set_slave(smartgreen->modbus_ctx, addr) != -1)
-            if (modbus_read_registers(smartgreen->modbus_ctx, 0, 1, &reg) != -1)
-                found = 1;
-        pthread_mutex_unlock(&smartgreen->data_mutex);
-
-        usleep(15000);
-        if (found)
+        if (ft_modbus_probe(smartgreen, addr, 0, 1, &reg) == 0)
         {
             offset += snprintf(buf + offset, sizeof(buf) - offset, "%s{\"unit_id\":%d}", first ? "" : ",", addr);
             first = 0;
         }
     }
+
+    // Sensores (direcciones 160-180)
     offset += snprintf(buf + offset, sizeof(buf) - offset, "],\"sensors\":[");
     first = 1;
     for (int addr = 160; addr <= 180; addr++)
     {
-        uint16_t reg;
-        pthread_mutex_lock(&smartgreen->data_mutex);
-        int found = 0;
-        if (modbus_set_slave(smartgreen->modbus_ctx, addr) != -1)
-            if (modbus_read_registers(smartgreen->modbus_ctx, MODBUS_SENSOR_ADDR, 1, &reg) != -1)
-                found = 1;
-        pthread_mutex_unlock(&smartgreen->data_mutex);
-        if (found)
+        if (ft_modbus_probe(smartgreen, addr, MODBUS_SENSOR_ADDR, 1, &reg) == 0)
         {
             offset += snprintf(buf + offset, sizeof(buf) - offset, "%s{\"unit_id\":%d}", first ? "" : ",", addr);
             first = 0;
         }
     }
-    modbus_set_response_timeout(smartgreen->modbus_ctx, 1, 0);
     offset += snprintf(buf + offset, sizeof(buf) - offset, "]}");
-    return api_send_response(connection, MHD_HTTP_OK, buf);
+    return (api_send_response(connection, MHD_HTTP_OK, buf));
 }
 
 enum MHD_Result api_post_setup_confirm(t_smartgreen *smartgreen, struct MHD_Connection *connection)

@@ -65,6 +65,8 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "drain_safety_hours",        72);                    // horas apagado antes del DRAIN SAFETY
     db_save_config(smartgreen, "drain_type",                1);                     // drain_peridic=1 drain_salinty=0
     db_save_config(smartgreen, "drain_max_time",            600);                   // Tiempo maximo de drenado (salinidad)
+    db_save_config(smartgreen, "comms_lost_seconds",        60);                    // sin comunicación → aviso
+    db_save_config(smartgreen, "no_water_fault_seconds",    120);                   // sin agua funcionando → aviso de agua
 }
 
 int ft_init_data(t_smartgreen *smartgreen)
@@ -152,6 +154,8 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].need_resync = 0;
             smartgreen->coolers[i].hb_fail = 0;
             smartgreen->coolers[i].hb_disabled = 0;
+            smartgreen->coolers[i].prev_cold_starts = -1;
+            smartgreen->coolers[i].no_water_since = 0;
 
             if (db_save_cooler(smartgreen, &smartgreen->coolers[i]) == -1)
                 return (-1);

@@ -51,6 +51,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             "\"fan_hours\":%d,\"tank_drains\":%d,\"avg_tank_fill\":%d,\"fan_speed_z1\":%d,"
             "\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
             "\"extended_status\":%d,\"modbus_addr\":%d,\"r0_config\":%d,\"broken_cooler\":%d,\"fault_solenoid\":%d,\"fault_pump\":%d,"
+            "\"board_id\":\"%04X-%04X-%04X-%04X\",\"comms_events\":%d,\"hb_disabled\":%d,"
             "\"comms_lost\":%d,\"model\":\"%s\",\"firmware\":%d"
             "}",
             i > 0 ? "," : "",
@@ -102,6 +103,8 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             smartgreen->coolers[i].broken_cooler,
             smartgreen->coolers[i].fault_solenoid,
             smartgreen->coolers[i].fault_pump,
+            smartgreen->coolers[i].board_r10, smartgreen->coolers[i].board_r16, smartgreen->coolers[i].board_r17, smartgreen->coolers[i].board_r44,
+            smartgreen->coolers[i].comms_events, smartgreen->coolers[i].hb_disabled,
             smartgreen->coolers[i].comms_lost,
             smartgreen->coolers[i].model,
             smartgreen->coolers[i].firmware

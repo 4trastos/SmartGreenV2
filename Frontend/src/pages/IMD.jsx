@@ -61,6 +61,117 @@ function SelectParam({ label, unit, value, options, onChange }) {
   )
 }
 
+function BoardTool() {
+  const [scanning, setScanning] = useState(false)
+  const [boards, setBoards] = useState(null)
+  const [missing, setMissing] = useState([])
+  const [target, setTarget] = useState({})          // dirección de la placa → cooler destino
+  const [assigning, setAssigning] = useState(null)
+  const [error, setError] = useState('')
+  const [msg, setMsg] = useState('')
+
+  const scan = async (keepMsg = false, expectAddr = null) => {
+    setScanning(true); setError('')
+    if (!keepMsg) setMsg('')
+    try {
+      const r = await fetch(`${API_URL}/imd/boards`)
+      const d = await r.json()
+      if (!r.ok) { setError(d.error || 'Error al buscar placas'); setBoards(null) }
+      else
+      {
+        setBoards(d.boards); setMissing(d.missing)
+        // Confirmación tras asignar: ¿está ya la placa en su dirección nueva?
+        if (expectAddr)
+        {
+          if (d.boards.some(b => b.addr === expectAddr && b.configured))
+            setMsg(`✔ Placa configurada como cooler ${expectAddr}`)
+          else
+            setMsg('Dirección escrita, pero la placa aún no contesta. Quite y vuelva a dar tensión a la placa, y pulse "Buscar placas".')
+        }
+      }
+    } catch { setError('El controlador no responde') }
+    setScanning(false)
+  }
+
+  const assign = async (from) => {
+    const to = Number(target[from] ?? missing[0])
+    if (!to) return
+    setAssigning(from); setError(''); setMsg('')
+    try {
+      const r = await fetch(`${API_URL}/imd/assign`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to })
+      })
+      const d = await r.json()
+      if (!r.ok) setError(d.error || 'Error al asignar la dirección')
+      else
+      {
+        if (d.answering)
+        {
+          // Mostrar el resultado YA
+          setBoards(prev => prev.map(b => b.addr === from ? { ...b, addr: to, configured: 1 } : b))
+          setMissing(prev => prev.filter(m => m !== to))
+          setMsg(`✔ Placa configurada como cooler ${to}`)
+        }
+        else
+          setMsg('Comprobando la placa...')
+        // Confirmar SIEMPRE con un escaneo real (la placa tarda unos segundos tras el cambio)
+        setTimeout(() => scan(true, to), 3000)
+      }
+    } catch { setError('El controlador no responde') }
+    setAssigning(null)
+  }
+
+  return (
+    <div className="bg-white/4 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-white/40 text-xs uppercase tracking-wider">Placas de control</p>
+        <button onClick={scan} disabled={scanning || assigning !== null}
+          className={`px-4 py-2 rounded-xl text-sm font-bold ${scanning ? 'bg-white/5 text-white/30 cursor-wait' : 'bg-[#088fc3]/20 text-[#088fc3] cursor-pointer hover:bg-[#088fc3]/30'}`}>
+          {scanning ? 'Buscando placas... (unos 10 s)' : 'Buscar placas'}
+        </button>
+      </div>
+      <p className="text-white/30 text-xs mb-3">Para sustituir una placa: conecte solo la placa nueva, búsquela y asígnele el cooler que no responde.</p>
+
+      {error && <p className="text-red-400 text-sm mb-2">⚠ {error}</p>}
+      {msg && <p className={`text-sm mb-2 font-bold ${msg.startsWith('✔') ? 'text-green-400' : msg.startsWith('Comprobando') ? 'text-[#088fc3]' : 'text-yellow-400'}`}>{msg}</p>}
+
+      {boards && boards.length === 0 && <p className="text-white/40 text-sm">No se ha encontrado ninguna placa.</p>}
+
+      <div className="space-y-2">
+        {boards?.map(b => (
+          <div key={b.addr} className={`rounded-xl p-3 border ${b.configured ? 'bg-green-500/5 border-green-500/20' : 'bg-yellow-500/10 border-yellow-500/40'}`}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-white font-bold text-sm">Dirección {b.addr} · fw {b.fw}</p>
+                <p className="text-white/40 text-xs font-mono">{b.id} · modelo {b.model}</p>
+              </div>
+              {b.configured ? (
+                <span className="text-green-400 text-xs font-bold">✔ Cooler configurado</span>
+              ) : missing.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-yellow-400 text-xs font-bold">● NUEVA · asignar a</span>
+                  <select value={target[b.addr] ?? missing[0]}
+                    onChange={e => setTarget(prev => ({ ...prev, [b.addr]: e.target.value }))}
+                    className="bg-[#060c12] text-white text-sm rounded-lg px-2 py-1 border border-white/20">
+                    {missing.map(m => <option key={m} value={m}>Cooler {m}</option>)}
+                  </select>
+                  <button onClick={() => assign(b.addr)} disabled={assigning !== null}
+                    className="px-3 py-1 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-sm font-bold cursor-pointer hover:bg-yellow-500/30">
+                    {assigning === b.addr ? 'Asignando...' : 'Asignar'}
+                  </button>
+                </div>
+              ) : (
+                <span className="text-yellow-400 text-xs font-bold text-right">● NUEVA<br/><span className="text-white/40 font-normal">ningún cooler sin respuesta</span></span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const SECTIONS = ['test', 'config', 'info']
 
 export default function IMD({ data, onExit }) {
@@ -149,7 +260,7 @@ export default function IMD({ data, onExit }) {
 
         {/* Tabs */}
         <div className="flex gap-2 shrink-0">
-        {[{id:'test',label:'Test'},{id:'config',label:'Config'},{id:'info',label:'ℹInfo'}].map(s => (
+        {[{id:'test',label:'Test'},{id:'config',label:'Config'},{id:'info',label:'Info'}].map(s => (
             <button key={s.id} onClick={() => setSection(s.id)}
             className={`flex-1 py-2 rounded-xl text-sm font-bold cursor-pointer transition-all
                 ${section === s.id ? 'bg-red-500/20 border border-red-500/40 text-red-400' : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>
@@ -161,6 +272,17 @@ export default function IMD({ data, onExit }) {
         {/* Test de componentes */}
         {section === 'test' && cooler && (
         <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-3 content-start">
+
+            {/* Sensor de agua — lectura en directo */}
+            <div className="bg-white/4 rounded-2xl p-4 col-span-2 flex items-center justify-between">
+            <div>
+                <p className="text-white/40 text-xs uppercase tracking-wider mb-1">Sensor de agua (salinidad)</p>
+                <p className="text-white/30 text-xs">Si hay agua en la cubeta y marca menos de 10 µS, el sensor está averiado</p>
+            </div>
+            <p className={`font-mono font-black text-2xl ${cooler.salinity_us < 10 ? 'text-red-400' : 'text-[#088fc3]'}`}>
+                {Number(cooler.salinity_us).toFixed(0)} <span className="text-sm text-white/40">µS</span>
+            </p>
+            </div>
 
             {/* Fan */}
             <div className="bg-white/4 rounded-2xl p-4 col-span-2">
@@ -353,6 +475,24 @@ export default function IMD({ data, onExit }) {
             </div>
             </div>
 
+            {/* AVERÍAS */}
+            <div className="bg-white/4 rounded-2xl p-4">
+            <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Averías</p>
+            <div className="grid grid-cols-2 gap-3">
+                <SelectParam label="Sin comunicación → aviso" unit="s"
+                    value={config.comms_lost_seconds ?? 60}
+                    options={[30, 60, 120, 300]}
+                    onChange={v => saveConfig('comms_lost_seconds', v)} />
+                <SelectParam label="Sin agua funcionando → aviso" unit="s"
+                    value={config.no_water_fault_seconds ?? 120}
+                    options={[60, 120, 180, 300]}
+                    onChange={v => saveConfig('no_water_fault_seconds', v)} />
+            </div>
+            </div>
+
+            {/* PLACAS DE CONTROL */}
+            <BoardTool />
+
             {/* RESET */}
             <div className="bg-red-500/10 rounded-2xl p-4 border border-red-500/30">
             <p className="text-red-400 text-xs uppercase tracking-wider mb-3">Reset del sistema</p>
@@ -433,14 +573,22 @@ export default function IMD({ data, onExit }) {
         {section === 'info' && cooler && (
         <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-3 content-start">
             {[
-            {l:'Modelo', v: cooler.model || 'Breezair'},
-            {l:'Firmware', v: cooler.firmware ? `v${(cooler.firmware >> 8)}.${cooler.firmware & 0xFF}` : '-'},
-            {l:'Dirección Modbus', v:`#${cooler.modbus_addr}`},
-            {l:'Horas funcionamiento', v:`${(cooler.hours_running/3600).toFixed(1)}h`},
-            {l:'Arranques fan', v:cooler.fan_starts},
-            {l:'Cold starts', v:cooler.cold_starts},
-            {l:'Drenajes', v:cooler.tank_drains},
-            {l:'Llenado medio', v:`${cooler.avg_tank_fill}s`},
+            {l:'Modelo',                v: cooler.model || 'Breezair'},
+            {l:'Firmware',              v: cooler.firmware ? `v${(cooler.firmware >> 8)}.${cooler.firmware & 0xFF}` : '-'},
+            {l:'Identificador de placa', v: cooler.board_id || '-'},
+            {l:'Dirección Modbus',      v: `#${cooler.modbus_addr}`},
+            {l:'Comunicación',          v: Number(cooler.comms_lost) ? '⚠ Sin respuesta' : '✔ Correcta'},
+            {l:'Cortes (últimas 24 h)', v: `${cooler.comms_events ?? 0} de 3`},
+            {l:'Heartbeat',             v: Number(cooler.hb_disabled) ? 'No admitido por la placa' : 'Activo'},
+            {l:'Arranques de la placa', v: cooler.cold_starts},
+            {l:'Arranques fan',         v: cooler.fan_starts},
+            {l:'Horas funcionamiento',  v: `${(cooler.hours_running/3600).toFixed(1)}h`},
+            {l:'Drenajes',              v: cooler.tank_drains},
+            {l:'Llenado medio',         v: `${cooler.avg_tank_fill}s`},
+            {l:'Sensor de agua',        v: `${Number(cooler.salinity_us).toFixed(0)} µS`},
+            {l:'Estado',                v: Number(cooler.broken_cooler) ? '🔴 Avería grave'
+                                          : (Number(cooler.fault_solenoid) || Number(cooler.fault_pump)) ? '🟡 Solo FAN'
+                                          : '✔ Normal'},
             ].map(({l,v}) => (
             <div key={l} className="bg-white/4 rounded-xl p-4">
                 <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{l}</p>
