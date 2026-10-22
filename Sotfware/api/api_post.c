@@ -123,15 +123,33 @@ enum MHD_Result api_post_zone_pump(t_smartgreen *smartgreen, struct MHD_Connecti
 
     on = (strcmp(action, "ON") == 0) ? 1 : 0;
     zone_idx = ft_find_zone(smartgreen, id);
-    fan_speed = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "IMD") == 0) ? 0 : smartgreen->zone_params[zone_idx].fan_speed_cmd;
     if (zone_idx == -1)
         return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
+    fan_speed = (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "IMD") == 0) ? 0 : smartgreen->zone_params[zone_idx].fan_speed_cmd;
     pthread_mutex_lock(&smartgreen->data_mutex);
     smartgreen->zone_params[zone_idx].pump_on = on;
     pthread_mutex_unlock(&smartgreen->data_mutex);
     for (int i = 0; i < smartgreen->num_coolers; i++)
         if (smartgreen->coolers[i].zone_id == id)
+        {
             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, calculate_register_50(0, on, fan_speed));
+            if (strcmp(smartgreen->zone_params[zone_idx].cool_fan_mode, "IMD") == 0)
+            {
+                // IMD: solo la bomba → R50 = 23 (ON) / 16 (OFF), solenoide OFF, drenaje cerrado, fan 0
+                // (R50 es lo que manda la bomba en todas las placas; R49 solo lo obedecen algunas)
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, on ? (REG50_SOLENOID_OFF | 0x07) : REG50_SOLENOID_OFF);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, 0);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, 0);
+            }
+            else
+            {
+                // Fuera del IMD: bomba según la orden; solenoide y drenaje como están
+                int r50 = (on ? 0x07 : 0)
+                        | (smartgreen->coolers[i].solenoid_on ? 0x08 : 0)
+                        | (smartgreen->coolers[i].drain_valve_open ? 0 : 0x10);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, r50);
+            }
+        }
     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
 
