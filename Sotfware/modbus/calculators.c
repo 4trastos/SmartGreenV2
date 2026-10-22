@@ -87,7 +87,6 @@ void    ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on)
 
 // void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 // {
-//     int r0 = calculate_register_0(smartgreen);
 
 //     printf("[DEBUG] ft_cooler_onoff(unit=%d, on=%d)\n", unit_id, on); fflush(stdout);
 
@@ -97,14 +96,14 @@ void    ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on)
 //     {
 //         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
 //         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_APAGADO);
-//         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 0,  162);
 //         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
+//         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, 0);     // fan 0
+//         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, 0);    
 //     }
 //     else
 //     {
-//         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 0,  r0);
 //         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_ENCENDIDO);
-//         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_ON);
+//         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
 //     }
 //     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_HEARTBEAT, unit_id, 400, 300);
 // }
@@ -112,26 +111,21 @@ void    ft_cooler_drain(t_smartgreen *smartgreen, int unit_id, int on)
 
 void    ft_cooler_onoff(t_smartgreen *smartgreen, int unit_id, int on)
 {
-    //int r0 = calculate_register_0(smartgreen);
-
     printf("[DEBUG] ft_cooler_onoff(unit=%d, on=%d)\n", unit_id, on); fflush(stdout);
-
-    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, on ? REG49_ENCENDIDO : REG49_PARADA);
 
     if (!on)
     {
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_APAGADO);
-        // ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 0,  162);   // NO: escribir R0 resetea R50 a 0 → drena
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, 0);     // fan 0
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, 0);    
+        // Apagar: primero fan a 0, luego R50 (la placa toma el fan de R51), luego R49 sin fan
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 51, 0);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 52, 0);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);   // R50=16: todo OFF, drenaje cerrado
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_APAGADO);        // R49=0
     }
     else
     {
-        // ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 0,  r0);    // NO: escribir R0 resetea R50 a 0 → drena
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 49, REG49_ENCENDIDO);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);
+        // Encender: solo dejar el agua cerrada y el drenaje cerrado.
+        // El fan y la bomba los arranca AUTO/MANUAL/FAN con su velocidad (sin el empujón a 3 de REG49_ENCENDIDO)
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);   // R50=16
     }
     ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_HEARTBEAT, unit_id, 400, 300);
 }
