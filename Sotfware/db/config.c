@@ -81,6 +81,7 @@ int ft_init_data(t_smartgreen *smartgreen)
         smartgreen->coolers = malloc(sizeof(t_cooler_state) * smartgreen->num_coolers);
         if (!smartgreen->coolers)
             return (-1);
+        memset(smartgreen->coolers, 0, sizeof(t_cooler_state) * smartgreen->num_coolers);
         while (i < smartgreen->num_coolers)
         {
             smartgreen->coolers[i].unit_id = MODBUS_FIRST_COOLER + i;
@@ -156,6 +157,9 @@ int ft_init_data(t_smartgreen *smartgreen)
             smartgreen->coolers[i].hb_disabled = 0;
             smartgreen->coolers[i].prev_cold_starts = -1;
             smartgreen->coolers[i].no_water_since = 0;
+            smartgreen->coolers[i].watch_since = 0;
+            smartgreen->coolers[i].model[0] = '\0';
+            smartgreen->coolers[i].firmware = 0;
 
             if (db_save_cooler(smartgreen, &smartgreen->coolers[i]) == -1)
                 return (-1);
@@ -172,6 +176,7 @@ int ft_init_data(t_smartgreen *smartgreen)
         smartgreen->sensors = malloc(sizeof(t_sensor_state) * smartgreen->num_sensors);
         if (!smartgreen->sensors)
             return (-1);
+        memset(smartgreen->sensors, 0, sizeof(t_sensor_state) * smartgreen->num_sensors);
         while (i < smartgreen->num_sensors)
         {
             if (i == 0)
@@ -219,9 +224,12 @@ int ft_init_data(t_smartgreen *smartgreen)
         smartgreen->zones = malloc(sizeof(t_zones) * smartgreen->num_zones);
         if (!smartgreen->zones)
             return (-1);
+        memset(smartgreen->zones, 0, sizeof(t_zones) * smartgreen->num_zones);
+
         smartgreen->zone_params = malloc(sizeof(t_zone_params) * smartgreen->num_zones);
         if (!smartgreen->zone_params)
             return(-1);
+        memset(smartgreen->zone_params, 0, sizeof(t_zone_params) * smartgreen->num_zones);
         while (i < smartgreen->num_zones)
         {
             smartgreen->zone_params[i].zone_id = i + 1;

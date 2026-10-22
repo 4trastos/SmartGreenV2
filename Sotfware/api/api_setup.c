@@ -2,6 +2,7 @@
 
 enum MHD_Result api_post_setup_purge(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {
+    smartgreen->setup_water_fail = 0;
     if (smartgreen->num_coolers == 0)
         return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
     
@@ -23,7 +24,8 @@ enum MHD_Result api_get_setup_status(t_smartgreen *smartgreen, struct MHD_Connec
 {
     char    buf[64];
     
-    snprintf(buf, sizeof(buf), "{\"setup_required\":%s}", smartgreen->setup_mode ? "true" : "false");
+    // snprintf(buf, sizeof(buf), "{\"setup_required\":%s}", smartgreen->setup_mode ? "true" : "false");
+    snprintf(buf, sizeof(buf), "{\"setup_required\":%s,\"water_fail\":%d}", smartgreen->setup_mode ? "true" : "false", smartgreen->setup_water_fail);
     return api_send_response(connection, MHD_HTTP_OK, buf);
 }
 
@@ -86,108 +88,94 @@ enum MHD_Result api_post_setup_zones(t_smartgreen *smartgreen, struct MHD_Connec
 // enum MHD_Result api_post_setup_coolers(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
 // {
 //     (void)body_size;
-    
 //     int zone_id = 0, num_coolers = 0;
 
-//     if (!body || sscanf(body, "{\"zone_id\":%d,\"num_coolers\":%d}", &zone_id, &num_coolers) != 2)
+//     if (!body || sscanf(body, "{\"zone_id\":%d,\"num_coolers\":%d", &zone_id, &num_coolers) != 2)
 //         return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid\"}");
+
 //     db_update_config(smartgreen, "num_coolers", num_coolers);
 //     smartgreen->num_coolers = num_coolers;
+
+//     // Leer unit_ids de los coolers del body y guardarlos en BD
+//     const char *ptr = body;
+//     int idx = 0;
+//     while ((ptr = strstr(ptr, "\"unit_id\":")) != NULL && idx < num_coolers)
+//     {
+//         int unit_id = 0;
+//         sscanf(ptr + 10, "%d", &unit_id);
+//         if (unit_id > 0)
+//         {
+//             // Guardar en cooler_state
+//             char sql[256];
+//             snprintf(sql, sizeof(sql),
+//                 "INSERT OR IGNORE INTO cooler_state (unit_id, zone_id) VALUES(%d, %d);",
+//                 unit_id, zone_id);
+//             sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
+
+//             // Actualizar en memoria
+//             if (idx < smartgreen->num_coolers && smartgreen->coolers)
+//             {
+//                 smartgreen->coolers[idx].unit_id = unit_id;
+//                 smartgreen->coolers[idx].zone_id = zone_id;
+//             }
+//             idx++;
+//         }
+//         ptr++;
+//     }
+
 //     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
 // }
 
+// Guarda los coolers del setup. Cada cooler N tiene que estar ya en la dirección MODBUS_FIRST_COOLER + N - 1
+// (el setup asigna las direcciones antes de llamar aquí): así lo configurado coincide con lo que hay en el bus
 enum MHD_Result api_post_setup_coolers(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
 {
     (void)body_size;
-    int zone_id = 0, num_coolers = 0;
+    int         zone_id = 0;
+    int         num_coolers = 0;
+    int         idx = 0;
+    const char  *ptr;
+    char        err[160];
 
-    if (!body || sscanf(body, "{\"zone_id\":%d,\"num_coolers\":%d", &zone_id, &num_coolers) != 2)
-        return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid\"}");
+    if (!body || sscanf(body, "{\"zone_id\":%d,\"num_coolers\":%d", &zone_id, &num_coolers) != 2 || num_coolers < 1)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid\"}"));
 
-    db_update_config(smartgreen, "num_coolers", num_coolers);
-    smartgreen->num_coolers = num_coolers;
-
-    // Leer unit_ids de los coolers del body y guardarlos en BD
-    const char *ptr = body;
-    int idx = 0;
+    // 1. Comprobar ANTES de guardar nada: cada cooler en su dirección
+    ptr = body;
     while ((ptr = strstr(ptr, "\"unit_id\":")) != NULL && idx < num_coolers)
     {
         int unit_id = 0;
         sscanf(ptr + 10, "%d", &unit_id);
-        if (unit_id > 0)
+        if (unit_id != MODBUS_FIRST_COOLER + idx)
         {
-            // Guardar en cooler_state
-            char sql[256];
-            snprintf(sql, sizeof(sql),
-                "INSERT OR IGNORE INTO cooler_state (unit_id, zone_id) VALUES(%d, %d);",
-                unit_id, zone_id);
-            sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
-
-            // Actualizar en memoria
-            if (idx < smartgreen->num_coolers && smartgreen->coolers)
-            {
-                smartgreen->coolers[idx].unit_id = unit_id;
-                smartgreen->coolers[idx].zone_id = zone_id;
-            }
-            idx++;
+            snprintf(err, sizeof(err), "{\"error\":\"El cooler %d debe estar en la direccion %d (esta en la %d). Configure la placa\"}",
+                idx + 1, MODBUS_FIRST_COOLER + idx, unit_id);
+            return (api_send_response(connection, MHD_HTTP_CONFLICT, err));
         }
+        idx++;
         ptr++;
     }
+    if (idx != num_coolers)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Faltan coolers por configurar\"}"));
 
-    return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
+    // 2. Todo correcto: guardar
+    db_update_config(smartgreen, "num_coolers", num_coolers);
+    smartgreen->num_coolers = num_coolers;
+    for (int i = 0; i < num_coolers; i++)
+    {
+        char sql[128];
+        int  unit_id = MODBUS_FIRST_COOLER + i;
+
+        snprintf(sql, sizeof(sql), "INSERT OR IGNORE INTO cooler_state (unit_id, zone_id) VALUES(%d, %d);", unit_id, zone_id);
+        sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
+        if (smartgreen->coolers)
+        {
+            smartgreen->coolers[i].unit_id = unit_id;
+            smartgreen->coolers[i].zone_id = zone_id;
+        }
+    }
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
-
-
-// enum MHD_Result api_post_setup_scan(t_smartgreen *smartgreen, struct MHD_Connection *connection)
-// {
-//     char        buf[4096] = {0};
-//     int         offset = 0;
-
-//     offset += snprintf(buf + offset, sizeof(buf) - offset, "{\"coolers\":[");
-//     int first = 1;
-    
-//     // Usar timeout corto temporalmente
-//     modbus_set_response_timeout(smartgreen->modbus_ctx, 0, 200000);
-
-//     for (int addr = 1; addr <= 20; addr++)
-//     {
-//         uint16_t reg;
-//         pthread_mutex_lock(&smartgreen->data_mutex);
-//         int found = 0;
-//         if (modbus_set_slave(smartgreen->modbus_ctx, addr) != -1)
-//             if (modbus_read_registers(smartgreen->modbus_ctx, 0, 1, &reg) != -1)
-//                 found = 1;
-//         pthread_mutex_unlock(&smartgreen->data_mutex);
-
-//         usleep(15000);
-//         if (found)
-//         {
-//             offset += snprintf(buf + offset, sizeof(buf) - offset, "%s{\"unit_id\":%d}", first ? "" : ",", addr);
-//             first = 0;
-//         }
-//     }
-//     offset += snprintf(buf + offset, sizeof(buf) - offset, "],\"sensors\":[");
-//     first = 1;
-//     for (int addr = 160; addr <= 180; addr++)
-//     {
-//         uint16_t reg;
-//         pthread_mutex_lock(&smartgreen->data_mutex);
-//         int found = 0;
-//         if (modbus_set_slave(smartgreen->modbus_ctx, addr) != -1)
-//             if (modbus_read_registers(smartgreen->modbus_ctx, MODBUS_SENSOR_ADDR, 1, &reg) != -1)
-//                 found = 1;
-//         pthread_mutex_unlock(&smartgreen->data_mutex);
-//         if (found)
-//         {
-//             offset += snprintf(buf + offset, sizeof(buf) - offset, "%s{\"unit_id\":%d}", first ? "" : ",", addr);
-//             first = 0;
-//         }
-//     }
-//     modbus_set_response_timeout(smartgreen->modbus_ctx, 1, 0);
-//     offset += snprintf(buf + offset, sizeof(buf) - offset, "]}");
-//     return api_send_response(connection, MHD_HTTP_OK, buf);
-// }
-
 
 enum MHD_Result api_post_setup_scan(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {
@@ -200,7 +188,8 @@ enum MHD_Result api_post_setup_scan(t_smartgreen *smartgreen, struct MHD_Connect
     offset += snprintf(buf + offset, sizeof(buf) - offset, "{\"coolers\":[");
     for (int addr = 1; addr <= 20; addr++)
     {
-        if (ft_modbus_probe(smartgreen, addr, 0, 1, &reg) == 0)
+        // if (ft_modbus_probe(smartgreen, addr, 0, 1, &reg) == 0)
+        if (ft_probe_retry(smartgreen, addr, 0, 1, &reg, 2) == 0)
         {
             offset += snprintf(buf + offset, sizeof(buf) - offset, "%s{\"unit_id\":%d}", first ? "" : ",", addr);
             first = 0;
@@ -212,7 +201,8 @@ enum MHD_Result api_post_setup_scan(t_smartgreen *smartgreen, struct MHD_Connect
     first = 1;
     for (int addr = 160; addr <= 180; addr++)
     {
-        if (ft_modbus_probe(smartgreen, addr, MODBUS_SENSOR_ADDR, 1, &reg) == 0)
+        //if (ft_modbus_probe(smartgreen, addr, MODBUS_SENSOR_ADDR, 1, &reg) == 0)
+        if (ft_probe_retry(smartgreen, addr, MODBUS_SENSOR_ADDR, 1, &reg, 2) == 0)
         {
             offset += snprintf(buf + offset, sizeof(buf) - offset, "%s{\"unit_id\":%d}", first ? "" : ",", addr);
             first = 0;
@@ -230,6 +220,7 @@ enum MHD_Result api_post_setup_confirm(t_smartgreen *smartgreen, struct MHD_Conn
     // Reinicializar datos con la nueva configuración
     ft_init_data(smartgreen);
     db_load_cooler_faults(smartgreen);
+    db_load_zone_params(smartgreen);
     for (int i = 0; i < smartgreen->num_coolers; i++)
         ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
     for (int i = 0; i < smartgreen->num_sensors; i++)

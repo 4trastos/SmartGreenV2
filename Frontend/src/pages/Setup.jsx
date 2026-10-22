@@ -32,6 +32,15 @@ const T = {
     confirm_btn: '✓  CONFIRMAR INSTALACIÓN',
     zone_placeholder: 'Zona',
     no_devices: 'No se encontraron equipos',
+    configured: 'CONFIGURADO', pending: 'PENDIENTE',
+    new_board: 'Placa nueva encontrada', assign_as: 'CONFIGURAR COMO EVAPORATIVO',
+    assigning: 'CONFIGURANDO...', one_at_a_time: 'Hay varias placas nuevas. Conecte solo una cada vez.',
+    connect_next: 'Conecte el siguiente evaporativo (solo uno) y pulse REINT.',
+    water_fail_title: 'NO LLEGA AGUA',
+    water_fail_body: 'No llega agua al evaporativo',
+    water_fail_hint: 'Revise el suministro, la llave de paso, el solenoide y el sensor de agua.',
+    water_repeat: 'HE CORREGIDO EL PROBLEMA: REPETIR PURGA',
+    new_install: 'NUEVA INSTALACIÓN',
   },
   en: {
     title: 'INSTALLATION WIZARD',
@@ -61,6 +70,15 @@ const T = {
     confirm_btn: '✓  CONFIRM INSTALLATION',
     zone_placeholder: 'Zone',
     no_devices: 'No devices found',
+    configured: 'CONFIGURED', pending: 'PENDING',
+    new_board: 'New board found', assign_as: 'SET UP AS COOLER',
+    assigning: 'SETTING UP...', one_at_a_time: 'Several new boards found. Connect only one at a time.',
+    connect_next: 'Connect the next cooler (only one) and press RETRY.',
+    water_fail_title: 'NO WATER IS COMING THROUGH',
+    water_fail_body: 'No water is reaching the evaporative cooler.',
+    water_fail_hint: 'Check the supply, the shut-off valve, the solenoid, and the water sensor.',
+    water_repeat: 'I HAVE FIXED THE PROBLEM: REPEAT PURGE',
+    new_install: 'NEW INSTALLATION',
   },
   pt: {
     title: 'ASSISTENTE DE INSTALAÇÃO',
@@ -90,6 +108,11 @@ const T = {
     confirm_btn: '✓  CONFIRMAR INSTALAÇÃO',
     zone_placeholder: 'Zona',
     no_devices: 'Nenhum dispositivo encontrado',
+    water_fail_title: 'NÃO CHEGA ÁGUA',
+    water_fail_body: 'Nenhuma água chega ao refrigerador evaporativo.',
+    water_fail_hint: 'Verifique o abastecimento, a válvula de corte, o solenóide e o sensor de água.',
+    water_repeat: 'RESOLVI O PROBLEMA: REPETIR A LIMPEZA',
+    new_install: 'NOVA INSTALAÇÃO',
   },
   ca: {
     title: 'ASSISTENT D\'INSTAL·LACIÓ',
@@ -119,6 +142,11 @@ const T = {
     confirm_btn: '✓  CONFIRMAR INSTAL·LACIÓ',
     zone_placeholder: 'Zona',
     no_devices: 'No s\'han trobat dispositius',
+    water_fail_title: 'NO ARRIBA AIGUA',
+    water_fail_body: 'No arriba aigua a l\'evaporatiu',
+    water_fail_hint: 'Reviseu el subministrament, la clau de pas, el solenoide i el sensor d\'aigua.',
+    water_repeat: 'HE CORREGIT EL PROBLEMA: REPETIR PURGA',
+    new_install: 'NOVA INSTAL·LACIÓ',
   },
   fr: {
     title: 'ASSISTANT D\'INSTALLATION',
@@ -148,6 +176,11 @@ const T = {
     confirm_btn: '✓  CONFIRMER L\'INSTALLATION',
     zone_placeholder: 'Zone',
     no_devices: 'Aucun appareil trouvé',
+    water_fail_title: 'L\'EAU N\'ARRIVE PAS',
+    water_fail_body: 'L\'eau n\'arrive pas au refroidisseur par évaporation.',
+    water_fail_hint: 'Vérifiez l\'alimentation, le robinet d\'arrêt, l\'électrovanne et le capteur d\'eau.',
+    water_repeat: 'J\'AI CORRIGÉ LE PROBLÈME : RÉPÉTER LA PURGE',
+    new_install: 'NOUVELLE INSTALLATION',
   },
   it: {
     title: 'ASSISTENTE DI INSTALLAZIONE',
@@ -177,6 +210,11 @@ const T = {
     confirm_btn: '✓  CONFERMA INSTALLAZIONE',
     zone_placeholder: 'Zona',
     no_devices: 'Nessun dispositivo trovato',
+    water_fail_title: 'NON ARRIVA L\'ACQUA',
+    water_fail_body: 'Nessuna acqua raggiunge il raffreddatore evaporativo.',
+    water_fail_hint: 'Verificare l\'alimentazione, la valvola di intercettazione, il solenoide e il sensore dell\'acqua.',
+    water_repeat: 'HO RISOLTO IL PROBLEMA: RIPETI LA PURGAZIONE',
+    new_install: 'NUOVA INSTALLAZIONE',
   },
 }
 
@@ -229,8 +267,21 @@ export default function Setup({ onComplete, data }) {
   const [purging, setPurging] = useState(false)
   const prewetStartedRef = useRef(false)
   const [purgeProgress, setPurgeProgress] = useState(0)
+  const [assigning, setAssigning] = useState(false)
+  const [assignMsg, setAssignMsg] = useState('')
+  const [waterFail, setWaterFail] = useState(0) 
 
   const t = T[lang] || T.es
+  const tt = key => t[key] ?? T.es[key]          // si falta una traducción, usar el español
+
+  // Direcciones fijas: evaporativo N → dirección FIRST + N - 1 (la 1 queda libre para placas nuevas de fábrica)
+  const FIRST = 2
+  const slots = Array.from({ length: numCoolers }, (_, i) => FIRST + i)
+  const okBoards  = foundCoolers.filter(c => slots.includes(c.unit_id))        // ya en su sitio
+  const newBoards = foundCoolers.filter(c => !slots.includes(c.unit_id))       // de fábrica o en otra dirección
+  const nextSlot  = slots.find(s => !okBoards.some(c => c.unit_id === s))      // primer hueco libre
+  const allReady  = okBoards.length === numCoolers
+  const coolersToSave = slots.map(a => ({ unit_id: a }))
 
   // Cambiar idioma y actualizar nombres de zona por defecto
   const changeLanguage = (code) => {
@@ -245,16 +296,16 @@ export default function Setup({ onComplete, data }) {
   }
 
   // Detectar fin de purga via WebSocket
-  useEffect(() => {
-    if (!data?.zones) return
-    const zone = data.zones?.[0]
-    if (!zone) return
-    if (prewetStartedRef.current && zone.prewet_in_progress === 'no') {
-      prewetStartedRef.current = false
-      setPurging(false)
-      setStep(8)
-    }
-  }, [data?.zones])
+  // useEffect(() => {
+  //   if (!data?.zones) return
+  //   const zone = data.zones?.[0]
+  //   if (!zone) return
+  //   if (prewetStartedRef.current && zone.prewet_in_progress === 'no') {
+  //     prewetStartedRef.current = false
+  //     setPurging(false)
+  //     setStep(8)
+  //   }
+  // }, [data?.zones])
 
   const post = async (endpoint, body = {}) => {
     const r = await fetch(`${API_URL}/setup/${endpoint}`, {
@@ -284,13 +335,32 @@ export default function Setup({ onComplete, data }) {
     setTimeout(() => setStep(5), 600)
   }
 
+  // Pone una placa en la dirección de su evaporativo y vuelve a escanear
+  const assignBoard = async (from, to) => {
+    setAssigning(true); setAssignMsg('')
+    try {
+      const r = await fetch(`${API_URL}/imd/assign`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from, to })
+      })
+      const d = await r.json()
+      if (!r.ok) setAssignMsg(d.error || 'Error')
+      else {
+        await new Promise(res => setTimeout(res, 3000))   // la placa guarda la dirección
+        setStep(3); scan()                                // volver a escanear
+      }
+    } catch { setAssignMsg('Sin respuesta del controlador') }
+    setAssigning(false)
+  }
+
   const purge = async () => {
+    setWaterFail(0)
     prewetStartedRef.current = true
     setPurging(true)
     setPurgeProgress(0)
     await post('language', { lang })
     await post('zones', { num_zones: numZones, zones })
-    await post('coolers', { zone_id: 1, num_coolers: foundCoolers.length || numCoolers, coolers: foundCoolers })
+    await post('coolers', { zone_id: 1, num_coolers: numCoolers, coolers: coolersToSave })
     await post('sensors', { sensors: foundSensors.map(s => ({ unit_id: s.unit_id, role: sensorRoles[s.unit_id] || 'INT' })) })
     await fetch(`${API_URL}/setup/purge`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
@@ -320,14 +390,25 @@ export default function Setup({ onComplete, data }) {
 
     clearInterval(timer)
     setPurgeProgress(100)
+    try {
+      const s = await (await fetch(`${API_URL}/setup/status`)).json()
+      if (s.water_fail) { setPurging(false); setWaterFail(s.water_fail); return }
+    } catch {}
     await new Promise(resolve => setTimeout(resolve, 500))
+    setPurging(false)
     setStep(8)
+  }
+
+  const newInstall = () => {
+    setWaterFail(0)
+    setFoundCoolers([]); setFoundSensors([]); setSensorRoles({})
+    setStep(0)
   }
 
   const confirm = async () => {
     await post('language', { lang })
     await post('zones', { num_zones: numZones, zones })
-    await post('coolers', { zone_id: 1, num_coolers: foundCoolers.length || numCoolers, coolers: foundCoolers })
+    await post('coolers', { zone_id: 1, num_coolers: numCoolers, coolers: coolersToSave })
     await post('sensors', { sensors: foundSensors.map(s => ({ unit_id: s.unit_id, role: sensorRoles[s.unit_id] || 'INT' })) })
     await post('confirm', {})
     onComplete()
@@ -467,27 +548,40 @@ export default function Setup({ onComplete, data }) {
           </div>
         </>)}
 
-        {/* PASO 5 — Resultado scan */}
+        {/* PASO 5 — Resultado scan + asignación de direcciones */}
         {step === 5 && (<>
           <Header title={t.title} subtitle={t.result_sub} />
           <div className="p-6">
-            {foundCoolers.map((c, i) => (
-              <Row key={c.unit_id}
-                label={`${t.fridge} ${String(i+1).padStart(2,'0')}`}
-                value={c.model || `Addr #${c.unit_id}`} />
-            ))}
+            {slots.map((addr, i) => {
+              const ok = okBoards.some(c => c.unit_id === addr)
+              return <Row key={addr} label={`${t.fridge} ${String(i + 1).padStart(2, '0')}`}
+                          value={ok ? `✔ ${tt('configured')}` : tt('pending')} />
+            })}
+
+            {newBoards.length > 0 && nextSlot && (
+              <div className="my-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/40">
+                <p className="text-yellow-300 font-bold text-sm mb-2">{tt('new_board')} (Addr {newBoards[0].unit_id})</p>
+                {newBoards.length > 1 && <p className="text-red-300 text-xs mb-2">{tt('one_at_a_time')}</p>}
+                <Btn full disabled={assigning || newBoards.length > 1}
+                  label={assigning ? tt('assigning') : `${tt('assign_as')} ${String(nextSlot - FIRST + 1).padStart(2, '0')}`}
+                  onClick={() => assignBoard(newBoards[0].unit_id, nextSlot)} />
+              </div>
+            )}
+            {!allReady && newBoards.length === 0 && (
+              <p className="text-yellow-300 text-sm my-3 text-center font-bold">{tt('connect_next')}</p>
+            )}
+            {assignMsg && <p className="text-red-400 text-sm my-2 text-center">{assignMsg}</p>}
+
             {foundSensors.map((s, i) => (
-              <Row key={s.unit_id}
-                label={`${t.sensor} ${String(i+1).padStart(2,'0')}`}
-                value={`Addr ${s.unit_id}`} />
+              <Row key={s.unit_id} label={`${t.sensor} ${String(i + 1).padStart(2, '0')}`} value={`Addr ${s.unit_id}`} />
             ))}
             {foundCoolers.length === 0 && foundSensors.length === 0 && (
               <p className="text-white/30 text-center py-4 font-bold">{t.no_devices}</p>
             )}
             <div className="flex justify-between mt-6">
               <Btn label={t.back} onClick={() => setStep(3)} />
-              <Btn label={t.retry} onClick={() => { setStep(3); setTimeout(scan, 100) }} />
-              <Btn label={t.ok} onClick={() => setStep(foundSensors.length > 0 ? 6 : 7)} />
+              <Btn label={t.retry} disabled={assigning} onClick={() => { setStep(3); setTimeout(scan, 100) }} />
+              <Btn label={t.ok} disabled={!allReady || assigning} onClick={() => setStep(foundSensors.length > 0 ? 6 : 7)} />
             </div>
           </div>
         </>)}
@@ -521,7 +615,7 @@ export default function Setup({ onComplete, data }) {
         </>)}
 
         {/* PASO 7 — Purga */}
-        {step === 7 && !purging && (<>
+        {step === 7 && !purging && waterFail === 0 && (<>
           <Header title={t.title} subtitle={t.purge_sub} />
           <div className="p-6 text-center">
             <p className="text-white/80 font-bold mb-1">{t.purge_body}</p>
@@ -562,13 +656,27 @@ export default function Setup({ onComplete, data }) {
           </div>
         </>)}
 
+        {/* PASO 7 — Fallo: no llega agua */}
+        {step === 7 && !purging && waterFail > 0 && (<>
+          <Header title={t.title} subtitle={tt('water_fail_title')} />
+          <div className="p-6 text-center">
+            <p className="text-red-400 text-5xl mb-3">✘</p>
+            <p className="text-white font-bold mb-1">{tt('water_fail_body')} {String(waterFail - 1).padStart(2, '0')}</p>
+            <p className="text-white/60 text-sm mb-8">{tt('water_fail_hint')}</p>
+            <div className="flex flex-col gap-3">
+              <Btn full label={tt('water_repeat')} onClick={purge} />
+              <Btn full label={tt('new_install')} onClick={newInstall} />
+            </div>
+          </div>
+        </>)}
+
         {/* PASO 8 — Confirmar */}
         {step === 8 && (<>
           <Header title={t.title} subtitle={t.confirm_sub} />
           <div className="p-6">
             <Row label={t.lang_label} value={lang.toUpperCase()} />
             <Row label={t.zones_label} value={numZones} />
-            <Row label={t.coolers_label} value={foundCoolers.length || numCoolers} />
+            <Row label={t.coolers_label} value={numCoolers} />
             <Row label={t.sensors_label} value={foundSensors.length} />
             {foundSensors.map(s => (
               <Row key={s.unit_id} label={`  · ${t.sensor} #${s.unit_id}`} value={sensorRoles[s.unit_id] || '?'} />

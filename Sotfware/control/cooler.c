@@ -534,6 +534,18 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
         sleep(check_interval);
         elapsed += check_interval;
         all_water = 1;
+
+        if (smartgreen->setup_mode)
+            for (int i = 0; i < smartgreen->num_coolers; i++)
+                if (smartgreen->coolers[i].zone_id == zone_id)
+                {
+                    uint16_t r54;
+                    if (ft_probe_retry(smartgreen, smartgreen->coolers[i].unit_id, 54, 1, &r54, 2) == 0)
+                    {
+                        smartgreen->coolers[i].salinity_us = calculate_salinity_us(r54);
+                        smartgreen->coolers[i].water_present = (smartgreen->coolers[i].salinity_us >= 10.0f);
+                    }
+                }
         for (int i = 0; i < smartgreen->num_coolers; i++)
             if (smartgreen->coolers[i].zone_id == zone_id)
             {
@@ -556,11 +568,18 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
         for (int i = 0; i < smartgreen->num_coolers; i++)
             if (smartgreen->coolers[i].zone_id == zone_id && smartgreen->coolers[i].salinity_us < 10.0f)
             {
+                if (smartgreen->setup_mode)
+                {
+                    // Setup: es el resultado de la prueba, no una avería del equipo
+                    printf("[SETUP] Prueba de agua FALLIDA cooler unit_id=%d: no llega agua en %ds\n", smartgreen->coolers[i].unit_id, max_wait); fflush(stdout);
+                    smartgreen->setup_water_fail = smartgreen->coolers[i].unit_id;
+                    continue;
+                }
                 snprintf(msg, sizeof(msg), "🟡 AVISO: Cooler unit_id=%d sin suministro de agua (solenoide) — solo modo FAN", smartgreen->coolers[i].unit_id);
                 ft_cooler_warning(smartgreen, i, msg, 0);
             }
         printf("PREWET abortado: no llega agua en %ds\n", max_wait); fflush(stdout);
-        return (-2);                    // -2 = prewet abortado por avería de solenoide
+        return (-2);
     }
 
     // PASO 4 — esperar prewet_delay_water

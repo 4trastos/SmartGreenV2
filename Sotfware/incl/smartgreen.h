@@ -94,6 +94,9 @@
 # define MAX_SCHEDULERS         50
 # define MAX_WS_CLIENTS         10
 
+/*  COOLERS  */
+# define COOLER_NO(unit_id)     ((unit_id) - MODBUS_FIRST_COOLER + 1)     // dirección 2 → evaporativo 1
+
 /*  TIMINGS (Seconds)   */
 # define SCHEDULER_READ_MIN     900
 # define SCHEDULER_WRITE_MIN    10
@@ -317,6 +320,7 @@ typedef struct  s_cooler_state
     int                 hb_disabled;                    // 1 = la placa no acepta heartbeat → no se envía
     int                 prev_cold_starts;
     time_t              no_water_since;                 // desde cuándo falta agua funcionando (0 = hay agua)
+    time_t              watch_since;                    // desde cuándo vigilamos la comunicación (arranque o setup)
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
@@ -366,6 +370,7 @@ typedef struct s_smartgreen
     int                 setup_mode;
     char                active_token[65];           // token activo
     time_t              token_expiry;               // timestamp expiración
+    int                 setup_water_fail;
 }   t_smartgreen;
 
 typedef struct s_prewet_args
@@ -494,6 +499,7 @@ int                 ft_zone_fan_only(t_smartgreen *smartgreen, int zone_id);
 void                ft_check_comms(t_smartgreen *smartgreen, int i, time_t now);
 void                ft_check_board(t_smartgreen *smartgreen, int i);
 int                 ft_probe_retry(t_smartgreen *smartgreen, int addr, int start, int count, uint16_t *regs, int tries);
+void                ft_save_comms_state(t_smartgreen *smartgreen, int i);
 
 
 
@@ -502,8 +508,8 @@ void                log_error(const char *message);
 void                log_info(const char *message);
 void                ft_sha256(const char *input, char *output);
 time_t              get_timestamp(void);
-int                 ft_strlen(char *str);
-char                *ft_strcpy(char *dst, char *src, int max_len);
+int                 ft_strlen(const char *str);
+char                *ft_strcpy(char *dst, const char *src, int max_len);
 int                 ft_validate_token(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 
 /*  API */

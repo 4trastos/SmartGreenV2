@@ -23,14 +23,20 @@ enum MHD_Result api_post_imd_assign(t_smartgreen *smartgreen, struct MHD_Connect
         return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"La placa no contesta en la direccion de origen. Pulse Buscar placas y repita\"}"));
     if (sa == -2)
         return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"La placa rechaza el cambio de direccion\"}"));
-    // 3. La dirección ya está escrita: es una intervención del técnico (no cuenta como avería)
+        // 3. La dirección ya está escrita: es una intervención del técnico (no cuenta como avería)
     int idx = ft_find_cooler(smartgreen, to);
-    if (idx != -1)
+    if (idx != -1 && !smartgreen->setup_mode)
     {
-        char msg[128];
+        char        msg[200];
+        uint16_t    r[45];
 
         smartgreen->coolers[idx].comms_events = 0;
-        snprintf(msg, sizeof(msg), "🔧 Placa asignada al cooler %d por el técnico (dirección %d → %d)", to, from, to);
+        ft_save_comms_state(smartgreen, idx);
+        if (ft_probe_retry(smartgreen, to, 0, 45, r, 3) == 0)
+            snprintf(msg, sizeof(msg), "🔧 Placa asignada al cooler %d por el técnico (dirección %d → %d, fw %d.%d, id %04X-%04X-%04X-%04X)",
+                to, from, to, r[1] >> 8, r[1] & 0xFF, r[10], r[16], r[17], r[44]);
+        else
+            snprintf(msg, sizeof(msg), "🔧 Placa asignada al cooler %d por el técnico (dirección %d → %d)", to, from, to);
         db_save_error(smartgreen, to, msg);
         printf("[PLACA] %s\n", msg); fflush(stdout);
     }
@@ -61,8 +67,8 @@ enum MHD_Result api_post_cooler_rearm(t_smartgreen *smartgreen, struct MHD_Conne
     smartgreen->coolers[idx].fault_solenoid = 0;
     smartgreen->coolers[idx].fault_pump = 0;
     smartgreen->coolers[idx].comms_events = 0;
-    smartgreen->coolers[idx].comms_lost = 0;
     pthread_mutex_unlock(&smartgreen->data_mutex);
+    ft_save_comms_state(smartgreen, idx);
 
     snprintf(sql, sizeof(sql), "UPDATE cooler_state SET broken_cooler=0, fault_solenoid=0, fault_pump=0 WHERE unit_id=%d", unit_id);
     sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);

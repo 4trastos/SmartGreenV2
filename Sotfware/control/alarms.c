@@ -1,13 +1,23 @@
 #include "../incl/smartgreen.h"
 
-// Huella: registra la placa la primera vez y detecta si la han sustituido
+// Guarda el estado de comunicación en la BD (sobrevive a reinicios del controlador)
+void    ft_save_comms_state(t_smartgreen *smartgreen, int i)
+{
+    char sql[200];
+
+    snprintf(sql, sizeof(sql), "UPDATE cooler_state SET comms_lost=%d, comms_events=%d, comms_events_since=%ld WHERE unit_id=%d",
+        smartgreen->coolers[i].comms_lost, smartgreen->coolers[i].comms_events,
+        (long)smartgreen->coolers[i].comms_events_since, smartgreen->coolers[i].unit_id);
+    sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
+}
+
 void    ft_check_board(t_smartgreen *smartgreen, int i)
 {
     t_cooler_state  *c = &smartgreen->coolers[i];
     char            msg[256];
     char            sql[256];
 
-    if (c->board_fw == 0)                                       // todavía sin leer
+    if (c->board_fw == 0)                                       
         return;
     // R27 = arranques de la placa: si sube, se ha reiniciado (corte de tensión, aunque sea de 1 s)
     if (c->prev_cold_starts >= 0 && c->cold_starts > c->prev_cold_starts)
@@ -15,7 +25,7 @@ void    ft_check_board(t_smartgreen *smartgreen, int i)
         snprintf(msg, sizeof(msg), "🔄 Placa reiniciada unit_id=%d (arranque nº %d): reenviando estado", c->unit_id, c->cold_starts);
         db_save_error(smartgreen, c->unit_id, msg);
         printf("[PLACA] %s\n", msg); fflush(stdout);
-        c->need_resync = 1;                     // arranca con valores por defecto: volver a mandar lo que toca
+        c->need_resync = 1;
     }
 
     c->prev_cold_starts = c->cold_starts;
@@ -32,40 +42,48 @@ void    ft_check_board(t_smartgreen *smartgreen, int i)
         c->hb_fail = 0;
         c->hb_disabled = 0;                                     // la nueva puede aceptar heartbeat
         c->comms_events = 0;                                    // el corte del cambio de placa no cuenta
+        ft_save_comms_state(smartgreen, i);       
     }
     else
-        return;                                                 // la misma placa de siempre
+        return;                                                 
 
     db_save_error(smartgreen, c->unit_id, msg);
     printf("[PLACA] %s\n", msg); fflush(stdout);
-    c->fp_fw = c->board_fw;   c->fp_r10 = c->board_r10;   c->fp_r16 = c->board_r16;
-    c->fp_r17 = c->board_r17; c->fp_r44 = c->board_r44;
-    snprintf(sql, sizeof(sql), "UPDATE cooler_state SET board_fw=%d, board_r10=%d, board_r16=%d, board_r17=%d, board_r44=%d WHERE unit_id=%d",
-        c->fp_fw, c->fp_r10, c->fp_r16, c->fp_r17, c->fp_r44, c->unit_id);
+    c->fp_fw = c->board_fw;
+    c->fp_r10 = c->board_r10;
+    c->fp_r16 = c->board_r16;
+    c->fp_r17 = c->board_r17;
+    c->fp_r44 = c->board_r44;
+    snprintf(sql, sizeof(sql), "UPDATE cooler_state SET board_fw=%d, board_r10=%d, board_r16=%d, board_r17=%d, board_r44=%d WHERE unit_id=%d", c->fp_fw, c->fp_r10, c->fp_r16, c->fp_r17, c->fp_r44, c->unit_id);
     sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
 }
 
-// Comunicación: aviso tras COMMS_LOST_SECONDS; se quita sola; cortes repetidos → avería grave
 void    ft_check_comms(t_smartgreen *smartgreen, int i, time_t now)
 {
+    static int      lost_s = -1;
     t_cooler_state  *c = &smartgreen->coolers[i];
     char            msg[256];
     time_t          ref;
-    static int      lost_s = -1;
+    int             answering;
 
+    if (smartgreen->setup_mode)
+        return;
     if (lost_s == -1)
     {
         lost_s = db_read_config(smartgreen, "comms_lost_seconds");
         if (lost_s <= 0)
             lost_s = COMMS_LOST_SECONDS;
     }
+    if (c->watch_since == 0)
+        c->watch_since = now;                           // empezamos a vigilar (arranque o setup)
 
-    if (c->last_ok_read == 0)
-        c->last_ok_read = now;          // sin lecturas aún (arranque, setup o recarga): empezar a contar desde ahora
-    ref = c->last_ok_read;
+    // ¿Ha contestado la placa DE VERDAD hace poco? (lectura real, no el arranque)
+    answering = (c->last_ok_read != 0 && now - c->last_ok_read < lost_s);
+    ref = c->last_ok_read ? c->last_ok_read : c->watch_since;
 
-    if (!c->comms_lost && now - ref >= lost_s)
+    if (!c->comms_lost && !answering && now - ref >= lost_s)
     {
+        // Corte NUEVO (si venía cortado antes del reinicio, comms_lost ya es 1 y no se cuenta otra vez)
         if (now - c->comms_events_since > COMMS_WINDOW)
         {
             c->comms_events = 0;
@@ -74,6 +92,7 @@ void    ft_check_comms(t_smartgreen *smartgreen, int i, time_t now)
         c->comms_events++;
         c->comms_lost = 1;
         c->comms_lost_since = ref;
+        ft_save_comms_state(smartgreen, i);
         if (c->comms_events >= COMMS_MAX_EVENTS)
         {
             snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d cortes de comunicacion repetidos (%d en 24 h) — revisar cable o placa",
@@ -88,12 +107,15 @@ void    ft_check_comms(t_smartgreen *smartgreen, int i, time_t now)
             printf("[COMMS] %s\n", msg); fflush(stdout);
         }
     }
-    else if (c->comms_lost && now - ref < lost_s)   // vuelve a contestar
+    else if (c->comms_lost && answering)               // vuelve a contestar (lectura real)
     {
+        time_t since = c->comms_lost_since ? c->comms_lost_since : c->watch_since;
+
         c->comms_lost = 0;
-        c->need_resync = 1;                                     // pudo perder tensión: reenviar estado
+        c->need_resync = 1;                             // pudo perder tensión: reenviar estado
+        ft_save_comms_state(smartgreen, i);
         snprintf(msg, sizeof(msg), "🟢 Comunicacion recuperada con la placa unit_id=%d tras %ld s",
-            c->unit_id, (long)(now - c->comms_lost_since));
+            c->unit_id, (long)(now - since));
         db_save_error(smartgreen, c->unit_id, msg);
         printf("[COMMS] %s\n", msg); fflush(stdout);
     }

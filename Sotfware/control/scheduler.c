@@ -148,8 +148,9 @@ void    scheduler_run(t_smartgreen *smartgreen)
                 ft_modbus_init(smartgreen);
             if (smartgreen->modbus_ctx)
             {
-                for (int i = 0; i < smartgreen->num_coolers; i++)
-                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
+                if (!smartgreen->setup_mode)
+                    for (int i = 0; i < smartgreen->num_coolers; i++)
+                        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
                 
                 // DRAIN SAFETY — vaciar la cubeta a las 72h (por defecto) de estar apagado (una sola vez por apagado)
                 for (int h = 0; h < smartgreen->num_zones; h++)
@@ -326,16 +327,20 @@ void    scheduler_run(t_smartgreen *smartgreen)
                 }
             }
             ft_ws_broadcast_status(smartgreen);
-            ft_check_alarms(smartgreen);
-            ft_maintenance_alarms(smartgreen);
+            if (!smartgreen->setup_mode)
+            {
+                ft_check_alarms(smartgreen);
+                ft_maintenance_alarms(smartgreen);
+            }
             last_read = now;
         }
 
         // Lectura periódica sensores - encolar lecturas
         if (now - last_sensor_read >= sensor_interval)
         {
-            for (int i = 0; i < smartgreen->num_sensors; i++)
-                    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_SENSOR, smartgreen->sensors[i].sensor_id, 0, 0);
+            if (!smartgreen->setup_mode)
+                for (int i = 0; i < smartgreen->num_sensors; i++)
+                        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_SENSOR, smartgreen->sensors[i].sensor_id, 0, 0);
             last_sensor_read = now;
         }
 
