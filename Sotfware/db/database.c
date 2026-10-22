@@ -1,12 +1,69 @@
 #include "../incl/smartgreen.h"
 
+// Carga los sensores configurados en el setup (tabla sensor_state). Devuelve cuántos (0 = no hay, usar los de por defecto)
+int     db_load_sensors(t_smartgreen *smartgreen)
+{
+    sqlite3_stmt    *st = NULL;
+    t_sensor_state  *ns;
+    int             count = 0;
+    int             n = 0;
+
+    if (sqlite3_prepare_v2(smartgreen->db, "SELECT COUNT(*) FROM sensor_state", -1, &st, NULL) != SQLITE_OK)
+        return (0);
+    if (sqlite3_step(st) == SQLITE_ROW)
+        count = sqlite3_column_int(st, 0);
+    sqlite3_finalize(st);
+    if (count <= 0)
+        return (0);
+
+    ns = calloc(count, sizeof(t_sensor_state));
+    if (!ns)
+        return (0);
+    // INT primero (por zona) y EXT al final
+    if (sqlite3_prepare_v2(smartgreen->db, "SELECT sensor_id, zone_id, type FROM sensor_state ORDER BY type DESC, zone_id", -1, &st, NULL) != SQLITE_OK)
+    {
+        free(ns);
+        return (0);
+    }
+    while (sqlite3_step(st) == SQLITE_ROW && n < count)
+    {
+        t_sensor_state *s = &ns[n];
+
+        s->sensor_id = sqlite3_column_int(st, 0);
+        s->zone_id = sqlite3_column_int(st, 1);
+        ft_strcpy(s->type, (const char *)sqlite3_column_text(st, 2), sizeof(s->type));
+        ft_strcpy(s->name, strcmp(s->type, "EXT") == 0 ? "Exterior" : "Interior", sizeof(s->name));
+        // Offsets del IMD: de momento, INT de la zona 1 = sensor_1 y EXT = sensor_2 (pendiente: offsets por sensor)
+        if (strcmp(s->type, "EXT") == 0)
+        {
+            s->offset_val = db_read_config(smartgreen, "sensor_2_offset");
+            s->humidity_offset_val = db_read_config(smartgreen, "sensor_2_humidity_offset");
+        }
+        else if (s->zone_id == 1)
+        {
+            s->offset_val = db_read_config(smartgreen, "sensor_1_offset");
+            s->humidity_offset_val = db_read_config(smartgreen, "sensor_1_humidity_offset");
+        }
+        s->temperature = -200.0;
+        s->humidity = -200.0;
+        s->last_mod = get_timestamp();
+        printf("[SENSORES] Sensor %d: %s zona %d\n", s->sensor_id, s->type, s->zone_id); fflush(stdout);
+        n++;
+    }
+    sqlite3_finalize(st);
+    free(smartgreen->sensors);
+    smartgreen->sensors = ns;
+    smartgreen->num_sensors = n;
+    return (n);
+}
+
 void    db_load_cooler_faults(t_smartgreen *smartgreen)
 {
     for (int i = 0; i < smartgreen->num_coolers; i++)
     {
         sqlite3_stmt *st = NULL;
 
-        if (sqlite3_prepare_v2(smartgreen->db, "SELECT broken_cooler, fault_solenoid, fault_pump, board_fw, board_r10, board_r16, board_r17, board_r44, comms_lost, comms_events, comms_events_since FROM cooler_state WHERE unit_id = ?", -1, &st, NULL) == SQLITE_OK)
+        if (sqlite3_prepare_v2(smartgreen->db, "SELECT broken_cooler, fault_solenoid, fault_pump, board_fw, board_r10, board_r16, board_r17, board_r44, comms_lost, comms_events, comms_events_since, zone_id FROM cooler_state WHERE unit_id = ?", -1, &st, NULL) == SQLITE_OK)
         {
             sqlite3_bind_int(st, 1, smartgreen->coolers[i].unit_id);
             if (sqlite3_step(st) == SQLITE_ROW)
@@ -22,6 +79,8 @@ void    db_load_cooler_faults(t_smartgreen *smartgreen)
                 smartgreen->coolers[i].comms_lost         = sqlite3_column_int(st, 8);
                 smartgreen->coolers[i].comms_events       = sqlite3_column_int(st, 9);
                 smartgreen->coolers[i].comms_events_since = sqlite3_column_int64(st, 10);
+                if (sqlite3_column_int(st, 11) > 0)
+                    smartgreen->coolers[i].zone_id = sqlite3_column_int(st, 11);
             }
             sqlite3_finalize(st);
         }

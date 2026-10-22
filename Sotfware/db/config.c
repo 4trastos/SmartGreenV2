@@ -170,7 +170,7 @@ int ft_init_data(t_smartgreen *smartgreen)
     }
 
     smartgreen->sensors = NULL;
-    if (smartgreen->num_sensors > 0)
+    if (db_load_sensors(smartgreen) == 0 && smartgreen->num_sensors > 0)
     {
         i = 0;
         smartgreen->sensors = malloc(sizeof(t_sensor_state) * smartgreen->num_sensors);

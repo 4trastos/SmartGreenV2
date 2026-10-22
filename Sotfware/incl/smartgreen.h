@@ -49,7 +49,7 @@
                                 "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " \
                                 "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, " \
                                 "?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-# define SQL_INSERT_SENSOR      "INSERT OR IGNORE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, humidity_offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
+# define SQL_INSERT_SENSOR      "INSERT OR REPLACE INTO sensor_state (sensor_id, zone_id, type, name, temperature, humidity, flags, valid, offset_val, humidity_offset_val, error_count, last_read, last_mod, alarm_signal, alarm_temp, disabled) " \
                                 "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 # define SQL_SAVE_CONFIG        "INSERT OR IGNORE INTO config (key, value) VALUES(?, ?)"
 # define SQL_SAVE_HISTOTY       "INSERT INTO history (id, timestamp, unit_id, zone_id, device_type, temp_raw, hum_raw, fan_speed_cmd, target_temp, humidity_min, humidity_max, integral, pump_on, cool_fan_mode, water_present, salinity_ppm, " \
@@ -471,6 +471,7 @@ int                 db_load_zone_params(t_smartgreen *smartgreen);
 void                db_cleanup_error_log(t_smartgreen *smartgreen);
 void                db_load_coolers_state(t_smartgreen *smartgreen);
 void                db_load_cooler_faults(t_smartgreen *smartgreen);
+int                 db_load_sensors(t_smartgreen *smartgreen);
 
 /*  CONTROL */
 int                 cooler_water_management(t_smartgreen *smartgreen);

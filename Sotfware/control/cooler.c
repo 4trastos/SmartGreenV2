@@ -95,7 +95,10 @@ void    *prewet_test_thread(void *arg)
             if (smartgreen->coolers[i].zone_id == zone_id)
             {
                 // Parar la bomba y el fan
-                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, REG49_PARADA);
+                // ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, REG49_PARADA);
+                // ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, REG49_APAGADO);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, 0);
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, 0);
                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 49, REG49_APAGADO);
                 // Abrir drain sin solenoide
                 ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, REG50_DRAIN_OPEN_SOLENOID_OFF);

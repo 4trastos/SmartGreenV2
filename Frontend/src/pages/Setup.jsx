@@ -1,5 +1,5 @@
 import { API_URL } from '../config.js'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Keyboard from '../components/Keyboard'
 
 // ─── TRADUCCIONES ────────────────────────────────────────────
@@ -218,6 +218,14 @@ const T = {
   },
 }
 
+// ─── PROGRESO GUARDADO ───────────────────────────────────────
+// El progreso del setup se guarda en el navegador para sobrevivir a una recarga de la página
+const SAVE_KEY = 'sg_setup_progress'
+const loadSaved = () => {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {} } catch { return {} }
+}
+const clearSaved = () => { try { localStorage.removeItem(SAVE_KEY) } catch {} }
+
 // ─── COMPONENTES ─────────────────────────────────────────────
 function Header({ title, subtitle }) {
   return (
@@ -253,23 +261,23 @@ function Row({ label, value }) {
 
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────
 export default function Setup({ onComplete, data }) {
-  const [step, setStep] = useState(0)
-  const [lang, setLang] = useState('es')
-  const [numZones, setNumZones] = useState(1)
-  const [zones, setZones] = useState([{ name: 'Zona 1' }])
+  const [saved] = useState(loadSaved)                     // se lee UNA vez, al cargar la página
+  const [step, setStep] = useState(saved.step ?? 0)
+  const [lang, setLang] = useState(saved.lang ?? 'es')
+  const [numZones, setNumZones] = useState(saved.numZones ?? 1)
+  const [zones, setZones] = useState(saved.zones ?? [{ name: 'Zona 1' }])
   const [activeZoneKeyboard, setActiveZoneKeyboard] = useState(null)
-  const [numCoolers, setNumCoolers] = useState(1)
+  const [numCoolers, setNumCoolers] = useState(saved.numCoolers ?? 1)
   const [scanning, setScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState(0)
-  const [foundCoolers, setFoundCoolers] = useState([])
-  const [foundSensors, setFoundSensors] = useState([])
-  const [sensorRoles, setSensorRoles] = useState({})
+  const [foundCoolers, setFoundCoolers] = useState(saved.foundCoolers ?? [])
+  const [foundSensors, setFoundSensors] = useState(saved.foundSensors ?? [])
+  const [sensorRoles, setSensorRoles] = useState(saved.sensorRoles ?? {})
   const [purging, setPurging] = useState(false)
-  const prewetStartedRef = useRef(false)
   const [purgeProgress, setPurgeProgress] = useState(0)
   const [assigning, setAssigning] = useState(false)
   const [assignMsg, setAssignMsg] = useState('')
-  const [waterFail, setWaterFail] = useState(0) 
+  const [waterFail, setWaterFail] = useState(saved.waterFail ?? 0)    // unit_id del cooler sin agua (0 = bien)
 
   const t = T[lang] || T.es
   const tt = key => t[key] ?? T.es[key]          // si falta una traducción, usar el español
@@ -283,6 +291,15 @@ export default function Setup({ onComplete, data }) {
   const allReady  = okBoards.length === numCoolers
   const coolersToSave = slots.map(a => ({ unit_id: a }))
 
+  // Guardar el progreso cada vez que cambia algo
+  useEffect(() => {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        step, lang, numZones, zones, numCoolers, foundCoolers, foundSensors, sensorRoles, purging, waterFail
+      }))
+    } catch {}
+  }, [step, lang, numZones, zones, numCoolers, foundCoolers, foundSensors, sensorRoles, purging, waterFail])
+
   // Cambiar idioma y actualizar nombres de zona por defecto
   const changeLanguage = (code) => {
     const oldT = T[lang] || T.es
@@ -294,18 +311,6 @@ export default function Setup({ onComplete, data }) {
       return z
     }))
   }
-
-  // Detectar fin de purga via WebSocket
-  // useEffect(() => {
-  //   if (!data?.zones) return
-  //   const zone = data.zones?.[0]
-  //   if (!zone) return
-  //   if (prewetStartedRef.current && zone.prewet_in_progress === 'no') {
-  //     prewetStartedRef.current = false
-  //     setPurging(false)
-  //     setStep(8)
-  //   }
-  // }, [data?.zones])
 
   const post = async (endpoint, body = {}) => {
     const r = await fetch(`${API_URL}/setup/${endpoint}`, {
@@ -353,34 +358,21 @@ export default function Setup({ onComplete, data }) {
     setAssigning(false)
   }
 
-  const purge = async () => {
-    setWaterFail(0)
-    prewetStartedRef.current = true
-    setPurging(true)
-    setPurgeProgress(0)
-    await post('language', { lang })
-    await post('zones', { num_zones: numZones, zones })
-    await post('coolers', { zone_id: 1, num_coolers: numCoolers, coolers: coolersToSave })
-    await post('sensors', { sensors: foundSensors.map(s => ({ unit_id: s.unit_id, role: sensorRoles[s.unit_id] || 'INT' })) })
-    await fetch(`${API_URL}/setup/purge`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
-    }).catch(err => console.error('Error purga:', err))
-
+  // Espera a que termine la purga en TODAS las zonas, y decide: fallo de agua o resumen
+  const waitPurgeEnd = async () => {
     const TOTAL = 361
     let elapsed = 0
     const timer = setInterval(() => {
       elapsed++
-      setPurgeProgress(Math.min(99, Math.round((elapsed / TOTAL) * 100)))
+      setPurgeProgress(p => Math.max(p, Math.min(99, Math.round((elapsed / TOTAL) * 100))))
     }, 1000)
 
-    // Polling hasta que termine
     await new Promise(resolve => {
       const interval = setInterval(async () => {
         try {
           const res = await fetch(`${API_URL}/zones`)
-          const zones = await res.json()
-          const zone = zones.find(z => z.zone_id === 1)
-          if (zone && zone.prewet_in_progress === 'no') {
+          const zs = await res.json()
+          if (zs.length && zs.every(z => z.prewet_in_progress === 'no')) {
             clearInterval(interval)
             resolve()
           }
@@ -399,7 +391,31 @@ export default function Setup({ onComplete, data }) {
     setStep(8)
   }
 
+  const purge = async () => {
+    setWaterFail(0)
+    setPurging(true)
+    setPurgeProgress(0)
+    await post('language', { lang })
+    await post('zones', { num_zones: numZones, zones })
+    await post('coolers', { zone_id: 1, num_coolers: numCoolers, coolers: coolersToSave })
+    await post('sensors', { sensors: foundSensors.map(s => ({ unit_id: s.unit_id, role: sensorRoles[s.unit_id] || 'INT' })) })
+    await fetch(`${API_URL}/setup/purge`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+    }).catch(err => console.error('Error purga:', err))
+    await waitPurgeEnd()
+  }
+
+  // Si la página se recargó en mitad de la purga: volver a la pantalla de espera
+  useEffect(() => {
+    if (saved.purging) {
+      setStep(7)
+      setPurging(true)
+      waitPurgeEnd()
+    }
+  }, [])
+
   const newInstall = () => {
+    clearSaved()
     setWaterFail(0)
     setFoundCoolers([]); setFoundSensors([]); setSensorRoles({})
     setStep(0)
@@ -411,6 +427,7 @@ export default function Setup({ onComplete, data }) {
     await post('coolers', { zone_id: 1, num_coolers: numCoolers, coolers: coolersToSave })
     await post('sensors', { sensors: foundSensors.map(s => ({ unit_id: s.unit_id, role: sensorRoles[s.unit_id] || 'INT' })) })
     await post('confirm', {})
+    clearSaved()
     onComplete()
   }
 
