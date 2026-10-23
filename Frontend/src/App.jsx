@@ -64,7 +64,7 @@ function RebootModal({ onClose }) {
 
 function Clock() {
   const [time, setTime] = useState(new Date())
-  useState(() => {
+  useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(t)
   }, [])
@@ -76,8 +76,8 @@ function Clock() {
   )
 }
 
-function BrokenScreen({ coolers, comms, onUnlock }) {
-  const [showPin, setShowPin] = useState(false)
+// Teclado de PIN del técnico (lo usan la pantalla roja y la franja de aviso)
+function PinModal({ onSuccess, onCancel }) {
   const [pin, setPin] = useState('')
   const [pinError, setPinError] = useState(false)
 
@@ -88,16 +88,58 @@ function BrokenScreen({ coolers, comms, onUnlock }) {
       body: JSON.stringify({ pin: pinValue })
     }).catch(() => null)
     if (res && res.ok) {
-      setShowPin(false)
       setPin('')
       setPinError(false)
-      onUnlock()
+      onSuccess()
     } else {
       setPinError(true)
       setPin('')
     }
   }
 
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onCancel}>
+      <div onClick={e => e.stopPropagation()}
+        className="w-[300px] rounded-3xl border border-white/10 p-6 bg-[#060c12] shadow-2xl">
+        <p className="text-white/30 text-xs tracking-widest uppercase mb-1 text-center">Acceso restringido</p>
+        <p className="text-white text-xl font-black mb-6 text-center">Modo IMD</p>
+        <div className="flex justify-center gap-3 mb-6">
+          {[0,1,2,3].map(i => (
+            <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all
+              ${pinError ? 'border-red-500 bg-red-500' :
+                pin.length > i ? 'border-[#088fc3] bg-[#088fc3]' : 'border-white/20 bg-transparent'}`} />
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[1,2,3,4,5,6,7,8,9,'⌫',0,''].map((k, i) => (
+            k === '' ? <div key={i} /> :
+            <button key={i} onClick={() => {
+              if (k === '⌫') { setPin(p => p.slice(0,-1)); setPinError(false); return }
+              if (pin.length >= 4) return
+              const newPin = pin + k
+              setPin(newPin)
+              setPinError(false)
+              if (newPin.length === 4) confirmPin(newPin)
+            }}
+              className={`h-12 rounded-xl font-bold text-lg cursor-pointer transition-all
+                ${k === '⌫' ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-white/8 text-white hover:bg-white/15'}`}>
+              {k}
+            </button>
+          ))}
+        </div>
+        {pinError && <p className="text-red-400 text-xs text-center mt-3">PIN incorrecto</p>}
+        <button onClick={onCancel}
+          className="w-full mt-4 py-2 rounded-xl bg-white/5 text-white/40 text-sm cursor-pointer hover:bg-white/10">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Pantalla roja: TODOS los evaporativos están averiados o sin comunicación
+function BrokenScreen({ coolers, comms, onUnlock }) {
+  const [showPin, setShowPin] = useState(false)
   const plural = coolers.length > 1
   const ids = coolers.map(c => `#${c.unit_id}`).join(', ')
 
@@ -114,54 +156,42 @@ function BrokenScreen({ coolers, comms, onUnlock }) {
       </p>
       <p className="text-white/50 text-sm text-center mb-10">
         {comms
-          ? `Cooler${plural ? 'es' : ''} ${ids} sin respuesta`
-          : `Cooler${plural ? 'es' : ''} ${ids} parado${plural ? 's' : ''}`}
+          ? `Evaporativo${plural ? 's' : ''} ${ids} sin respuesta`
+          : `Evaporativo${plural ? 's' : ''} ${ids} parado${plural ? 's' : ''}`}
       </p>
-      <button onClick={() => { setShowPin(true); setPin(''); setPinError(false) }}
+      <button onClick={() => setShowPin(true)}
         className="px-6 py-3 rounded-xl bg-white/10 border border-white/30 text-white/70 text-sm font-bold cursor-pointer hover:bg-white/20">
         Acceso técnico
       </button>
+      {showPin && <PinModal onSuccess={() => { setShowPin(false); onUnlock() }} onCancel={() => setShowPin(false)} />}
+    </div>
+  )
+}
 
-      {/* Modal PIN — igual que en Control */}
-      {showPin && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 backdrop-blur-lg"
-          onClick={() => setShowPin(false)}>
-          <div onClick={e => e.stopPropagation()}
-            className="w-[300px] rounded-3xl border border-white/10 p-6 bg-[#060c12] shadow-2xl">
-            <p className="text-white/30 text-xs tracking-widest uppercase mb-1 text-center">Acceso restringido</p>
-            <p className="text-white text-xl font-black mb-6 text-center">Modo IMD</p>
-            <div className="flex justify-center gap-3 mb-6">
-              {[0,1,2,3].map(i => (
-                <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all
-                  ${pinError ? 'border-red-500 bg-red-500' :
-                    pin.length > i ? 'border-[#088fc3] bg-[#088fc3]' : 'border-white/20 bg-transparent'}`} />
-              ))}
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[1,2,3,4,5,6,7,8,9,'⌫',0,''].map((k, i) => (
-                k === '' ? <div key={i} /> :
-                <button key={i} onClick={() => {
-                  if (k === '⌫') { setPin(p => p.slice(0,-1)); setPinError(false); return }
-                  if (pin.length >= 4) return
-                  const newPin = pin + k
-                  setPin(newPin)
-                  setPinError(false)
-                  if (newPin.length === 4) confirmPin(newPin)
-                }}
-                  className={`h-12 rounded-xl font-bold text-lg cursor-pointer transition-all
-                    ${k === '⌫' ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-white/8 text-white hover:bg-white/15'}`}>
-                  {k}
-                </button>
-              ))}
-            </div>
-            {pinError && <p className="text-red-400 text-xs text-center mt-3">PIN incorrecto</p>}
-            <button onClick={() => { setShowPin(false); setPin(''); setPinError(false) }}
-              className="w-full mt-4 py-2 rounded-xl bg-white/5 text-white/40 text-sm cursor-pointer hover:bg-white/10">
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
+// Franja de aviso: ALGUNOS evaporativos fuera de servicio; el resto sigue funcionando
+function FaultBanner({ coolers, onUnlock }) {
+  const [showPin, setShowPin] = useState(false)
+
+  return (
+    <div className="shrink-0 mx-4 mt-3 rounded-xl border border-red-500/40 bg-red-500/15 px-4 py-2.5 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        {coolers.map(c => (
+          <p key={c.unit_id} className="text-sm">
+            <span className="text-red-400 font-black">⚠ Evaporativo #{c.unit_id}:</span>{' '}
+            <span className="text-white/80">
+              {Number(c.broken_cooler) === 1
+                ? 'avería grave, parado — llame al servicio técnico'
+                : 'sin comunicación — revise la alimentación del equipo'}
+            </span>
+          </p>
+        ))}
+        <p className="text-white/40 text-xs mt-0.5">El resto de equipos sigue funcionando con normalidad.</p>
+      </div>
+      <button onClick={() => setShowPin(true)}
+        className="shrink-0 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white/70 text-xs font-bold cursor-pointer hover:bg-white/20">
+        Acceso técnico
+      </button>
+      {showPin && <PinModal onSuccess={() => { setShowPin(false); onUnlock() }} onCancel={() => setShowPin(false)} />}
     </div>
   )
 }
@@ -216,8 +246,18 @@ export default function App() {
     s.alarm_signal || s.alarm_temp
   ).length
 
-  const brokenCoolers = data.coolers.filter(c => Number(c.broken_cooler) === 1)
-  const commsCoolers  = data.coolers.filter(c => Number(c.comms_lost) === 1 && Number(c.broken_cooler) !== 1)
+  // Evaporativos fuera de servicio: avería grave o sin comunicación
+  const outCoolers = data.coolers.filter(c => Number(c.broken_cooler) === 1 || Number(c.comms_lost) === 1)
+  const allOut     = data.coolers.length > 0 && outCoolers.length === data.coolers.length   // todos → pantalla roja
+  const anyBroken  = outCoolers.some(c => Number(c.broken_cooler) === 1)
+
+  // Entrar al IMD en la zona del evaporativo con problemas
+  const openImdFor = (cooler) => {
+    fetch(`${API_URL}/zones/${cooler.zone_id}/mode`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mode: 'IMD'}) })
+    setImdActive(true)
+    setImdZoneId(cooler.zone_id)
+  }
+
   const isPrewet = !imdActive && data.zones.some(z => z.prewet_in_progress === 'yes')
   const pages = { dashboard: Dashboard, control: Control, alarms: Alarms, maint: Maintenance, settings: Settings, scheduler: Scheduler, quiet: Quiet }
   const PageComponent = pages[page]
@@ -303,6 +343,12 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        {/* AVISO — algunos evaporativos fuera de servicio (no bloquea: el resto sigue funcionando) */}
+        {outCoolers.length > 0 && !allOut && !imdActive && (
+          <FaultBanner coolers={outCoolers} onUnlock={() => openImdFor(outCoolers[0])} />
+        )}
+
         <div className="flex-1 overflow-hidden">
           {imdActive ? (
             <IMD
@@ -325,18 +371,13 @@ export default function App() {
       </main>
 
       {showReboot && <RebootModal onClose={() => setShowReboot(false)} />}
-      
-      {/* AVERÍA GRAVE — por encima de cualquier pantalla (salvo en el IMD, donde el técnico rearma) */}
-      {(brokenCoolers.length > 0 || commsCoolers.length > 0) && !imdActive && (
+
+      {/* PANTALLA ROJA — TODOS los evaporativos fuera de servicio (salvo en el IMD, donde el técnico trabaja) */}
+      {allOut && !imdActive && (
         <BrokenScreen
-          coolers={brokenCoolers.length > 0 ? brokenCoolers : commsCoolers}
-          comms={brokenCoolers.length === 0}
-          onUnlock={() => {
-            const zoneId = (brokenCoolers[0] || commsCoolers[0]).zone_id
-            fetch(`${API_URL}/zones/${zoneId}/mode`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mode: 'IMD'}) })
-            setImdActive(true)
-            setImdZoneId(zoneId)
-          }} />
+          coolers={outCoolers}
+          comms={!anyBroken}
+          onUnlock={() => openImdFor(outCoolers[0])} />
       )}
     </div>
   )

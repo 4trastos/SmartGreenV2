@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { API_URL } from '../config.js'
 
 function coolerStatus(c, zone) {
+  if (Number(c.broken_cooler) === 1) return 'broken'
+  if (Number(c.comms_lost) === 1) return 'nocomms'
+  if (Number(c.fault_solenoid) === 1 || Number(c.fault_pump) === 1) return 'fanonly'
   if (c.alarm_fault || c.fault_present) return 'fault'
   if (c.alarm_comms || c.disabled) return 'offline'
   if (c.alarm_water && c.salinity_us <= 10) return 'warning'
@@ -10,15 +13,18 @@ function coolerStatus(c, zone) {
   return 'idle'
 }
 
-const fanSpeed = (cooler, zone) =>  zone?.on_off === 'ON' ? cooler.actual_fan_speed : 0
+const fanSpeed = (cooler, zone) =>  zone?.on_off === 'ON' && !Number(cooler.broken_cooler) && !Number(cooler.comms_lost) ? cooler.actual_fan_speed : 0
 
 const STATUS = {
-  active:  { gradient: 'from-[#004d89]/40 to-[#088fc3]/10', border: 'border-[#088fc3]/35', dot: 'bg-[#088fc3] shadow-[0_0_10px_#088fc3]', label: 'ACTIVO',   lc: 'text-[#088fc3]' },
-  idle:    { gradient: 'from-white/4 to-transparent',        border: 'border-white/8',       dot: 'bg-white/25',                              label: 'OFF',  lc: 'text-white/30' },
+  active:  { gradient: 'from-[#004d89]/40 to-[#088fc3]/10',  border: 'border-[#088fc3]/35',  dot: 'bg-[#088fc3] shadow-[0_0_10px_#088fc3]',   label: 'ACTIVO',   lc: 'text-[#088fc3]' },
+  idle:    { gradient: 'from-white/4 to-transparent',        border: 'border-white/8',       dot: 'bg-white/25',                              label: 'OFF',      lc: 'text-white/30' },
   warning: { gradient: 'from-yellow-900/30 to-transparent',  border: 'border-yellow-500/35', dot: 'bg-yellow-400 shadow-[0_0_10px_#eab308]',  label: 'SIN AGUA', lc: 'text-yellow-400' },
   fault:   { gradient: 'from-red-900/30 to-transparent',     border: 'border-red-500/40',    dot: 'bg-red-500 shadow-[0_0_10px_#ef4444]',     label: 'FALLO',    lc: 'text-red-400' },
   offline: { gradient: 'from-red-900/15 to-transparent',     border: 'border-red-500/20',    dot: 'bg-red-500/50',                            label: 'OFFLINE',  lc: 'text-red-400/60' },
   warranty:{ gradient: 'from-orange-900/25 to-transparent',  border: 'border-orange-500/35', dot: 'bg-orange-400 shadow-[0_0_10px_#f97316]',  label: 'GARANTÍA', lc: 'text-orange-400' },
+  broken:  { gradient: 'from-red-900/40 to-transparent',     border: 'border-red-500/60',    dot: 'bg-red-500 shadow-[0_0_10px_#ef4444]',     label: 'AVERÍA',            lc: 'text-red-400' },
+  nocomms: { gradient: 'from-red-900/25 to-transparent',     border: 'border-red-500/40',    dot: 'bg-red-500/60',                            label: 'SIN COMUNICACIÓN',  lc: 'text-red-400' },
+  fanonly: { gradient: 'from-yellow-900/30 to-transparent',  border: 'border-yellow-500/40', dot: 'bg-yellow-400 shadow-[0_0_10px_#eab308]',  label: 'SOLO FAN',          lc: 'text-yellow-400' },
 }
 
 const formatHours = (seconds) => {
