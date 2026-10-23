@@ -1,5 +1,72 @@
 #include "../incl/smartgreen.h"
 
+// Entra o sale del IMD un solo evaporativo: {"action":"ENTER"} / {"action":"EXIT"}
+enum MHD_Result api_post_cooler_imd(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size)
+{
+    char    action[8] = {0};
+    int     idx = ft_find_cooler(smartgreen, unit_id);
+
+    if (idx == -1)
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Cooler not found\"}"));
+    if (!body || body_size == 0 || sscanf(body, "{\"action\":\"%7[^\"]\"}", action) != 1)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
+
+    if (strcmp(action, "ENTER") == 0)
+    {
+        smartgreen->coolers[idx].imd = 1;
+        // Parar este evaporativo (solo este): fan 0, todo cerrado
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 51, 0);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 52, 0);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 50, REG50_SOLENOID_OFF);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 49, REG49_APAGADO);
+        printf("[IMD] Evaporativo unit=%d en IMD (apartado de su zona)\n", unit_id); fflush(stdout);
+    }
+    else
+    {
+        // Salir: dejarlo parado y que el RESYNC le reenvíe el estado de su zona
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 51, 0);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 52, 0);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 50, REG50_SOLENOID_OFF);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 49, REG49_APAGADO);
+        smartgreen->coolers[idx].imd = 0;
+        smartgreen->coolers[idx].need_resync = 1;
+        printf("[IMD] Evaporativo unit=%d sale del IMD: vuelve al control de su zona\n", unit_id); fflush(stdout);
+    }
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
+
+// Salidas de un evaporativo en IMD: {"pump":1,"solenoid":0,"drain":0,"speed":5}
+// Se escriben los cuatro registros juntos, para que el estado sea siempre coherente
+enum MHD_Result api_post_cooler_out(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size)
+{
+    int idx = ft_find_cooler(smartgreen, unit_id);
+    int pump = 0, sol = 0, drain = 0, speed = 0;
+    int r49, r50, r51, r52;
+
+    if (idx == -1)
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Cooler not found\"}"));
+    if (!smartgreen->coolers[idx].imd)
+        return (api_send_response(connection, MHD_HTTP_CONFLICT, "{\"error\":\"El evaporativo no esta en IMD\"}"));
+    if (!body || body_size == 0
+        || sscanf(body, "{\"pump\":%d,\"solenoid\":%d,\"drain\":%d,\"speed\":%d}", &pump, &sol, &drain, &speed) != 4)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
+    if (speed < 0) speed = 0;
+    if (speed > 10) speed = 10;
+
+    r50 = (pump ? 0x07 : 0) | (sol ? 0x08 : 0) | (drain ? 0 : 0x10);       // bit 4 = 1: drenaje CERRADO
+    r49 = (speed << 4) | (pump ? 0x02 : 0);
+    r51 = speed ? ((speed << 12) | 0x0700) : 0;
+    r52 = speed * 0x11;
+    // Fan primero (la placa toma la velocidad de R51 al recibir R50), luego R50 y R49
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 51, r51);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 52, r52);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 50, r50);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_IMD, unit_id, 49, r49);
+    printf("[IMD] unit=%d bomba=%d solenoide=%d drenaje=%s fan=%d (R50=%d)\n",
+        unit_id, pump, sol, drain ? "ABIERTO" : "cerrado", speed, r50); fflush(stdout);
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
+
 // Cambia la dirección Modbus de una placa: {"from":1,"to":2}
 enum MHD_Result api_post_imd_assign(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
 {

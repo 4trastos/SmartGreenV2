@@ -517,10 +517,6 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 51, 0);
             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 52, 0);
         }
-    // printf("PREWET paso 1: cerrar solenoide + drain (addr=50 val=%d)\n", calculate_register_51(0, 1)); fflush(stdout);
-    // for (int i = 0; i < smartgreen->num_coolers; i++)
-    //     if (smartgreen->coolers[i].zone_id == zone_id)
-    //         ft_modbus_enqueue(&smartgreen->modbus_queue,CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(0, 1));
 
     printf("PREWET esperando %ds antes de abrir solenoide...\n", db_read_config(smartgreen, "prewet_delay_solenoid")); fflush(stdout);
     sleep(db_read_config(smartgreen, "prewet_delay_solenoid"));
@@ -540,7 +536,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
 
         if (smartgreen->setup_mode)
             for (int i = 0; i < smartgreen->num_coolers; i++)
-                if (smartgreen->coolers[i].zone_id == zone_id)
+                if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd)
                 {
                     uint16_t r54;
                     if (ft_probe_retry(smartgreen, smartgreen->coolers[i].unit_id, 54, 1, &r54, 2) == 0)
@@ -550,7 +546,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
                     }
                 }
         for (int i = 0; i < smartgreen->num_coolers; i++)
-            if (smartgreen->coolers[i].zone_id == zone_id)
+            if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd)
             {
                 printf("PREWET agua cooler unit=%d water_present=%d salinity_us=%.1f\n", smartgreen->coolers[i].unit_id,
                     smartgreen->coolers[i].water_present, smartgreen->coolers[i].salinity_us); fflush(stdout);
@@ -569,7 +565,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
         char msg[128];
 
         for (int i = 0; i < smartgreen->num_coolers; i++)
-            if (smartgreen->coolers[i].zone_id == zone_id && smartgreen->coolers[i].salinity_us < 10.0f)
+            if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd && smartgreen->coolers[i].salinity_us < 10.0f)
             {
                 if (smartgreen->setup_mode)
                 {

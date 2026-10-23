@@ -150,7 +150,17 @@ void    scheduler_run(t_smartgreen *smartgreen)
             {
                 if (!smartgreen->setup_mode)
                     for (int i = 0; i < smartgreen->num_coolers; i++)
-                        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, smartgreen->coolers[i].unit_id, 0, 0);
+                    {
+                        t_cooler_state *c = &smartgreen->coolers[i];
+                        // ¿No contesta desde hace más de 5 s? Entonces solo se le pregunta cada 10 s
+                        int silent = c->comms_lost
+                            || (c->last_ok_read && now - c->last_ok_read > 5)
+                            || (!c->last_ok_read && c->watch_since && now - c->watch_since > 5);
+                        if (silent && now - c->last_try_read < 10)
+                            continue;
+                        c->last_try_read = now;
+                        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_READ_COOLER, c->unit_id, 0, 0);
+                    }
                 
                 // DRAIN SAFETY — vaciar la cubeta a las 72h (por defecto) de estar apagado (una sola vez por apagado)
                 for (int h = 0; h < smartgreen->num_zones; h++)

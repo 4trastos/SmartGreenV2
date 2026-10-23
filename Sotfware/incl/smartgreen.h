@@ -134,6 +134,7 @@ typedef enum e_modbus_cmd_type
     CMD_WRITE,                      // escribir registro
     CMD_READ_COOLER,                // leer cooler
     CMD_READ_SENSOR,                // leer sensor
+    CMD_WRITE_IMD,                  // escritura del técnico desde el IMD (pasa aunque el cooler esté en IMD o averiado)
 }   t_modbus_cmd_type;
 
 typedef enum e_alarm_level
@@ -321,6 +322,8 @@ typedef struct  s_cooler_state
     int                 prev_cold_starts;
     time_t              no_water_since;                 // desde cuándo falta agua funcionando (0 = hay agua)
     time_t              watch_since;                    // desde cuándo vigilamos la comunicación (arranque o setup)
+    time_t              last_try_read;                  // última lectura encolada (para espaciar las de un equipo que no contesta)
+    int                 imd;                            // 1 = en IMD: apartado del control de la zona; solo recibe órdenes del técnico
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
@@ -559,6 +562,8 @@ enum MHD_Result     api_post_reset(t_smartgreen *smartgreen, struct MHD_Connecti
 enum MHD_Result     api_post_cooler_rearm(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id);
 enum MHD_Result     api_get_imd_boards(t_smartgreen *smartgreen, struct MHD_Connection *connection);
 enum MHD_Result     api_post_imd_assign(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size);
+enum MHD_Result     api_post_cooler_imd(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
+enum MHD_Result     api_post_cooler_out(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
 
 /*  WEBSOCKET   */
 int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);

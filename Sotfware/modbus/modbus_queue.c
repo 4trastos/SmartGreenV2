@@ -95,13 +95,21 @@ int     ft_modbus_enqueue(t_modbus_queue *queue, t_modbus_cmd_type type, int uni
     cmd->next = NULL;
 
     pthread_mutex_lock(&queue->mutex);
+    if (type == CMD_READ_COOLER || type == CMD_READ_SENSOR || type == CMD_HEARTBEAT)
+        for (t_modbus_cmd *c = queue->head; c; c = c->next)
+            if (c->type == type && c->unit_id == unit_id)
+            {
+                pthread_mutex_unlock(&queue->mutex);
+                free(cmd);
+                return (0);
+            }
 
-    if (type == CMD_HEARTBEAT && queue->head != NULL)
+    if (type == CMD_HEARTBEAT && queue->head != NULL)   // heartbeat: delante de todo
     {
         cmd->next = queue->head;
         queue->head = cmd;
     }
-    else if (queue->tail == NULL)            // Cola vacía
+    else if (queue->tail == NULL)                        // cola vacía
     {
         queue->head = cmd;
         queue->tail = cmd;
@@ -113,10 +121,48 @@ int     ft_modbus_enqueue(t_modbus_queue *queue, t_modbus_cmd_type type, int uni
     }
     queue->size++;
 
-    pthread_cond_signal(&queue->cond);      // despertar al worker
+    pthread_cond_signal(&queue->cond);                   // despertar al worker
     pthread_mutex_unlock(&queue->mutex);
     return (0);
 }
+
+// int     ft_modbus_enqueue(t_modbus_queue *queue, t_modbus_cmd_type type, int unit_id, int addr, int value)
+// {
+//     t_modbus_cmd    *cmd;
+
+//     cmd = malloc(sizeof(t_modbus_cmd));
+//     if (!cmd)
+//         return (-1);
+
+//     cmd->type = type;
+//     cmd->unit_id = unit_id;
+//     cmd->addr = addr;
+//     cmd->value = value;
+//     cmd->next = NULL;
+
+//     pthread_mutex_lock(&queue->mutex);
+
+//     if (type == CMD_HEARTBEAT && queue->head != NULL)
+//     {
+//         cmd->next = queue->head;
+//         queue->head = cmd;
+//     }
+//     else if (queue->tail == NULL)            // Cola vacía
+//     {
+//         queue->head = cmd;
+//         queue->tail = cmd;
+//     }
+//     else
+//     {
+//         queue->tail->next = cmd;
+//         queue->tail = cmd;
+//     }
+//     queue->size++;
+
+//     pthread_cond_signal(&queue->cond);      // despertar al worker
+//     pthread_mutex_unlock(&queue->mutex);
+//     return (0);
+// }
 
 t_modbus_cmd    *ft_modbus_dequeue(t_modbus_queue *queue)
 {
@@ -133,7 +179,6 @@ t_modbus_cmd    *ft_modbus_dequeue(t_modbus_queue *queue)
 }
 
 // Worker thread — el ÚNICO que habla al bus RS485
-
 void    *ft_modbus_worker(void *arg)
 {
     t_smartgreen    *smartgreen = (t_smartgreen *)arg;
@@ -144,6 +189,8 @@ void    *ft_modbus_worker(void *arg)
 
     while (1)
     {
+        int used_bus = 0;                               // ¿se ha enviado algo por el bus? (solo entonces hace falta la pausa)
+
         pthread_mutex_lock(&queue->mutex);
         while (queue->head == NULL && !queue->stop)
             pthread_cond_wait(&queue->cond, &queue->mutex);
@@ -175,27 +222,45 @@ void    *ft_modbus_worker(void *arg)
         {
             case CMD_HEARTBEAT:
             case CMD_WRITE:
+            case CMD_WRITE_IMD:
             {
                 int cidx = ft_find_cooler(smartgreen, cmd->unit_id);
 
+                // En IMD: solo pasan las órdenes del técnico; el control de la zona (y su heartbeat) no le llega
+                if (cidx != -1 && smartgreen->coolers[cidx].imd && cmd->type != CMD_WRITE_IMD)
+                    break;
+
                 // Averías: no dejar encender un cooler averiado ni abrir agua con aviso de solenoide/bomba
-                if (cidx != -1 && ((smartgreen->coolers[cidx].broken_cooler && !ft_is_safe_write(cmd->addr, cmd->value))
+                // (el técnico desde el IMD sí puede, para diagnosticar)
+                if (cmd->type != CMD_WRITE_IMD && cidx != -1
+                    && ((smartgreen->coolers[cidx].broken_cooler && !ft_is_safe_write(cmd->addr, cmd->value))
                     || ((smartgreen->coolers[cidx].fault_solenoid || smartgreen->coolers[cidx].fault_pump) && cmd->addr == 50 && (cmd->value & 0x0F))))
                 {
                     printf("MODBUS BLOQUEADO (averia) -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
                     break;
                 }
 
-                // Sin comunicación: no intentar (al recuperarla, RESYNC reenvía el estado)
-                if (cidx != -1 && smartgreen->coolers[cidx].comms_lost)
-                    break;
+                // Sin respuesta desde hace más de 5 s: no intentar (al volver, el RESYNC reenvía el estado).
+                // Así las órdenes a los demás equipos no esperan detrás de timeouts a uno apagado
+                if (cidx != -1)
+                {
+                    t_cooler_state  *c = &smartgreen->coolers[cidx];
+                    time_t          now_w = time(NULL);
+
+                    if (c->comms_lost
+                        || (c->last_ok_read && now_w - c->last_ok_read > 5)
+                        || (!c->last_ok_read && c->watch_since && now_w - c->watch_since > 5))
+                        break;
+                }
 
                 // Heartbeat: si esta placa no lo acepta, no se envía
                 if (cmd->type == CMD_HEARTBEAT && cidx != -1 && smartgreen->coolers[cidx].hb_disabled)
                     break;
 
+                used_bus = 1;
                 modbus_set_slave(smartgreen->modbus_ctx, cmd->unit_id);
-                printf("MODBUS WRITE -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
+                printf("MODBUS WRITE%s -> unit=%d addr=%d value=%d\n", cmd->type == CMD_WRITE_IMD ? " (IMD)" : "",
+                    cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
                 {
                     int tries = 0;
                     int max_tries = (cmd->type == CMD_HEARTBEAT) ? 1 : 3;     // heartbeat sin reintentos
@@ -238,21 +303,144 @@ void    *ft_modbus_worker(void *arg)
             }
 
             case CMD_READ_COOLER:
+                used_bus = 1;
                 ft_modbus_read_cooler(smartgreen, cmd->unit_id);
                 break;
 
             case CMD_READ_SENSOR:
+                used_bus = 1;
                 ft_modbus_read_sensor(smartgreen, cmd->unit_id);
                 break;
         }
         pthread_mutex_unlock(&smartgreen->modbus_mutex);       // ← liberar el bus
-        usleep(150000);
+        if (used_bus)
+            usleep(150000);                                    // pausa entre tramas (la placa la necesita)
         free(cmd);
     }
 
     printf("MODBUS WORKER: parado\n"); fflush(stdout);
     return (NULL);
 }
+
+// void    *ft_modbus_worker(void *arg)
+// {
+//     t_smartgreen    *smartgreen = (t_smartgreen *)arg;
+//     t_modbus_queue  *queue = &smartgreen->modbus_queue;
+//     t_modbus_cmd    *cmd;
+
+//     printf("MODBUS WORKER: arrancado\n"); fflush(stdout);
+
+//     while (1)
+//     {
+//         pthread_mutex_lock(&queue->mutex);
+//         while (queue->head == NULL && !queue->stop)
+//             pthread_cond_wait(&queue->cond, &queue->mutex);
+
+//         if (queue->stop && queue->head == NULL)
+//         {
+//             pthread_mutex_unlock(&queue->mutex);
+//             break;
+//         }
+
+//         cmd = ft_modbus_dequeue(queue);
+//         pthread_mutex_unlock(&queue->mutex);
+
+//         if (!cmd)
+//             continue;
+
+//         if (!smartgreen->modbus_ctx)
+//         {
+//             ft_modbus_init(smartgreen);
+//             if (!smartgreen->modbus_ctx)
+//             {
+//                 free(cmd);
+//                 continue;
+//             }
+//         }
+
+//         pthread_mutex_lock(&smartgreen->modbus_mutex);         // ← el bus es nuestro hasta terminar esta orden
+//         switch (cmd->type)
+//         {
+//             case CMD_HEARTBEAT:
+//             case CMD_WRITE:
+//             {
+//                 int cidx = ft_find_cooler(smartgreen, cmd->unit_id);
+
+//                 // Averías: no dejar encender un cooler averiado ni abrir agua con aviso de solenoide/bomba
+//                 if (cidx != -1 && ((smartgreen->coolers[cidx].broken_cooler && !ft_is_safe_write(cmd->addr, cmd->value))
+//                     || ((smartgreen->coolers[cidx].fault_solenoid || smartgreen->coolers[cidx].fault_pump) && cmd->addr == 50 && (cmd->value & 0x0F))))
+//                 {
+//                     printf("MODBUS BLOQUEADO (averia) -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
+//                     break;
+//                 }
+
+//                 // Sin comunicación: no intentar (al recuperarla, RESYNC reenvía el estado)
+//                 if (cidx != -1 && smartgreen->coolers[cidx].comms_lost)
+//                     break;
+
+//                 // Heartbeat: si esta placa no lo acepta, no se envía
+//                 if (cmd->type == CMD_HEARTBEAT && cidx != -1 && smartgreen->coolers[cidx].hb_disabled)
+//                     break;
+
+//                 modbus_set_slave(smartgreen->modbus_ctx, cmd->unit_id);
+//                 printf("MODBUS WRITE -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
+//                 {
+//                     int tries = 0;
+//                     int max_tries = (cmd->type == CMD_HEARTBEAT) ? 1 : 3;     // heartbeat sin reintentos
+//                     int rc;
+
+//                     do
+//                     {
+//                         rc = modbus_write_registers(smartgreen->modbus_ctx, cmd->addr, 1, (uint16_t[]){(uint16_t)cmd->value});
+//                         if (rc == -1)
+//                         {
+//                             printf("MODBUS WRITE error addr=%d (intento %d/%d): %s\n", cmd->addr, tries + 1, max_tries, modbus_strerror(errno)); fflush(stdout);
+//                             modbus_flush(smartgreen->modbus_ctx);
+//                             if (tries + 1 < max_tries)
+//                                 usleep(300000);
+//                         }
+//                     } while (rc == -1 && ++tries < max_tries);
+
+//                     if (rc == -1 && cmd->type != CMD_HEARTBEAT)
+//                         printf("MODBUS WRITE FALLIDA definitivamente addr=%d value=%d\n", cmd->addr, cmd->value);
+
+//                     // Heartbeat: contar fallos SOLO si la placa contesta a las lecturas
+//                     if (cmd->type == CMD_HEARTBEAT && cidx != -1)
+//                     {
+//                         t_cooler_state *c = &smartgreen->coolers[cidx];
+
+//                         if (rc == -1 && time(NULL) - c->last_ok_read < 10)
+//                         {
+//                             if (++c->hb_fail >= 3 && !c->hb_disabled)
+//                             {
+//                                 c->hb_disabled = 1;
+//                                 printf("[HEARTBEAT] desactivado unit=%d: la placa no lo acepta\n", cmd->unit_id);
+//                             }
+//                         }
+//                         else if (rc != -1)
+//                             c->hb_fail = 0;
+//                     }
+//                 }
+//                 fflush(stdout);
+//                 break;
+//             }
+
+//             case CMD_READ_COOLER:
+//                 ft_modbus_read_cooler(smartgreen, cmd->unit_id);
+//                 break;
+
+//             case CMD_READ_SENSOR:
+//                 ft_modbus_read_sensor(smartgreen, cmd->unit_id);
+//                 break;
+//         }
+//         pthread_mutex_unlock(&smartgreen->modbus_mutex);       // ← liberar el bus
+//         usleep(150000);
+//         free(cmd);
+//     }
+
+//     printf("MODBUS WORKER: parado\n"); fflush(stdout);
+//     return (NULL);
+// }
 
 // void    *ft_modbus_worker(void *arg)
 // {

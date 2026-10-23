@@ -141,6 +141,18 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
         }
 
         ctx = *con_cls;
+        if (sscanf(url, "/api/coolers/%d/%31s", &id, action) == 2 && (strcmp(action, "imd") == 0 || strcmp(action, "out") == 0))
+        {
+            if (strcmp(action, "imd") == 0)
+                ret = api_post_cooler_imd(smartgreen, connection, id, ctx->body, ctx->len);
+            else
+                ret = api_post_cooler_out(smartgreen, connection, id, ctx->body, ctx->len);
+            free(ctx);
+            *con_cls = NULL;
+            return (ret);
+        }
+
+        ctx = *con_cls;
         if (sscanf(url, "/api/zones/%d/%31s", &id, action) == 2)
         {
             if (strcmp(action, "onoff") == 0)

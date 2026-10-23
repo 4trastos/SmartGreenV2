@@ -236,7 +236,7 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
 
         int z = ft_find_zone(smartgreen, smartgreen->coolers[i].zone_id);
         int zone_on = (z != -1 && strcmp(smartgreen->zone_params[z].on_off, "ON") == 0);
-        int with_water = zone_on                                                        // funcionando CON agua
+        int with_water = zone_on && !smartgreen->coolers[i].imd                                 // funcionando CON agua
             && strcmp(smartgreen->zone_params[z].cool_fan_mode, "FAN") != 0
             && strcmp(smartgreen->zone_params[z].cool_fan_mode, "IMD") != 0
             && strcmp(smartgreen->zone_params[z].prewet_in_progress, "yes") != 0
