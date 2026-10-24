@@ -504,6 +504,7 @@ void                ft_check_comms(t_smartgreen *smartgreen, int i, time_t now);
 void                ft_check_board(t_smartgreen *smartgreen, int i);
 int                 ft_probe_retry(t_smartgreen *smartgreen, int addr, int start, int count, uint16_t *regs, int tries);
 void                ft_save_comms_state(t_smartgreen *smartgreen, int i);
+int                 ft_cooler_silent(t_cooler_state *c);
 
 
 

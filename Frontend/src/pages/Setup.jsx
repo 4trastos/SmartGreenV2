@@ -313,11 +313,13 @@ export default function Setup({ onComplete, data }) {
   }
 
   const post = async (endpoint, body = {}) => {
-    const r = await fetch(`${API_URL}/setup/${endpoint}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    })
-    return r.json()
+    try {
+      const r = await fetch(`${API_URL}/setup/${endpoint}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      return await r.json()
+    } catch { return {} }
   }
 
   const scan = async () => {
@@ -427,6 +429,11 @@ export default function Setup({ onComplete, data }) {
     await post('coolers', { zone_id: 1, num_coolers: numCoolers, coolers: coolersToSave })
     await post('sensors', { sensors: foundSensors.map(s => ({ unit_id: s.unit_id, role: sensorRoles[s.unit_id] || 'INT' })) })
     await post('confirm', {})
+    // Pasar a la pantalla normal cuando el backend confirme que la instalación está hecha
+    try {
+      const s = await (await fetch(`${API_URL}/setup/status`)).json()
+      if (s.setup_required) return            // el backend no la ha dado por buena: quedarse en el asistente
+    } catch {}
     clearSaved()
     onComplete()
   }

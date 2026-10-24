@@ -1,5 +1,17 @@
 #include "../incl/smartgreen.h"
 
+int     ft_cooler_silent(t_cooler_state *c)
+{
+    time_t ref;
+
+    if (c->comms_lost)
+        return (1);
+    ref = c->last_ok_read ? c->last_ok_read : c->watch_since;
+    if (!ref || !c->last_try_read)
+        return (0);
+    return (c->last_try_read - ref > 5);
+}
+
 // Guarda el estado de comunicación en la BD (sobrevive a reinicios del controlador)
 void    ft_save_comms_state(t_smartgreen *smartgreen, int i)
 {

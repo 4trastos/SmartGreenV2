@@ -226,12 +226,11 @@ void    *ft_modbus_worker(void *arg)
             {
                 int cidx = ft_find_cooler(smartgreen, cmd->unit_id);
 
-                // En IMD: solo pasan las órdenes del técnico; el control de la zona (y su heartbeat) no le llega
+                // 1. En IMD: solo pasan las órdenes del técnico 
                 if (cidx != -1 && smartgreen->coolers[cidx].imd && cmd->type != CMD_WRITE_IMD)
                     break;
 
-                // Averías: no dejar encender un cooler averiado ni abrir agua con aviso de solenoide/bomba
-                // (el técnico desde el IMD sí puede, para diagnosticar)
+                // 2. Averías (el técnico desde el IMD sí puede)
                 if (cmd->type != CMD_WRITE_IMD && cidx != -1
                     && ((smartgreen->coolers[cidx].broken_cooler && !ft_is_safe_write(cmd->addr, cmd->value))
                     || ((smartgreen->coolers[cidx].fault_solenoid || smartgreen->coolers[cidx].fault_pump) && cmd->addr == 50 && (cmd->value & 0x0F))))
@@ -240,20 +239,11 @@ void    *ft_modbus_worker(void *arg)
                     break;
                 }
 
-                // Sin respuesta desde hace más de 5 s: no intentar (al volver, el RESYNC reenvía el estado).
-                // Así las órdenes a los demás equipos no esperan detrás de timeouts a uno apagado
-                if (cidx != -1)
-                {
-                    t_cooler_state  *c = &smartgreen->coolers[cidx];
-                    time_t          now_w = time(NULL);
+                // 3. Sin respuesta (se le pregunta y no contesta) 
+                if (cidx != -1 && ft_cooler_silent(&smartgreen->coolers[cidx]))
+                    break;
 
-                    if (c->comms_lost
-                        || (c->last_ok_read && now_w - c->last_ok_read > 5)
-                        || (!c->last_ok_read && c->watch_since && now_w - c->watch_since > 5))
-                        break;
-                }
-
-                // Heartbeat: si esta placa no lo acepta, no se envía
+                // 4. Heartbeat no admitido
                 if (cmd->type == CMD_HEARTBEAT && cidx != -1 && smartgreen->coolers[cidx].hb_disabled)
                     break;
 

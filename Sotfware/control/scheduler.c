@@ -152,10 +152,8 @@ void    scheduler_run(t_smartgreen *smartgreen)
                     for (int i = 0; i < smartgreen->num_coolers; i++)
                     {
                         t_cooler_state *c = &smartgreen->coolers[i];
-                        // ¿No contesta desde hace más de 5 s? Entonces solo se le pregunta cada 10 s
-                        int silent = c->comms_lost
-                            || (c->last_ok_read && now - c->last_ok_read > 5)
-                            || (!c->last_ok_read && c->watch_since && now - c->watch_since > 5);
+
+                        int silent = ft_cooler_silent(c);
                         if (silent && now - c->last_try_read < 10)
                             continue;
                         c->last_try_read = now;
