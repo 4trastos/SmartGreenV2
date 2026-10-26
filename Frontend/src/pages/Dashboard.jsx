@@ -4,6 +4,7 @@ import { API_URL } from '../config.js'
 function coolerStatus(c, zone) {
   if (Number(c.broken_cooler) === 1) return 'broken'
   if (Number(c.comms_lost) === 1) return 'nocomms'
+  if (zone?.on_off === 'ON' && Number(c.user_off) === 1) return 'useroff'
   if (Number(c.fault_solenoid) === 1 || Number(c.fault_pump) === 1) return 'fanonly'
   if (c.alarm_fault || c.fault_present) return 'fault'
   if (c.alarm_comms || c.disabled) return 'offline'
@@ -13,7 +14,7 @@ function coolerStatus(c, zone) {
   return 'idle'
 }
 
-const fanSpeed = (cooler, zone) =>  zone?.on_off === 'ON' && !Number(cooler.broken_cooler) && !Number(cooler.comms_lost) ? cooler.actual_fan_speed : 0
+const fanSpeed = (cooler, zone) => isCoolerOn(cooler, zone) && !Number(cooler.broken_cooler) && !Number(cooler.comms_lost) ? cooler.actual_fan_speed : 0
 
 const STATUS = {
   active:  { gradient: 'from-[#004d89]/40 to-[#088fc3]/10',  border: 'border-[#088fc3]/35',  dot: 'bg-[#088fc3] shadow-[0_0_10px_#088fc3]',   label: 'ACTIVO',   lc: 'text-[#088fc3]' },
@@ -25,6 +26,7 @@ const STATUS = {
   broken:  { gradient: 'from-red-900/40 to-transparent',     border: 'border-red-500/60',    dot: 'bg-red-500 shadow-[0_0_10px_#ef4444]',     label: 'AVERÍA',            lc: 'text-red-400' },
   nocomms: { gradient: 'from-red-900/25 to-transparent',     border: 'border-red-500/40',    dot: 'bg-red-500/60',                            label: 'SIN COMUNICACIÓN',  lc: 'text-red-400' },
   fanonly: { gradient: 'from-yellow-900/30 to-transparent',  border: 'border-yellow-500/40', dot: 'bg-yellow-400 shadow-[0_0_10px_#eab308]',  label: 'SOLO FAN',          lc: 'text-yellow-400' },
+  useroff: { gradient: 'from-white/4 to-transparent', border: 'border-white/15', dot: 'bg-white/40', label: 'APAGADO', lc: 'text-white/40' },
 }
 
 const formatHours = (seconds) => {
@@ -48,17 +50,30 @@ function MiniChart({ value, status }) {
   )
 }
 
+// Estado de un evaporativo dentro de su zona
+const isCoolerOn = (cooler, zone) => zone?.on_off === 'ON' && !Number(cooler.user_off)
+
+// Botón ■/▶ de un evaporativo: con la zona apagada, enciende la ZONA (el encendido es siempre de zona);
+// con la zona encendida, apaga o reincorpora SOLO ese evaporativo
+const coolerToggle = async (cooler, zone) => {
+  if (zone?.on_off !== 'ON')
+    return fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'ON' })
+    })
+  return fetch(`${API_URL}/coolers/${cooler.unit_id}/onoff`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: Number(cooler.user_off) ? 'ON' : 'OFF' })
+  })
+}
+
+const toggleLabel = (cooler, zone) =>
+  zone?.on_off !== 'ON' ? '▶ Encender la zona' : Number(cooler.user_off) ? '▶ Encender este' : '■ Apagar este'
+
 function CoolerCard({ cooler, onClick, toggleCooler, zone }) {
   const st = STATUS[coolerStatus(cooler, zone)]
   const s = coolerStatus(cooler, zone)
   const isOn = zone?.on_off === 'ON'
-  const toggleOnOff = async (e) => {
-    e.stopPropagation()
-    await fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({action: isOn ? 'OFF' : 'ON'})  // ← isOn no cooler.fan_on
-    })
-  }
+  const toggleOnOff = async (e) => { e.stopPropagation(); await coolerToggle(cooler, zone) }
 
   return (
     <div onClick={() => onClick(cooler)}
@@ -74,8 +89,7 @@ function CoolerCard({ cooler, onClick, toggleCooler, zone }) {
           <button onClick={toggleOnOff}
             className={`w-7 h-7 rounded-lg text-xs font-bold cursor-pointer transition-all
               ${isOn ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-[#004d89]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
-            {cooler.fan_on ? '■' : '▶'}
-            {isOn ? '■' : '▶'}
+              {isOn ? '■' : '▶'}
           </button>
         </div>
       </div>
@@ -113,13 +127,7 @@ function CoolerMini({ cooler, onClick, toggleCooler, zone }) {
   const st = STATUS[coolerStatus(cooler, zone)]
   const s = coolerStatus(cooler, zone)
   const isOn = zone?.on_off === 'ON'
-  const toggleOnOff = async (e) => {
-    e.stopPropagation()
-    await fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({action: isOn ? 'OFF' : 'ON'})  // ← isOn
-    })
-  }
+  const toggleOnOff = async (e) => { e.stopPropagation(); await coolerToggle(cooler, zone) }
   return (
     <div onClick={() => onClick(cooler)}
       className={`rounded-xl border cursor-pointer transition-all duration-150 hover:brightness-110 overflow-hidden bg-gradient-to-br ${st.gradient} ${st.border} p-3`}>
@@ -185,12 +193,12 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
           <p className="text-white/20 text-sm mt-1">#{cooler.unit_id} · {zone?.name || `Zona ${cooler.zone_id}`}</p>
         </div>
         <div className="text-right flex flex-col items-end gap-2">
-          <button onClick={(e) => { e.stopPropagation(); toggleCooler(cooler.zone_id, cooler.unit_id, isOn) }}
+          <button onClick={(e) => { e.stopPropagation(); coolerToggle(cooler, zone) }}
             className={`px-5 py-2 rounded-xl font-bold text-sm cursor-pointer
               ${isOn
                 ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30'
                 : 'bg-[#004d89]/40 border border-[#088fc3]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
-            {isOn ? '■ Apagar' : '▶ Encender'}
+            {toggleLabel(cooler, zone)}
           </button>
           <p className={`text-6xl font-black font-mono leading-none ${st.lc}`}>
             {fanSpeed(cooler, zone)}<span className="text-2xl text-white/20">/10</span>
@@ -245,7 +253,7 @@ function SingleHero({ cooler, onClick, toggleCooler, zone }) {
   )
 }
 
-function CoolerDetail({ cooler, onClose, zone }) {
+function CoolerDetail({ cooler, onClose, zone, onImd }) {
   const [speed, setSpeed] = useState(fanSpeed(cooler, zone))
   const [fanOn, setFanOn] = useState(zone?.on_off === 'ON')
 
@@ -263,14 +271,7 @@ function CoolerDetail({ cooler, onClose, zone }) {
     })
   }
 
-  const toggleOnOff = async () => {
-    const newState = !fanOn
-    setFanOn(newState)
-    await fetch(`${API_URL}/zones/${cooler.zone_id}/onoff`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({action: newState ? 'ON' : 'OFF'})
-    })
-  }
+  const toggleOnOff = async () => { await coolerToggle(cooler, zone) }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
@@ -283,14 +284,20 @@ function CoolerDetail({ cooler, onClose, zone }) {
             <p className={`text-sm font-bold mt-1 ${st.lc}`}>{fanOn ? 'ON' : 'OFF'}</p>
             <button onClick={toggleOnOff}
               className={`mt-2 px-4 py-1.5 rounded-xl font-bold text-xs cursor-pointer transition-all
-                ${fanOn
+                ${isCoolerOn(cooler, zone)
                   ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30'
                   : 'bg-[#004d89]/40 border border-[#088fc3]/40 text-[#088fc3] hover:bg-[#004d89]/60'}`}>
-              {fanOn ? '■ Apagar' : '▶ Encender'}
+              {toggleLabel(cooler, zone)}
             </button>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white cursor-pointer">✕</button>
-        </div>
+            <div className="flex gap-2">
+              <button onClick={onImd}
+                className="px-3 h-9 rounded-xl bg-red-500/15 border border-red-500/40 text-red-400 text-xs font-bold cursor-pointer hover:bg-red-500/25">
+                IMD
+              </button>
+              <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white cursor-pointer">✕</button>
+            </div>        
+          </div>
         <div className="bg-white/3 rounded-2xl p-4 mb-4">
           <div className="flex justify-between items-center mb-3">
             <span className="text-white/40 text-xs uppercase tracking-wider">Velocidad</span>
@@ -380,7 +387,7 @@ function PrewetLoading() {
   )
 }
 
-export default function Dashboard({ data, connected }) {
+export default function Dashboard({ data, connected, onImdActivate }) {
   const [selected, setSelected] = useState(null)
   const [coolerStates, setCoolerStates] = useState({})
   const getZone = (cooler) => data.zones.find(z => z.zone_id === cooler.zone_id)  // ← aquí
@@ -524,8 +531,8 @@ export default function Dashboard({ data, connected }) {
           ))
         )}
       </div>
-
-      {selected && <CoolerDetail cooler={selected} onClose={() => setSelected(null)} zone={getZone(selected)} />}
+      {selected && <CoolerDetail cooler={selected} onClose={() => setSelected(null)} zone={getZone(selected)}
+        onImd={() => { const u = selected.unit_id; setSelected(null); onImdActivate(u) }} />}
     </div>
   )
 }

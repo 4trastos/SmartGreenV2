@@ -141,6 +141,28 @@ void    scheduler_run(t_smartgreen *smartgreen)
     {
         now = get_timestamp();
 
+        // Encender/apagar la ZONA es global: sus evaporativos apagados uno a uno vuelven a la zona
+        {
+            static int  prev_on[64];
+            static int  prev_init = 0;
+
+            for (int z = 0; z < smartgreen->num_zones && z < 64; z++)
+            {
+                int zon = (strcmp(smartgreen->zone_params[z].on_off, "ON") == 0);
+
+                if (prev_init && zon != prev_on[z])
+                    for (int i = 0; i < smartgreen->num_coolers; i++)
+                        if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id && smartgreen->coolers[i].user_off)
+                        {
+                            smartgreen->coolers[i].user_off = 0;
+                            printf("[ONOFF] Zona %d %s: evaporativo unit=%d vuelve a la zona\n",
+                                smartgreen->zone_params[z].zone_id, zon ? "encendida" : "apagada", smartgreen->coolers[i].unit_id); fflush(stdout);
+                        }
+                prev_on[z] = zon;
+            }
+            prev_init = 1;
+        }
+
         // Lectura periódica — encolar lecturas
         if (now - last_read >= read_interval)
         {
@@ -163,11 +185,14 @@ void    scheduler_run(t_smartgreen *smartgreen)
                 // DRAIN SAFETY — vaciar la cubeta a las 72h (por defecto) de estar apagado (una sola vez por apagado)
                 for (int h = 0; h < smartgreen->num_zones; h++)
                 {
-                    if (strcmp(smartgreen->zone_params[h].on_off, "OFF") != 0)
-                        continue;
+                    int zone_off = (strcmp(smartgreen->zone_params[h].on_off, "OFF") == 0);
+                    // if (strcmp(smartgreen->zone_params[h].on_off, "OFF") != 0)
+                    //     continue;
                     for (int i = 0; i < smartgreen->num_coolers; i++)
                     {
                         if (smartgreen->coolers[i].zone_id != smartgreen->zone_params[h].zone_id)
+                            continue;
+                        if (!zone_off && !smartgreen->coolers[i].user_off)      // funcionando: no toca
                             continue;
                         if (smartgreen->coolers[i].last_off > 0 && (now - smartgreen->coolers[i].last_off) >= (safety_h * 3600))
                         {
@@ -359,10 +384,11 @@ void    scheduler_run(t_smartgreen *smartgreen)
             {
                 if (strcmp(smartgreen->zone_params[h].on_off, "ON") == 0)
                 {
-                    // Buscar coolers de esta zona
+                    // Coolers de esta zona que están funcionando (no los apagados por el usuario ni los que están en IMD)
                     for (int i = 0; i < smartgreen->num_coolers; i++)
-                        if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[h].zone_id)
-                        {  
+                        if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[h].zone_id
+                            && !smartgreen->coolers[i].user_off && !smartgreen->coolers[i].imd)
+                        {
                             t_drain_args *drain_args = malloc(sizeof(t_drain_args));
                             if (drain_args)
                             {

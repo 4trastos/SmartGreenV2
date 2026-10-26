@@ -76,7 +76,7 @@ function Clock() {
   )
 }
 
-// Teclado de PIN del técnico (lo usan la pantalla roja y la franja de aviso)
+// Teclado de PIN del técnico (único para toda la aplicación)
 function PinModal({ onSuccess, onCancel }) {
   const [pin, setPin] = useState('')
   const [pinError, setPinError] = useState(false)
@@ -138,8 +138,7 @@ function PinModal({ onSuccess, onCancel }) {
 }
 
 // Pantalla roja: TODOS los evaporativos están averiados o sin comunicación
-function BrokenScreen({ coolers, comms, onUnlock }) {
-  const [showPin, setShowPin] = useState(false)
+function BrokenScreen({ coolers, comms, onTech }) {
   const plural = coolers.length > 1
   const ids = coolers.map(c => `#${c.unit_id}`).join(', ')
 
@@ -159,24 +158,21 @@ function BrokenScreen({ coolers, comms, onUnlock }) {
           ? `Evaporativo${plural ? 's' : ''} ${ids} sin respuesta`
           : `Evaporativo${plural ? 's' : ''} ${ids} parado${plural ? 's' : ''}`}
       </p>
-      <button onClick={() => setShowPin(true)}
+      <button onClick={onTech}
         className="px-6 py-3 rounded-xl bg-white/10 border border-white/30 text-white/70 text-sm font-bold cursor-pointer hover:bg-white/20">
         Acceso técnico
       </button>
-      {showPin && <PinModal onSuccess={() => { setShowPin(false); onUnlock() }} onCancel={() => setShowPin(false)} />}
     </div>
   )
 }
 
 // Franja de aviso: ALGUNOS evaporativos fuera de servicio; el resto sigue funcionando
-function FaultBanner({ coolers, onUnlock }) {
-  const [showPin, setShowPin] = useState(false)
-
+function FaultBanner({ coolers, onTech }) {
   return (
-    <div className="shrink-0 mx-4 mt-3 rounded-xl border border-red-500/40 bg-red-500/15 px-4 py-2.5 flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        {coolers.map(c => (
-          <p key={c.unit_id} className="text-sm">
+    <div className="shrink-0 mx-4 mt-3 rounded-xl border border-red-500/40 bg-red-500/15 px-4 py-2.5 flex flex-col gap-1.5">
+      {coolers.map(c => (
+        <div key={c.unit_id} className="flex items-center justify-between gap-3">
+          <p className="text-sm min-w-0">
             <span className="text-red-400 font-black">⚠ Evaporativo #{c.unit_id}:</span>{' '}
             <span className="text-white/80">
               {Number(c.broken_cooler) === 1
@@ -184,14 +180,13 @@ function FaultBanner({ coolers, onUnlock }) {
                 : 'sin comunicación — revise la alimentación del equipo'}
             </span>
           </p>
-        ))}
-        <p className="text-white/40 text-xs mt-0.5">El resto de equipos sigue funcionando con normalidad.</p>
-      </div>
-      <button onClick={() => setShowPin(true)}
-        className="shrink-0 px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white/70 text-xs font-bold cursor-pointer hover:bg-white/20">
-        Acceso técnico
-      </button>
-      {showPin && <PinModal onSuccess={() => { setShowPin(false); onUnlock() }} onCancel={() => setShowPin(false)} />}
+          <button onClick={() => onTech(c.unit_id)}
+            className="shrink-0 px-3 py-1 rounded-lg bg-white/10 border border-white/20 text-white/70 text-xs font-bold cursor-pointer hover:bg-white/20">
+            Revisar
+          </button>
+        </div>
+      ))}
+      <p className="text-white/40 text-xs">El resto de equipos sigue funcionando con normalidad.</p>
     </div>
   )
 }
@@ -200,7 +195,8 @@ export default function App() {
   const [page, setPage] = useState('control')
   const [showReboot, setShowReboot] = useState(false)
   const [imdActive, setImdActive] = useState(false)
-  const [imdZoneId, setImdZoneId] = useState(null)
+  const [imdUnitId, setImdUnitId] = useState(null)              // evaporativo en el IMD
+  const [pendingImdUnit, setPendingImdUnit] = useState(null)    // evaporativo pendiente del PIN
   const [setupRequired, setSetupRequired] = useState(null)
   const [quietMode, setQuietMode] = useState(0)
   const [schedulerActive, setSchedulerActive] = useState(false)
@@ -251,11 +247,23 @@ export default function App() {
   const allOut     = data.coolers.length > 0 && outCoolers.length === data.coolers.length   // todos → pantalla roja
   const anyBroken  = outCoolers.some(c => Number(c.broken_cooler) === 1)
 
-  // Entrar al IMD en la zona del evaporativo con problemas
-  const openImdFor = (cooler) => {
-    fetch(`${API_URL}/zones/${cooler.zone_id}/mode`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mode: 'IMD'}) })
+  // IMD de UN evaporativo: se aparta de su zona; el resto sigue funcionando
+  const openImd = (unitId) => {
+    fetch(`${API_URL}/coolers/${unitId}/imd`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ action: 'ENTER' })
+    }).catch(() => {})
+    setImdUnitId(unitId)
     setImdActive(true)
-    setImdZoneId(cooler.zone_id)
+  }
+
+  // Salir: solo ese evaporativo vuelve al control de su zona (no se apaga nada)
+  const exitImd = () => {
+    if (imdUnitId !== null)
+      fetch(`${API_URL}/coolers/${imdUnitId}/imd`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ action: 'EXIT' })
+      }).catch(() => {})
+    setImdActive(false)
+    setImdUnitId(null)
   }
 
   const isPrewet = !imdActive && data.zones.some(z => z.prewet_in_progress === 'yes')
@@ -313,7 +321,7 @@ export default function App() {
         <header className="relative flex items-center justify-between px-5 py-2.5 border-b border-white/5 bg-[#07111a]/70 backdrop-blur-xl shrink-0 h-14">
           <div className="flex items-center gap-3">
             <span className="text-white/40 text-xs tracking-widest uppercase font-medium">
-              {NAV.find(n => n.id === page)?.label}
+              {imdActive ? 'Modo IMD' : NAV.find(n => n.id === page)?.label}
             </span>
             {quietMode > 0 && (
               <span className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border border-[#088fc3]/30 bg-[#088fc3]/10 text-[#088fc3] font-bold">
@@ -329,7 +337,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {alarmCount > 0 && (
-              <button onClick={() => setPage('alarms')}
+              <button onClick={() => !imdActive && setPage('alarms')}
                 className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 rounded-full px-3 py-1 text-red-400 text-xs font-bold cursor-pointer hover:bg-red-500/20 transition-colors">
                 <span className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse" />
                 {alarmCount} alarma{alarmCount > 1 ? 's' : ''}
@@ -346,25 +354,17 @@ export default function App() {
 
         {/* AVISO — algunos evaporativos fuera de servicio (no bloquea: el resto sigue funcionando) */}
         {outCoolers.length > 0 && !allOut && !imdActive && (
-          <FaultBanner coolers={outCoolers} onUnlock={() => openImdFor(outCoolers[0])} />
+          <FaultBanner coolers={outCoolers} onTech={unitId => setPendingImdUnit(unitId)} />
         )}
 
         <div className="flex-1 overflow-hidden">
           {imdActive ? (
-            <IMD
-              data={data}
-              onExit={() => {
-                setImdActive(false)
-                fetch(`${API_URL}/zones/${imdZoneId}/onoff`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action: 'OFF'}) })
-                fetch(`${API_URL}/zones/${imdZoneId}/cancelprewet`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}' })
-                fetch(`${API_URL}/zones/${imdZoneId}/mode`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mode: 'AUTO'}) })
-              }}
-            />
+            <IMD data={data} unitId={imdUnitId} onExit={exitImd} />
           ) : (
             <PageComponent
               data={data}
               connected={connected}
-              onImdActivate={(zoneId) => { setImdActive(true); setImdZoneId(zoneId) }}
+              onImdActivate={unitId => setPendingImdUnit(unitId)}
             />
           )}
         </div>
@@ -377,7 +377,14 @@ export default function App() {
         <BrokenScreen
           coolers={outCoolers}
           comms={!anyBroken}
-          onUnlock={() => openImdFor(outCoolers[0])} />
+          onTech={() => setPendingImdUnit(outCoolers[0].unit_id)} />
+      )}
+
+      {/* PIN del técnico — para entrar en el IMD de un evaporativo, venga de donde venga */}
+      {pendingImdUnit !== null && (
+        <PinModal
+          onSuccess={() => { const u = pendingImdUnit; setPendingImdUnit(null); openImd(u) }}
+          onCancel={() => setPendingImdUnit(null)} />
       )}
     </div>
   )

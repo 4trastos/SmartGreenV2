@@ -45,11 +45,7 @@ export default function Control({ data, onImdActivate, connected }) {
   ]
 
   const [localZones, setLocalZones] = useState(zones)
-  const [showPinModal, setShowPinModal] = useState(false)
-  const [pin, setPin] = useState('')
-  const [pinError, setPinError] = useState(false)
-  const [pendingZoneId, setPendingZoneId] = useState(null)
-  const [showImdWarning, setShowImdWarning] = useState(false)
+  const [imdSelectZone, setImdSelectZone] = useState(null)     // zona con varios evaporativos: elegir cuál revisar
 
   useEffect(() => {
     if (data.zones.length > 0)
@@ -58,35 +54,14 @@ export default function Control({ data, onImdActivate, connected }) {
 
   const handleModeClick = async (zoneId, mode) => {
     if (mode === 'IMD') {
-      const zone = localZones.find(z => z.zone_id === zoneId)
-      if (zone.on_off === 'ON') {
-        setShowImdWarning(true)
-        setTimeout(() => setShowImdWarning(false), 3000)
-        return
-      }
-      setPendingZoneId(zoneId)
-      setPin('')
-      setPinError(false)
-      setShowPinModal(true)
+      // El IMD es de UN evaporativo: si la zona tiene varios, preguntar cuál (el PIN lo pide App)
+      const zc = data.coolers.filter(c => c.zone_id === zoneId)
+      if (zc.length === 1)
+        onImdActivate(zc[0].unit_id)
+      else if (zc.length > 1)
+        setImdSelectZone(zoneId)
     } else {
       setMode(zoneId, mode)
-    }
-  }
-
-  const confirmPin = async (pinValue) => {
-    const res = await fetch(`${API_URL}/imd/unlock`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: pinValue || pin })
-    })
-    if (res.ok) {
-      setShowPinModal(false)
-      setPin('')
-      setMode(pendingZoneId, 'IMD')
-      onImdActivate(pendingZoneId)
-    } else {
-      setPinError(true)
-      setPin('')
     }
   }
 
@@ -289,7 +264,7 @@ export default function Control({ data, onImdActivate, connected }) {
                               className={`py-2 rounded-xl text-xs font-bold transition-all
                                 ${modeDisabled(m)
                                   ? 'bg-white/3 text-white/15 cursor-not-allowed line-through'
-                                  : zone.cool_fan_mode === m ? 'bg-[#088fc3] text-white cursor-pointer' : 'bg-white/5 text-white/30 hover:bg-white/10 cursor-pointer'}`}>
+                                  : zone.cool_fan_mode === m && m !== 'IMD' ? 'bg-[#088fc3] text-white cursor-pointer' : 'bg-white/5 text-white/30 hover:bg-white/10 cursor-pointer'}`}>
                               {m}
                             </button>
                           ))}
@@ -302,11 +277,6 @@ export default function Control({ data, onImdActivate, connected }) {
                         {!fanOnly && sensorFail && (
                           <div className="mt-2 py-2 px-3 rounded-xl bg-yellow-500/15 border border-yellow-500/40 text-yellow-400 text-xs font-bold text-center">
                             ⚠️ Sensor de temperatura sin señal — modo AUTO no disponible
-                          </div>
-                        )}
-                        {showImdWarning && (
-                          <div className="mt-2 py-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-bold text-center">
-                            ⚠️ Apaga el cooler antes de entrar en modo IMD
                           </div>
                         )}
                       </div>
@@ -380,39 +350,36 @@ export default function Control({ data, onImdActivate, connected }) {
         </div>
       </div>
 
-      {/* Modal PIN - IMD */}
-      {showPinModal && (
+      {/* Elegir qué evaporativo revisar (zona con varios) */}
+      {imdSelectZone !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg"
-          onClick={() => setShowPinModal(false)}>
+          onClick={() => setImdSelectZone(null)}>
           <div onClick={e => e.stopPropagation()}
-            className="w-[300px] rounded-3xl border border-white/10 p-6 bg-[#060c12] shadow-2xl">
-            <p className="text-white/30 text-xs tracking-widest uppercase mb-1 text-center">Acceso restringido</p>
-            <p className="text-white text-xl font-black mb-6 text-center">Modo IMD</p>
-            <div className="flex justify-center gap-3 mb-6">
-              {[0,1,2,3].map(i => (
-                <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all
-                  ${pinError ? 'border-red-500 bg-red-500' :
-                  pin.length > i ? 'border-[#088fc3] bg-[#088fc3]' : 'border-white/20 bg-transparent'}`} />
-              ))}
+            className="w-[360px] rounded-3xl border border-white/10 p-6 bg-[#060c12] shadow-2xl">
+            <p className="text-white/30 text-xs tracking-widest uppercase mb-1 text-center">Modo IMD</p>
+            <p className="text-white text-xl font-black mb-2 text-center">¿Qué evaporativo quiere revisar?</p>
+            <p className="text-white/40 text-xs mb-5 text-center">Los demás de la zona seguirán funcionando con normalidad</p>
+            <div className="flex flex-col gap-2">
+              {data.coolers.filter(c => c.zone_id === imdSelectZone).map(c => {
+                const broken = Number(c.broken_cooler) === 1
+                const nocomm = Number(c.comms_lost) === 1
+                const fanOnlyC = Number(c.fault_solenoid) === 1 || Number(c.fault_pump) === 1
+                return (
+                  <button key={c.unit_id}
+                    onClick={() => { setImdSelectZone(null); onImdActivate(c.unit_id) }}
+                    className={`flex items-center justify-between px-4 py-3 rounded-xl border cursor-pointer transition-all
+                      ${broken || nocomm ? 'bg-red-500/10 border-red-500/40 hover:bg-red-500/20'
+                        : fanOnlyC ? 'bg-yellow-500/10 border-yellow-500/40 hover:bg-yellow-500/20'
+                        : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+                    <span className="text-white font-bold">Evaporativo #{c.unit_id} <span className="text-white/40 font-normal text-sm">{c.model}</span></span>
+                    <span className={`text-xs font-bold ${broken || nocomm ? 'text-red-400' : fanOnlyC ? 'text-yellow-400' : 'text-[#088fc3]'}`}>
+                      {broken ? 'AVERÍA' : nocomm ? 'SIN COMUNICACIÓN' : fanOnlyC ? 'SOLO FAN' : 'OK'}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {[1,2,3,4,5,6,7,8,9,'⌫',0,''].map((k, i) => (
-                k === '' ? <div key={i} /> :
-                <button key={i} onClick={() => {
-                  if (k === '⌫') { setPin(p => p.slice(0,-1)); setPinError(false); return }
-                  if (pin.length >= 4) return
-                  const newPin = pin + k
-                  setPin(newPin)
-                  if (newPin.length === 4) confirmPin(newPin)
-                }}
-                  className={`h-12 rounded-xl font-bold text-lg cursor-pointer transition-all
-                    ${k === '⌫' ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-white/8 text-white hover:bg-white/15'}`}>
-                  {k}
-                </button>
-              ))}
-            </div>
-            {pinError && <p className="text-red-400 text-xs text-center mt-3">PIN incorrecto</p>}
-            <button onClick={() => { setShowPinModal(false); setPin(''); setPinError(false) }}
+            <button onClick={() => setImdSelectZone(null)}
               className="w-full mt-4 py-2 rounded-xl bg-white/5 text-white/40 text-sm cursor-pointer hover:bg-white/10">
               Cancelar
             </button>

@@ -126,44 +126,6 @@ int     ft_modbus_enqueue(t_modbus_queue *queue, t_modbus_cmd_type type, int uni
     return (0);
 }
 
-// int     ft_modbus_enqueue(t_modbus_queue *queue, t_modbus_cmd_type type, int unit_id, int addr, int value)
-// {
-//     t_modbus_cmd    *cmd;
-
-//     cmd = malloc(sizeof(t_modbus_cmd));
-//     if (!cmd)
-//         return (-1);
-
-//     cmd->type = type;
-//     cmd->unit_id = unit_id;
-//     cmd->addr = addr;
-//     cmd->value = value;
-//     cmd->next = NULL;
-
-//     pthread_mutex_lock(&queue->mutex);
-
-//     if (type == CMD_HEARTBEAT && queue->head != NULL)
-//     {
-//         cmd->next = queue->head;
-//         queue->head = cmd;
-//     }
-//     else if (queue->tail == NULL)            // Cola vacía
-//     {
-//         queue->head = cmd;
-//         queue->tail = cmd;
-//     }
-//     else
-//     {
-//         queue->tail->next = cmd;
-//         queue->tail = cmd;
-//     }
-//     queue->size++;
-
-//     pthread_cond_signal(&queue->cond);      // despertar al worker
-//     pthread_mutex_unlock(&queue->mutex);
-//     return (0);
-// }
-
 t_modbus_cmd    *ft_modbus_dequeue(t_modbus_queue *queue)
 {
     t_modbus_cmd    *cmd = queue->head;
@@ -223,11 +185,16 @@ void    *ft_modbus_worker(void *arg)
             case CMD_HEARTBEAT:
             case CMD_WRITE:
             case CMD_WRITE_IMD:
+            case CMD_WRITE_USER:
             {
                 int cidx = ft_find_cooler(smartgreen, cmd->unit_id);
 
                 // 1. En IMD: solo pasan las órdenes del técnico 
                 if (cidx != -1 && smartgreen->coolers[cidx].imd && cmd->type != CMD_WRITE_IMD)
+                    break;
+
+                // 1a. Apagado por el usuario: el control de la zona no le llega (sí sus órdenes directas)
+                if (cidx != -1 && smartgreen->coolers[cidx].user_off && cmd->type == CMD_WRITE)
                     break;
 
                 // 2. Averías (el técnico desde el IMD sí puede)
@@ -269,7 +236,11 @@ void    *ft_modbus_worker(void *arg)
                     } while (rc == -1 && ++tries < max_tries);
 
                     if (rc == -1 && cmd->type != CMD_HEARTBEAT)
+                    {       
                         printf("MODBUS WRITE FALLIDA definitivamente addr=%d value=%d\n", cmd->addr, cmd->value);
+                        if (cidx != -1 && cmd->type == CMD_WRITE)
+                            smartgreen->coolers[cidx].need_resync = 1;
+                    }
 
                     // Heartbeat: contar fallos SOLO si la placa contesta a las lecturas
                     if (cmd->type == CMD_HEARTBEAT && cidx != -1)

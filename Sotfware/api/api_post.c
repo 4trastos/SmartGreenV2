@@ -1,5 +1,64 @@
 #include "../incl/smartgreen.h"
 
+// Apaga o vuelve a encender UN evaporativo dentro de su zona: {"action":"OFF"} / {"action":"ON"}
+// El encendido de la instalación es siempre por zona; esto solo aparta o reincorpora un equipo
+enum MHD_Result api_post_cooler_onoff(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size)
+{
+    char    action[8] = {0};
+    char    sql[128];
+    int     idx = ft_find_cooler(smartgreen, unit_id);
+    int     z;
+
+    if (idx == -1)
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Cooler not found\"}"));
+    if (!body || body_size == 0 || sscanf(body, "{\"action\":\"%7[^\"]\"}", action) != 1)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}"));
+    z = ft_find_zone(smartgreen, smartgreen->coolers[idx].zone_id);
+    if (z == -1)
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Zone not found\"}"));
+    if (strcmp(smartgreen->zone_params[z].on_off, "ON") != 0)
+        return (api_send_response(connection, MHD_HTTP_CONFLICT, "{\"error\":\"La zona esta apagada: encienda la zona\"}"));
+
+    if (strcmp(action, "OFF") == 0)
+    {
+        smartgreen->coolers[idx].user_off = 1;
+        smartgreen->coolers[idx].last_off = get_timestamp();          // para el drenaje de seguridad
+        snprintf(sql, sizeof(sql), "UPDATE cooler_state SET last_off=%ld WHERE unit_id=%d", (long)smartgreen->coolers[idx].last_off, unit_id);
+        sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
+        // Parar solo este: fan 0 primero, luego todo cerrado
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_USER, unit_id, 51, 0);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_USER, unit_id, 52, 0);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_USER, unit_id, 50, REG50_SOLENOID_OFF);
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_USER, unit_id, 49, REG49_APAGADO);
+        printf("[ONOFF] Evaporativo unit=%d apagado por el usuario (zona %d sigue encendida)\n", unit_id, smartgreen->zone_params[z].zone_id); fflush(stdout);
+
+        // Si ya no queda ningún evaporativo funcionando en la zona, la zona pasa a OFF
+        int running = 0;
+        for (int i = 0; i < smartgreen->num_coolers; i++)
+            if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[z].zone_id && !smartgreen->coolers[i].user_off)
+                running = 1;
+        if (!running)
+        {
+            pthread_mutex_lock(&smartgreen->data_mutex);
+            ft_strcpy(smartgreen->zone_params[z].on_off, "OFF", sizeof(smartgreen->zone_params->on_off));
+            db_update_zone_params(smartgreen, &smartgreen->zone_params[z]);
+            pthread_mutex_unlock(&smartgreen->data_mutex);
+            printf("[ONOFF] Zona %d sin evaporativos encendidos: pasa a OFF\n", smartgreen->zone_params[z].zone_id); fflush(stdout);
+        }
+    }
+    else
+    {
+        // Reincorporar: vuelve al control de la zona, y el RESYNC le envía su estado
+        smartgreen->coolers[idx].user_off = 0;
+        smartgreen->coolers[idx].last_off = 0;
+        snprintf(sql, sizeof(sql), "UPDATE cooler_state SET last_off=0 WHERE unit_id=%d", unit_id);
+        sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
+        smartgreen->coolers[idx].need_resync = 1;
+        printf("[ONOFF] Evaporativo unit=%d reincorporado a la zona %d\n", unit_id, smartgreen->zone_params[z].zone_id); fflush(stdout);
+    }
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}
+
 // Entra o sale del IMD un solo evaporativo: {"action":"ENTER"} / {"action":"EXIT"}
 enum MHD_Result api_post_cooler_imd(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size)
 {

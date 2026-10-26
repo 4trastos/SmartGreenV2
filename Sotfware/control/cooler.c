@@ -311,25 +311,28 @@ void    *ft_drain_thread(void *arg)
 
     if (args->reason == DRAIN_SAFETY)
     {
-        int zone_on = 0;
+        int working = 0;
 
         if (drain_delay <= 0)
             drain_delay = 60;
         printf("DRAIN SAFETY: abrir drain %ds\n", drain_delay); fflush(stdout);
-        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, 0);                    // solenoid=OFF, drain=OPEN
+        ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_USER, unit_id, 50, 0);                    // solenoid=OFF, drain=OPEN
 
-        // Esperar, pero abortar si encienden la zona (el prewet toma el control del R50)
-        for (int s = 0; s < drain_delay && !zone_on; s++)
+        // Esperar, pero abortar si ESTE evaporativo vuelve a funcionar
+        // (zona encendida y no apagado por el usuario: el prewet toma el control del R50)
+        for (int s = 0; s < drain_delay && !working; s++)
         {
             sleep(1);
             pthread_mutex_lock(&smartgreen->data_mutex);
             zone_idx = ft_find_zone(smartgreen, args->zone_id);
-            zone_on = (zone_idx != -1 && strcmp(smartgreen->zone_params[zone_idx].on_off, "ON") == 0);
+            int ci = ft_find_cooler(smartgreen, unit_id);
+            working = (zone_idx != -1 && strcmp(smartgreen->zone_params[zone_idx].on_off, "ON") == 0
+                && ci != -1 && !smartgreen->coolers[ci].user_off);
             pthread_mutex_unlock(&smartgreen->data_mutex);
         }
 
-        if (zone_on)
-            printf("DRAIN SAFETY abortado: zona encendida\n");
+        if (working)
+            printf("DRAIN SAFETY abortado: el evaporativo vuelve a funcionar\n");
         else
         {
             // 🔴 Avería GRAVE válvula de drenaje: tras el vaciado sigue habiendo agua
@@ -350,7 +353,7 @@ void    *ft_drain_thread(void *arg)
             }
             else
             {
-                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, unit_id, 50, REG50_SOLENOID_OFF);  // drenaje cerrado
+                ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_USER, unit_id, 50, REG50_SOLENOID_OFF);  // drenaje cerrado
                 printf("DRAIN SAFETY completado (sal=%.1f)\n", sal);
             }
         }
@@ -536,7 +539,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
 
         if (smartgreen->setup_mode)
             for (int i = 0; i < smartgreen->num_coolers; i++)
-                if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd)
+                if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd && !smartgreen->coolers[i].user_off)
                 {
                     uint16_t r54;
                     if (ft_probe_retry(smartgreen, smartgreen->coolers[i].unit_id, 54, 1, &r54, 2) == 0)
@@ -546,7 +549,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
                     }
                 }
         for (int i = 0; i < smartgreen->num_coolers; i++)
-            if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd)
+            if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd && !smartgreen->coolers[i].user_off)
             {
                 printf("PREWET agua cooler unit=%d water_present=%d salinity_us=%.1f\n", smartgreen->coolers[i].unit_id,
                     smartgreen->coolers[i].water_present, smartgreen->coolers[i].salinity_us); fflush(stdout);
@@ -565,7 +568,7 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
         char msg[128];
 
         for (int i = 0; i < smartgreen->num_coolers; i++)
-            if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd && smartgreen->coolers[i].salinity_us < 10.0f)
+            if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd && smartgreen->coolers[i].salinity_us < 10.0f && !smartgreen->coolers[i].user_off)
             {
                 if (smartgreen->setup_mode)
                 {
