@@ -136,6 +136,10 @@ void    scheduler_run(t_smartgreen *smartgreen)
     smartgreen->read_interval = read_interval;
 
     db_load_cooler_faults(smartgreen);      // averías, avisos y huella guardados
+    smartgreen->bus_events = db_read_config(smartgreen, "bus_events");
+    smartgreen->bus_events_since = db_read_config(smartgreen, "bus_events_since");
+    if (smartgreen->bus_events < 0) smartgreen->bus_events = 0;
+    if (smartgreen->bus_events_since < 0) smartgreen->bus_events_since = 0;
 
     while (!g_sigint_received && !g_sigterm_received && !g_update_pending)
     {

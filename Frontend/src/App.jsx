@@ -138,7 +138,7 @@ function PinModal({ onSuccess, onCancel }) {
 }
 
 // Pantalla roja: TODOS los evaporativos están averiados o sin comunicación
-function BrokenScreen({ coolers, comms, onTech }) {
+function BrokenScreen({ coolers, comms, bus, onTech }) {
   const plural = coolers.length > 1
   const ids = coolers.map(c => `#${c.unit_id}`).join(', ')
 
@@ -149,9 +149,11 @@ function BrokenScreen({ coolers, comms, onTech }) {
         {comms ? 'SIN COMUNICACIÓN' : 'AVERÍA GRAVE'}
       </p>
       <p className="text-white/80 text-xl text-center mb-2 px-8">
-        {comms
-          ? 'Revise la alimentación del equipo. Si persiste, llame al servicio técnico'
-          : 'Llame al servicio técnico'}
+        {bus
+          ? 'Ningún equipo responde. Revise el cable del bus y su conexión al controlador'
+          : comms
+            ? 'Revise la alimentación del equipo. Si persiste, llame al servicio técnico'
+            : 'Llame al servicio técnico'}
       </p>
       <p className="text-white/50 text-sm text-center mb-10">
         {comms
@@ -377,6 +379,7 @@ export default function App() {
         <BrokenScreen
           coolers={outCoolers}
           comms={!anyBroken}
+          bus={Number(data.status?.bus_lost) === 1}
           onTech={() => setPendingImdUnit(outCoolers[0].unit_id)} />
       )}
 

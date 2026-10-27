@@ -178,9 +178,10 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
     }
     offset += snprintf(buffer + offset, sizeof(buffer) - offset,
         "\"status\":{\"alarm_level\":%d,\"alarm_text\":\"%s\","
-        "\"modbus_connected\":%d}}",
+        "\"modbus_connected\":%d,\"bus_lost\":%d}}",
         alarm_level, alarm_text,
-        smartgreen->modbus_ctx != NULL ? 1 : 0
+        smartgreen->modbus_ctx != NULL ? 1 : 0,
+        smartgreen->bus_lost
     );
 
     ft_ws_broadcast(smartgreen, buffer);

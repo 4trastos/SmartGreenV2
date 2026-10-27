@@ -317,6 +317,9 @@ typedef struct  s_cooler_state
     time_t              comms_lost_since;
     int                 comms_events;                   // cortes en la ventana de 24 h
     time_t              comms_events_since;
+    int                 power_events;                   // cortes por falta de TENSIÓN (la placa se reinició) en la ventana de 24 h
+    time_t              power_events_since;
+    int                 lost_in_bus;                    // la pérdida actual es parte de un fallo del BUS (no se cuenta a la placa)
     int                 need_resync;                    // 1 = reenviar el estado (placa recuperada o sustituida)
     int                 hb_fail;                        // heartbeats fallidos seguidos (con la placa contestando)
     int                 hb_disabled;                    // 1 = la placa no acepta heartbeat → no se envía
@@ -376,6 +379,10 @@ typedef struct s_smartgreen
     char                active_token[65];           // token activo
     time_t              token_expiry;               // timestamp expiración
     int                 setup_water_fail;
+    int                 bus_lost;                   // 1 = ningún equipo del bus contesta (cable común o conexión al controlador)
+    time_t              bus_lost_since;
+    int                 bus_events;                 // cortes del bus en la ventana de 24 h
+    time_t              bus_events_since;
 }   t_smartgreen;
 
 typedef struct s_prewet_args
@@ -452,6 +459,7 @@ double              calculate_salinity_ppm(int raw_value);
 double              calculate_salinity_us(int raw_value);
 char                *ft_model_name(int cpmd_code);
 int                 ft_is_safe_write(int addr, int value);
+void                ft_check_bus(t_smartgreen *smartgreen, time_t now);
 
 /*  DATABASE    */
 int                 db_init(t_smartgreen *smartgreen);

@@ -100,6 +100,8 @@ const char *SCHEMA_SQL =
     "    comms_lost             INTEGER DEFAULT 0,\n"
     "    comms_events           INTEGER DEFAULT 0,\n"
     "    comms_events_since     INTEGER DEFAULT 0,\n"
+    "    power_events           INTEGER DEFAULT 0,\n"
+    "    power_events_since     INTEGER DEFAULT 0,\n"
     "    FOREIGN KEY (zone_id) REFERENCES zones(id)\n"
     ");\n"
     "\n"

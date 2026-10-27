@@ -15,11 +15,12 @@ int     ft_cooler_silent(t_cooler_state *c)
 // Guarda el estado de comunicación en la BD (sobrevive a reinicios del controlador)
 void    ft_save_comms_state(t_smartgreen *smartgreen, int i)
 {
-    char sql[200];
+    char            sql[300];
+    t_cooler_state  *c = &smartgreen->coolers[i];
 
-    snprintf(sql, sizeof(sql), "UPDATE cooler_state SET comms_lost=%d, comms_events=%d, comms_events_since=%ld WHERE unit_id=%d",
-        smartgreen->coolers[i].comms_lost, smartgreen->coolers[i].comms_events,
-        (long)smartgreen->coolers[i].comms_events_since, smartgreen->coolers[i].unit_id);
+    snprintf(sql, sizeof(sql),
+        "UPDATE cooler_state SET comms_lost=%d, comms_events=%d, comms_events_since=%ld, power_events=%d, power_events_since=%ld WHERE unit_id=%d",
+        c->comms_lost, c->comms_events, (long)c->comms_events_since, c->power_events, (long)c->power_events_since, c->unit_id);
     sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
 }
 
@@ -70,66 +71,178 @@ void    ft_check_board(t_smartgreen *smartgreen, int i)
     sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
 }
 
-void    ft_check_comms(t_smartgreen *smartgreen, int i, time_t now)
+// Tiempo sin respuesta para dar por perdida la comunicación (config, por defecto 60 s)
+static int  ft_lost_seconds(t_smartgreen *smartgreen)
 {
-    static int      lost_s = -1;
-    t_cooler_state  *c = &smartgreen->coolers[i];
-    char            msg[256];
-    time_t          ref;
-    int             answering;
+    static int lost_s = -1;
 
-    if (smartgreen->setup_mode)
-        return;
     if (lost_s == -1)
     {
         lost_s = db_read_config(smartgreen, "comms_lost_seconds");
         if (lost_s <= 0)
             lost_s = COMMS_LOST_SECONDS;
     }
-    if (c->watch_since == 0)
-        c->watch_since = now;                           // empezamos a vigilar (arranque o setup)
+    return (lost_s);
+}
 
-    // ¿Ha contestado la placa DE VERDAD hace poco? (lectura real, no el arranque)
+// Cuenta un evento en una ventana de 24 h; devuelve cuántos lleva
+static int  ft_count_event(int *events, time_t *since, time_t now)
+{
+    if (now - *since > COMMS_WINDOW)
+    {
+        *events = 0;
+        *since = now;
+    }
+    return (++(*events));
+}
+
+// ¿Ningún equipo del bus contesta? (todos los coolers sin respuesta y todos los sensores fallando)
+// Con menos de 2 equipos no se puede distinguir un fallo del bus de uno de la placa
+static int  ft_all_silent(t_smartgreen *smartgreen)
+{
+    if (smartgreen->num_coolers + smartgreen->num_sensors < 2 || smartgreen->num_coolers == 0)
+        return (0);
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+        if (!ft_cooler_silent(&smartgreen->coolers[i]))
+            return (0);
+    for (int s = 0; s < smartgreen->num_sensors; s++)
+        if (smartgreen->sensors[s].error_count == 0)
+            return (0);
+    return (1);
+}
+
+// FALLO DEL BUS: caen todos los equipos a la vez → el problema es el cable común o la conexión al controlador.
+// Un solo aviso, y NO se suma corte a ninguna placa (si no, un cable defectuoso dejaría todos los equipos averiados)
+void    ft_check_bus(t_smartgreen *smartgreen, time_t now)
+{
+    char    msg[256];
+    int     silent = ft_all_silent(smartgreen);
+
+    if (smartgreen->setup_mode)
+        return;
+    if (!smartgreen->bus_lost && silent)
+    {
+        time_t newest = 0;
+
+        for (int i = 0; i < smartgreen->num_coolers; i++)
+        {
+            t_cooler_state *c = &smartgreen->coolers[i];
+            time_t ref = c->last_ok_read ? c->last_ok_read : c->watch_since;
+            if (ref > newest)
+                newest = ref;
+        }
+        if (newest && now - newest < ft_lost_seconds(smartgreen))
+            return;                                             // todavía no ha pasado el tiempo de aviso
+        smartgreen->bus_lost = 1;
+        smartgreen->bus_lost_since = newest;
+        for (int i = 0; i < smartgreen->num_coolers; i++)
+        {
+            t_cooler_state *c = &smartgreen->coolers[i];
+            c->lost_in_bus = 1;
+            if (!c->comms_lost)
+            {
+                c->comms_lost = 1;
+                c->comms_lost_since = c->last_ok_read ? c->last_ok_read : c->watch_since;
+            }
+            ft_save_comms_state(smartgreen, i);
+        }
+        int n = ft_count_event(&smartgreen->bus_events, &smartgreen->bus_events_since, now);
+        db_update_config(smartgreen, "bus_events", smartgreen->bus_events);
+        db_update_config(smartgreen, "bus_events_since", (int)smartgreen->bus_events_since);
+        snprintf(msg, sizeof(msg), "🔴 Sin comunicacion con NINGUN equipo (corte %d/%d en 24 h) — revise el cable del bus y su conexion al controlador",
+            n, COMMS_MAX_EVENTS);
+        db_save_error(smartgreen, 0, msg);
+        printf("[BUS] %s\n", msg); fflush(stdout);
+        if (n >= COMMS_MAX_EVENTS)
+        {
+            snprintf(msg, sizeof(msg), "🔴 CRITICO: Cortes de comunicacion repetidos en todo el sistema (%d en 24 h) — revise el cable del bus y su conexion al controlador", n);
+            for (int i = 0; i < smartgreen->num_coolers; i++)
+                ft_cooler_fault(smartgreen, i, msg, 1);
+        }
+    }
+    else if (smartgreen->bus_lost && !silent)
+    {
+        smartgreen->bus_lost = 0;
+        snprintf(msg, sizeof(msg), "🟢 Comunicacion con el bus recuperada tras %ld s", (long)(now - smartgreen->bus_lost_since));
+        db_save_error(smartgreen, 0, msg);
+        printf("[BUS] %s\n", msg); fflush(stdout);
+    }
+}
+
+// Comunicación de UNA placa. La causa de un corte se sabe AL VOLVER:
+//   - la placa se reinició (R27 sube) → se quedó SIN TENSIÓN
+//   - no se reinició                  → fallo de COMUNICACIÓN (cable o conexión)
+//   - cayó con todo el bus            → fallo del BUS (lo cuenta ft_check_bus, no la placa)
+void    ft_check_comms(t_smartgreen *smartgreen, int i, time_t now)
+{
+    t_cooler_state  *c = &smartgreen->coolers[i];
+    int             lost_s = ft_lost_seconds(smartgreen);
+    char            msg[256];
+    time_t          ref;
+    int             answering;
+
+    if (smartgreen->setup_mode)
+        return;
+    if (c->watch_since == 0)
+        c->watch_since = now;
     answering = (c->last_ok_read != 0 && now - c->last_ok_read < lost_s);
     ref = c->last_ok_read ? c->last_ok_read : c->watch_since;
 
-    if (!c->comms_lost && !answering && now - ref >= lost_s)
+    // PÉRDIDA (si caen todos, no se avisa aquí: es un fallo del bus y lo gestiona ft_check_bus)
+    if (!c->comms_lost && !answering && now - ref >= lost_s && !ft_all_silent(smartgreen))
     {
-        // Corte NUEVO (si venía cortado antes del reinicio, comms_lost ya es 1 y no se cuenta otra vez)
-        if (now - c->comms_events_since > COMMS_WINDOW)
-        {
-            c->comms_events = 0;
-            c->comms_events_since = now;
-        }
-        c->comms_events++;
         c->comms_lost = 1;
         c->comms_lost_since = ref;
+        c->lost_in_bus = 0;
         ft_save_comms_state(smartgreen, i);
-        if (c->comms_events >= COMMS_MAX_EVENTS)
+        snprintf(msg, sizeof(msg), "🔴 Sin comunicacion con el evaporativo unit_id=%d — revise su cable y su alimentacion", c->unit_id);
+        db_save_error(smartgreen, c->unit_id, msg);
+        printf("[COMMS] %s\n", msg); fflush(stdout);
+    }
+    // RECUPERACIÓN: aquí se decide la causa y se cuenta
+    else if (c->comms_lost && answering)
+    {
+        time_t  since = c->comms_lost_since ? c->comms_lost_since : c->watch_since;
+        long    secs = (long)(now - since);
+        int     rebooted = (c->prev_cold_starts >= 0 && c->cold_starts > c->prev_cold_starts);
+        int     n;
+
+        c->comms_lost = 0;
+        c->need_resync = 1;                                     // pudo perder tensión o el estado: reenviar
+        if (c->lost_in_bus)
         {
-            snprintf(msg, sizeof(msg), "🔴 CRITICO: Cooler unit_id=%d cortes de comunicacion repetidos (%d en 24 h) — revisar cable o placa",
-                c->unit_id, c->comms_events);
-            ft_cooler_fault(smartgreen, i, msg, 1);
+            c->lost_in_bus = 0;                                 // ya contado como fallo del bus
+            printf("[COMMS] unit_id=%d recuperado tras %ld s (fallo del bus)\n", c->unit_id, secs); fflush(stdout);
+        }
+        else if (rebooted)
+        {
+            n = ft_count_event(&c->power_events, &c->power_events_since, now);
+            snprintf(msg, sizeof(msg), "🟢 Evaporativo unit_id=%d recuperado tras %ld s: se quedo SIN TENSION (corte %d/%d en 24 h)",
+                c->unit_id, secs, n, COMMS_MAX_EVENTS);
+            db_save_error(smartgreen, c->unit_id, msg);
+            printf("[COMMS] %s\n", msg); fflush(stdout);
+            if (n >= COMMS_MAX_EVENTS)
+            {
+                snprintf(msg, sizeof(msg), "🔴 CRITICO: El evaporativo unit_id=%d se queda sin tension repetidamente (%d en 24 h) — revise su alimentacion y su placa",
+                    c->unit_id, n);
+                ft_cooler_fault(smartgreen, i, msg, 1);
+            }
         }
         else
         {
-            snprintf(msg, sizeof(msg), "🔴 Sin comunicacion con la placa unit_id=%d (corte %d/%d en 24 h)",
-                c->unit_id, c->comms_events, COMMS_MAX_EVENTS);
+            n = ft_count_event(&c->comms_events, &c->comms_events_since, now);
+            snprintf(msg, sizeof(msg), "🟢 Evaporativo unit_id=%d recuperado tras %ld s: fallo de COMUNICACION, cable o conexion (corte %d/%d en 24 h)",
+                c->unit_id, secs, n, COMMS_MAX_EVENTS);
             db_save_error(smartgreen, c->unit_id, msg);
             printf("[COMMS] %s\n", msg); fflush(stdout);
+            if (n >= COMMS_MAX_EVENTS)
+            {
+                snprintf(msg, sizeof(msg), "🔴 CRITICO: Cortes de comunicacion repetidos con el evaporativo unit_id=%d (%d en 24 h) — revise su cable y sus conexiones",
+                    c->unit_id, n);
+                ft_cooler_fault(smartgreen, i, msg, 1);
+            }
         }
-    }
-    else if (c->comms_lost && answering)               // vuelve a contestar (lectura real)
-    {
-        time_t since = c->comms_lost_since ? c->comms_lost_since : c->watch_since;
-
-        c->comms_lost = 0;
-        c->need_resync = 1;                             // pudo perder tensión: reenviar estado
         ft_save_comms_state(smartgreen, i);
-        snprintf(msg, sizeof(msg), "🟢 Comunicacion recuperada con la placa unit_id=%d tras %ld s",
-            c->unit_id, (long)(now - since));
-        db_save_error(smartgreen, c->unit_id, msg);
-        printf("[COMMS] %s\n", msg); fflush(stdout);
     }
 }
 
@@ -221,7 +334,7 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
             sal_trigger = 4275;
     }
 
-      if (nowater_s == -1)
+    if (nowater_s == -1)
     {
         nowater_s = db_read_config(smartgreen, "no_water_fault_seconds");
         if (nowater_s <= 0)
@@ -236,6 +349,8 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
     }
     else if (smartgreen->modbus_ctx && g_alarm_modbus)
         g_alarm_modbus = 0;
+    
+    ft_check_bus(smartgreen, now);
 
     // Coolers
     for (int i = 0; i < smartgreen->num_coolers; i++)

@@ -67,6 +67,8 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "drain_max_time",            600);                   // Tiempo maximo de drenado (salinidad)
     db_save_config(smartgreen, "comms_lost_seconds",        60);                    // sin comunicación → aviso
     db_save_config(smartgreen, "no_water_fault_seconds",    120);                   // sin agua funcionando → aviso de agua
+    db_save_config(smartgreen, "bus_events",                0);
+    db_save_config(smartgreen, "bus_events_since",          0);
 }
 
 int ft_init_data(t_smartgreen *smartgreen)
