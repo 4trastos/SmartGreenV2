@@ -455,14 +455,14 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
         float   tmax = is_ext ?  60.0f : 50.0f;
 
         // 🔴 sensor sin señal
-        if (!smartgreen->sensors[i].valid && !smartgreen->sensors[i].alarm_signal)
-        {
-            snprintf(msg, sizeof(msg), "🔴 CRITICO: Sensor sin señal sensor_id=%d", smartgreen->sensors[i].sensor_id);
-            db_save_error(smartgreen, smartgreen->sensors[i].sensor_id, msg);
-            smartgreen->sensors[i].alarm_signal = 1;
-        }
-        else if (smartgreen->sensors[i].valid && smartgreen->sensors[i].alarm_signal)
-            smartgreen->sensors[i].alarm_signal = 0;
+        // if (!smartgreen->sensors[i].valid && !smartgreen->sensors[i].alarm_signal)
+        // {
+        //     snprintf(msg, sizeof(msg), "🔴 CRITICO: Sensor sin señal sensor_id=%d", smartgreen->sensors[i].sensor_id);
+        //     db_save_error(smartgreen, smartgreen->sensors[i].sensor_id, msg);
+        //     smartgreen->sensors[i].alarm_signal = 1;
+        // }
+        // else if (smartgreen->sensors[i].valid && smartgreen->sensors[i].alarm_signal)
+        //     smartgreen->sensors[i].alarm_signal = 0;
 
         // 🟡 temperatura fuera de rango
         if (smartgreen->sensors[i].valid && (smartgreen->sensors[i].temperature < tmin || smartgreen->sensors[i].temperature > tmax) && !smartgreen->sensors[i].alarm_temp)

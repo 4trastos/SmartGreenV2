@@ -40,13 +40,6 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
         fprintf(stderr, "Set Slave data error: ( %s )\n", modbus_strerror(errno));
         return (-1);
     }
-    
-    // uint16_t tab_extras[10];
-    // modbus_read_registers(smartgreen->modbus_ctx, 799, 6, tab_extras);
-    // printf("[REG799] ");
-    // for (int i = 0; i < 6; i++)
-    //     printf("R%d=0x%04X ", 799+i, tab_extras[i]);
-    // printf("\n"); fflush(stdout);
 
     rc = modbus_read_registers(smartgreen->modbus_ctx, 0, MODBUS_COOLER_REGS, tab_reg);
     if (rc == -1)
@@ -75,16 +68,64 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
         smartgreen->coolers[unit_idx].hours_running += smartgreen->read_interval;
     snprintf(sql_hrs, sizeof(sql_hrs), "UPDATE cooler_state SET hours_running=%.1f WHERE unit_id=%d", smartgreen->coolers[unit_idx].hours_running, unit_id);
     sqlite3_exec(smartgreen->db, sql_hrs, NULL, NULL, NULL);
-    // db_save_cooler(smartgreen, &smartgreen->coolers[unit_idx]);
     pthread_mutex_unlock(&smartgreen->data_mutex);
     return (0);
 }
+
+// int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
+// {
+//     uint16_t    tab_reg[MODBUS_SENSOR_REGS];
+//     int         rc;
+//     char        msg[256];
+//     int         unit_idx = ft_find_sensor(smartgreen, unit_id);
+//     if (unit_idx == -1)
+//         return (-1);
+
+//     if (modbus_set_slave(smartgreen->modbus_ctx, unit_id) == -1)
+//     {
+//         fprintf(stderr, "Set Slave data error: ( %s )\n", modbus_strerror(errno));
+//         return (-1);
+//     }
+
+//     rc = modbus_read_registers(smartgreen->modbus_ctx, MODBUS_SENSOR_ADDR, MODBUS_SENSOR_REGS, tab_reg);
+//     if (rc == -1)
+//     {
+//         pthread_mutex_lock(&smartgreen->data_mutex); 
+//         if (!smartgreen->sensors[unit_idx].disabled)
+//             fprintf(stderr, "Error Modbus Read Register (Sensor): ( %s )\n", modbus_strerror(errno));
+//         smartgreen->sensors[unit_idx].error_count++;
+//         if (smartgreen->sensors[unit_idx].error_count > MAX_SENSOR_ERRORS)
+//         {
+//             smartgreen->sensors[unit_idx].disabled = 1;
+//             smartgreen->sensors[unit_idx].alarm_signal = 1;
+//             smartgreen->sensors[unit_idx].valid = 0;          
+//             smartgreen->sensors[unit_idx].temperature = 0.0f; 
+//             smartgreen->sensors[unit_idx].humidity = 0.0f;
+//             snprintf(msg, sizeof(msg), "🔴 CRITICO: Sensor sin señal sensor_id=%d", smartgreen->sensors[unit_idx].sensor_id);
+//             db_save_error(smartgreen, smartgreen->sensors[unit_idx].sensor_id, msg);
+//         }
+//         pthread_mutex_unlock(&smartgreen->data_mutex); 
+//         return (-1);
+//     }
+
+//     decode_sensor_state(tab_reg, &smartgreen->sensors[unit_idx]);
+//     pthread_mutex_lock(&smartgreen->data_mutex);
+//     smartgreen->sensors[unit_idx].disabled = 0;
+//     smartgreen->sensors[unit_idx].error_count = 0;
+//     smartgreen->sensors[unit_idx].alarm_signal = 0;
+//     smartgreen->sensors[unit_idx].last_read = get_timestamp();
+//     db_save_sensor(smartgreen, &smartgreen->sensors[unit_idx]);
+//     pthread_mutex_unlock(&smartgreen->data_mutex);
+//     return (0);
+// }
 
 int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
 {
     uint16_t    tab_reg[MODBUS_SENSOR_REGS];
     int         rc;
+    char        msg[256];
     int         unit_idx = ft_find_sensor(smartgreen, unit_id);
+
     if (unit_idx == -1)
         return (-1);
 
@@ -97,25 +138,36 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
     rc = modbus_read_registers(smartgreen->modbus_ctx, MODBUS_SENSOR_ADDR, MODBUS_SENSOR_REGS, tab_reg);
     if (rc == -1)
     {
-        pthread_mutex_lock(&smartgreen->data_mutex); 
-        if (!smartgreen->sensors[unit_idx].disabled)
-            fprintf(stderr, "Error Modbus Read Register (Sensor): ( %s )\n", modbus_strerror(errno));
+        modbus_flush(smartgreen->modbus_ctx);                   // limpiar restos de una respuesta a medias
+        pthread_mutex_lock(&smartgreen->data_mutex);
+        fprintf(stderr, "Error Modbus Read Register (Sensor): ( %s )\n", modbus_strerror(errno));
         smartgreen->sensors[unit_idx].error_count++;
         if (smartgreen->sensors[unit_idx].error_count > MAX_SENSOR_ERRORS)
         {
-            smartgreen->sensors[unit_idx].disabled = 1;
-            smartgreen->sensors[unit_idx].alarm_signal = 1;
-            smartgreen->sensors[unit_idx].valid = 0;          
-            smartgreen->sensors[unit_idx].temperature = 0.0f; 
-            smartgreen->sensors[unit_idx].humidity = 0.0f;  
-            // db_save_error(smartgreen, smartgreen->coolers[unit_idx].unit_id, modbus_strerror(errno));
+            smartgreen->sensors[unit_idx].valid = 0;
+            smartgreen->sensors[unit_idx].temperature = 0.0f;
+            smartgreen->sensors[unit_idx].humidity = 0.0f;
+            if (!smartgreen->sensors[unit_idx].alarm_signal)
+            {
+                // Aviso al perderlo DE VERDAD (una sola vez por pérdida)
+                smartgreen->sensors[unit_idx].alarm_signal = 1;
+                snprintf(msg, sizeof(msg), "🔴 Sensor sensor_id=%d sin señal. Revise el sensor y su cable. Si se ha desconectado y vuelto a conectar, quite y vuelva a dar corriente al Modulink para que el sensor vuelva a funcionar.",
+                    smartgreen->sensors[unit_idx].sensor_id);
+                db_save_error(smartgreen, smartgreen->sensors[unit_idx].sensor_id, msg);
+            }
         }
-        pthread_mutex_unlock(&smartgreen->data_mutex); 
+        pthread_mutex_unlock(&smartgreen->data_mutex);
         return (-1);
     }
 
     decode_sensor_state(tab_reg, &smartgreen->sensors[unit_idx]);
     pthread_mutex_lock(&smartgreen->data_mutex);
+    if (smartgreen->sensors[unit_idx].alarm_signal)
+    {
+        // Vuelve tras haberse dado por perdido: dejarlo en el historial
+        snprintf(msg, sizeof(msg), "🟢 Sensor sensor_id=%d recuperado", smartgreen->sensors[unit_idx].sensor_id);
+        db_save_error(smartgreen, smartgreen->sensors[unit_idx].sensor_id, msg);
+    }
     smartgreen->sensors[unit_idx].disabled = 0;
     smartgreen->sensors[unit_idx].error_count = 0;
     smartgreen->sensors[unit_idx].alarm_signal = 0;
