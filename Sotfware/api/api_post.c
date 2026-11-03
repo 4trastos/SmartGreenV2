@@ -194,6 +194,8 @@ enum MHD_Result api_post_cooler_rearm(t_smartgreen *smartgreen, struct MHD_Conne
     smartgreen->coolers[idx].fault_pump = 0;
     smartgreen->coolers[idx].comms_events = 0;
     smartgreen->coolers[idx].power_events = 0;
+    smartgreen->coolers[idx].water_stops = 0;
+    smartgreen->coolers[idx].water_stop = 0;
     smartgreen->bus_events = 0;                                         // el técnico ha revisado la instalación
     db_update_config(smartgreen, "bus_events", 0);
     pthread_mutex_unlock(&smartgreen->data_mutex);

@@ -208,6 +208,7 @@ void    *ft_drain_thread(void *arg)
     t_drain_args    *args = (t_drain_args *)arg;
     t_smartgreen    *smartgreen = args->smartgreen;
     int             unit_id = args->unit_id;
+    int             didx = ft_find_cooler(smartgreen, unit_id);
     int             zone_idx = 0;
     int             drain_delay = db_read_config(smartgreen, "salinity_drain_delay");
     int             trigger = db_read_config(smartgreen, "salinity_trigger");
@@ -218,6 +219,9 @@ void    *ft_drain_thread(void *arg)
     float           target = trigger - 200;
 
     printf("DRAIN THREAD ARRANCADO unit_id=%d reason=%d\n", unit_id, args->reason); fflush(stdout);
+
+    if (didx != -1)
+        smartgreen->coolers[didx].draining = 1;
 
     if (args->reason == DRAIN_PERIODIC || args->reason == DRAIN_SALINITY)
     {
@@ -240,6 +244,8 @@ void    *ft_drain_thread(void *arg)
         {
             printf("DRAIN PERIODIC/SALINITY omitido omitido (modo FAN)\n"); fflush(stdout);
             free(args);
+            if (didx != -1)
+                smartgreen->coolers[didx].draining = 0;
             return (NULL);
         }
 
@@ -286,6 +292,8 @@ void    *ft_drain_thread(void *arg)
             if (cooler_idx != -1)
                 ft_cooler_fault(smartgreen, cooler_idx, msg, 1);       // grave: para el cooler, broken_cooler = 1
             free(args);
+            if (didx != -1)
+                smartgreen->coolers[didx].draining = 0;
             return (NULL);
         }
 
@@ -306,6 +314,8 @@ void    *ft_drain_thread(void *arg)
         }
         
         free(args);
+        if (didx != -1)
+            smartgreen->coolers[didx].draining = 0;
         return (NULL);
     }
 
@@ -359,10 +369,14 @@ void    *ft_drain_thread(void *arg)
         }
         fflush(stdout);
         free(args);
+        if (didx != -1)
+            smartgreen->coolers[didx].draining = 0;
         return (NULL);
     }
 
     free(args);
+    if (didx != -1)
+        smartgreen->coolers[didx].draining = 0;
     return (NULL);
 
 }
@@ -402,16 +416,12 @@ void    *prewet_thread(void *arg)
 
         if (rc == -2)
         {
-            // Sin agua: la zona sigue encendida, pero solo ventila (modo FAN)
+            // Sin agua en ningún evaporativo: cooler_prewet ya los ha dejado en AVERÍA A.
             pthread_mutex_lock(&smartgreen->data_mutex);
-            ft_strcpy(smartgreen->zone_params[zone_idx].cool_fan_mode, "FAN", sizeof(smartgreen->zone_params->cool_fan_mode));
-            smartgreen->zone_params[zone_idx].pump_on = 0;
-            if (smartgreen->zone_params[zone_idx].fan_speed_cmd <= 0)
-                smartgreen->zone_params[zone_idx].fan_speed_cmd = 3;
             ft_strcpy(smartgreen->zone_params[zone_idx].prewet_in_progress, "no", sizeof(smartgreen->zone_params->prewet_in_progress));
             db_update_zone_params(smartgreen, &smartgreen->zone_params[zone_idx]);
             pthread_mutex_unlock(&smartgreen->data_mutex);
-            printf("PREWET: avería solenoide → zona en modo FAN\n"); fflush(stdout);
+            printf("PREWET: sin agua en ningun evaporativo (averia A)\n"); fflush(stdout);
             ft_ws_broadcast_status(smartgreen);
             return (NULL);
         }
@@ -562,26 +572,38 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
             break;
     }
 
-    // 🟡 Avería solenoide / sin suministro: no ha llegado agua en prewet_max_wait
+    // Sin agua tras prewet_max_wait: AVERÍA A en los que no la tienen; la zona sigue con los que sí
     if (!all_water)
     {
-        char msg[128];
+        char    msg[256];
+        int     with_water_left = 0;
 
         for (int i = 0; i < smartgreen->num_coolers; i++)
-            if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd && smartgreen->coolers[i].salinity_us < 10.0f && !smartgreen->coolers[i].user_off)
+        {
+            if (smartgreen->coolers[i].zone_id != zone_id || smartgreen->coolers[i].imd || smartgreen->coolers[i].user_off)
+                continue;
+            if (smartgreen->coolers[i].salinity_us >= 10.0f)
             {
-                if (smartgreen->setup_mode)
-                {
-                    // Setup: es el resultado de la prueba, no una avería del equipo
-                    printf("[SETUP] Prueba de agua FALLIDA cooler unit_id=%d: no llega agua en %ds\n", smartgreen->coolers[i].unit_id, max_wait); fflush(stdout);
-                    smartgreen->setup_water_fail = smartgreen->coolers[i].unit_id;
-                    continue;
-                }
-                snprintf(msg, sizeof(msg), "🟡 AVISO: Cooler unit_id=%d sin suministro de agua (solenoide) — solo modo FAN", smartgreen->coolers[i].unit_id);
-                ft_cooler_warning(smartgreen, i, msg, 0);
+                with_water_left = 1;
+                continue;
             }
-        printf("PREWET abortado: no llega agua en %ds\n", max_wait); fflush(stdout);
-        return (-2);
+            if (smartgreen->setup_mode)
+            {
+                // Setup: es el resultado de la prueba, no una avería del equipo
+                printf("[SETUP] Prueba de agua FALLIDA cooler unit_id=%d: no llega agua en %ds\n", smartgreen->coolers[i].unit_id, max_wait); fflush(stdout);
+                smartgreen->setup_water_fail = smartgreen->coolers[i].unit_id;
+                continue;
+            }
+            snprintf(msg, sizeof(msg), "🔴 CRITICO: Evaporativo unit_id=%d NO LLEGA AGUA en el prewet (%d s) — revise el suministro, el solenoide y el sensor de agua",
+                smartgreen->coolers[i].unit_id, max_wait);
+            ft_cooler_fault(smartgreen, i, msg, 1);
+        }
+        if (!with_water_left || smartgreen->setup_mode)
+        {
+            printf("PREWET abortado: no llega agua en %ds\n", max_wait); fflush(stdout);
+            return (-2);
+        }
+        printf("PREWET continua con los evaporativos que tienen agua\n"); fflush(stdout);
     }
 
     // PASO 4 — esperar prewet_delay_water

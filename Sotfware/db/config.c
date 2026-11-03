@@ -69,6 +69,8 @@ void    ft_init_config(t_smartgreen *smartgreen)
     db_save_config(smartgreen, "no_water_fault_seconds",    120);                   // sin agua funcionando → aviso de agua
     db_save_config(smartgreen, "bus_events",                0);
     db_save_config(smartgreen, "bus_events_since",          0);
+    db_save_config(smartgreen, "sensor_lost_seconds",       120);
+    db_save_config(smartgreen, "water_detect_seconds",      20);                    // segundos seguidos sin agua para parar el evaporativo
 }
 
 int ft_init_data(t_smartgreen *smartgreen)

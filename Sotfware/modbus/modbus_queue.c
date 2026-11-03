@@ -194,7 +194,7 @@ void    *ft_modbus_worker(void *arg)
                     break;
 
                 // 1a. Apagado por el usuario: el control de la zona no le llega (sí sus órdenes directas)
-                if (cidx != -1 && smartgreen->coolers[cidx].user_off && cmd->type == CMD_WRITE)
+                if (cidx != -1 && (smartgreen->coolers[cidx].user_off || smartgreen->coolers[cidx].water_stop) && cmd->type == CMD_WRITE)
                     break;
 
                 // 2. Averías (el técnico desde el IMD sí puede)

@@ -121,11 +121,21 @@ int     ft_modbus_read_cooler(t_smartgreen *smartgreen, int unit_id)
 
 int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
 {
-    uint16_t    tab_reg[MODBUS_SENSOR_REGS];
-    int         rc;
-    char        msg[256];
-    int         unit_idx = ft_find_sensor(smartgreen, unit_id);
+    static int      lost_s = -1;                // segundos sin lectura buena para darlo por perdido (config)
+    static time_t   started = 0;                // arranque: referencia para un sensor que aún no se ha leído
+    uint16_t        tab_reg[MODBUS_SENSOR_REGS];
+    int             rc;
+    char            msg[256];
+    int             unit_idx = ft_find_sensor(smartgreen, unit_id);
 
+    if (lost_s == -1)
+    {
+        lost_s = db_read_config(smartgreen, "sensor_lost_seconds");
+        if (lost_s <= 0)
+            lost_s = 120;
+    }
+    if (!started)
+        started = get_timestamp();
     if (unit_idx == -1)
         return (-1);
 
@@ -138,22 +148,25 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
     rc = modbus_read_registers(smartgreen->modbus_ctx, MODBUS_SENSOR_ADDR, MODBUS_SENSOR_REGS, tab_reg);
     if (rc == -1)
     {
+        t_sensor_state  *s = &smartgreen->sensors[unit_idx];
+        time_t          ref;
+
         modbus_flush(smartgreen->modbus_ctx);                   // limpiar restos de una respuesta a medias
         pthread_mutex_lock(&smartgreen->data_mutex);
         fprintf(stderr, "Error Modbus Read Register (Sensor): ( %s )\n", modbus_strerror(errno));
-        smartgreen->sensors[unit_idx].error_count++;
-        if (smartgreen->sensors[unit_idx].error_count > MAX_SENSOR_ERRORS)
+        s->error_count++;
+        ref = s->last_read ? s->last_read : started;
+        if (get_timestamp() - ref >= lost_s)
         {
-            smartgreen->sensors[unit_idx].valid = 0;
-            smartgreen->sensors[unit_idx].temperature = 0.0f;
-            smartgreen->sensors[unit_idx].humidity = 0.0f;
-            if (!smartgreen->sensors[unit_idx].alarm_signal)
+            s->valid = 0;
+            s->temperature = 0.0f;
+            s->humidity = 0.0f;
+            if (!s->alarm_signal)
             {
-                // Aviso al perderlo DE VERDAD (una sola vez por pérdida)
-                smartgreen->sensors[unit_idx].alarm_signal = 1;
+                s->alarm_signal = 1;
                 snprintf(msg, sizeof(msg), "🔴 Sensor sensor_id=%d sin señal. Revise el sensor y su cable. Si se ha desconectado y vuelto a conectar, quite y vuelva a dar corriente al Modulink para que el sensor vuelva a funcionar.",
-                    smartgreen->sensors[unit_idx].sensor_id);
-                db_save_error(smartgreen, smartgreen->sensors[unit_idx].sensor_id, msg);
+                    s->sensor_id);
+                db_save_error(smartgreen, s->sensor_id, msg);
             }
         }
         pthread_mutex_unlock(&smartgreen->data_mutex);

@@ -15,12 +15,14 @@ int     ft_cooler_silent(t_cooler_state *c)
 // Guarda el estado de comunicación en la BD (sobrevive a reinicios del controlador)
 void    ft_save_comms_state(t_smartgreen *smartgreen, int i)
 {
-    char            sql[300];
+    char            sql[400];
     t_cooler_state  *c = &smartgreen->coolers[i];
 
     snprintf(sql, sizeof(sql),
-        "UPDATE cooler_state SET comms_lost=%d, comms_events=%d, comms_events_since=%ld, power_events=%d, power_events_since=%ld WHERE unit_id=%d",
-        c->comms_lost, c->comms_events, (long)c->comms_events_since, c->power_events, (long)c->power_events_since, c->unit_id);
+        "UPDATE cooler_state SET comms_lost=%d, comms_events=%d, comms_events_since=%ld, power_events=%d, power_events_since=%ld, "
+        "water_stops=%d, water_stops_since=%ld WHERE unit_id=%d",
+        c->comms_lost, c->comms_events, (long)c->comms_events_since, c->power_events, (long)c->power_events_since,
+        c->water_stops, (long)c->water_stops_since, c->unit_id);
     sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
 }
 
@@ -94,6 +96,137 @@ static int  ft_count_event(int *events, time_t *since, time_t now)
         *since = now;
     }
     return (++(*events));
+}
+
+// Salidas de UN evaporativo, saltándose el control de su zona
+static void ft_water_outputs(t_smartgreen *smartgreen, int unit, int r50)
+{
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_USER, unit, 51, 0);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_USER, unit, 52, 0);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_USER, unit, 50, r50);
+    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE_USER, unit, 49, REG49_APAGADO);
+}
+
+void    ft_check_water(t_smartgreen *smartgreen, int i, time_t now)
+{
+    static int      detect_s = -1, refill_s = -1, wet_s = -1;
+    t_cooler_state  *c = &smartgreen->coolers[i];
+    int             z = ft_find_zone(smartgreen, c->zone_id);
+    char            msg[256];
+
+    if (detect_s == -1)
+    {
+        detect_s = db_read_config(smartgreen, "water_detect_seconds");
+        refill_s = db_read_config(smartgreen, "no_water_fault_seconds");
+        wet_s    = db_read_config(smartgreen, "prewet_delay_water");
+        if (detect_s <= 0) detect_s = 20;
+        if (refill_s <= 0) refill_s = 120;
+        if (wet_s <= 0)    wet_s = 30;
+    }
+    if (z == -1 || c->broken_cooler)
+        return;
+
+    // Si apagan la zona (o este evaporativo) durante la parada: cerrar el agua y salir de la parada
+    if (c->water_stop && (strcmp(smartgreen->zone_params[z].on_off, "ON") != 0 || c->user_off))
+    {
+        c->water_stop = 0;
+        c->no_water_since = 0;
+        ft_water_outputs(smartgreen, c->unit_id, REG50_SOLENOID_OFF);   // solenoide cerrado, todo parado
+        printf("[AGUA] Evaporativo unit_id=%d: parada de agua cancelada (apagado)\n", c->unit_id); fflush(stdout);
+        return;
+    }
+
+    // ── 1: parado, esperando el agua ──
+    if (c->water_stop == 1)
+    {
+        if (c->salinity_us >= 10.0f)
+        {
+            int n = ft_count_event(&c->water_stops, &c->water_stops_since, now);
+
+            ft_save_comms_state(smartgreen, i);
+            if (n >= COMMS_MAX_EVENTS)
+            {
+                c->water_stop = 0;                              // antes de ft_cooler_fault, para que sus órdenes pasen
+                snprintf(msg, sizeof(msg), "🔴 CRITICO: Evaporativo unit_id=%d se queda sin agua repetidamente (%d paradas en 24 h) — "
+                    "CAUDAL INSUFICIENTE: revise la presion del suministro, el filtro y el solenoide", c->unit_id, n);
+                ft_cooler_fault(smartgreen, i, msg, 1);
+                return;
+            }
+            c->water_stop = 2;                                  // agua de vuelta: mojar paneles antes de arrancar
+            c->water_stop_since = now;
+            snprintf(msg, sizeof(msg), "🟡 Evaporativo unit_id=%d: vuelve el agua (parada %d/%d en 24 h), reanudando",
+                c->unit_id, n, COMMS_MAX_EVENTS);
+            db_save_error(smartgreen, c->unit_id, msg);
+            printf("[AGUA] %s\n", msg); fflush(stdout);
+        }
+        else if (now - c->water_stop_since >= refill_s)
+        {
+            c->water_stop = 0;
+            snprintf(msg, sizeof(msg), "🔴 CRITICO: Evaporativo unit_id=%d NO LLEGA AGUA en %d s — revise el suministro, el solenoide y el sensor de agua",
+                c->unit_id, refill_s);
+            ft_cooler_fault(smartgreen, i, msg, 1);
+        }
+        return;
+    }
+
+    // ── 2: agua de vuelta, mojando los paneles (solenoide abierto) ──
+    if (c->water_stop == 2)
+    {
+        if (now - c->water_stop_since >= wet_s)
+        {
+            c->water_stop = 0;
+            c->no_water_since = 0;
+            c->need_resync = 1;                                 // el control de su zona vuelve a arrancarlo
+            printf("[AGUA] Evaporativo unit_id=%d reanudado\n", c->unit_id); fflush(stdout);
+        }
+        return;
+    }
+
+    // ── 0: funcionando. ¿Debería haber agua? ──
+    int with_water = strcmp(smartgreen->zone_params[z].on_off, "ON") == 0
+        && smartgreen->zone_params[z].pump_on                  // bomba ordenada (en AUTO la decide el control de humedad)
+        && strcmp(smartgreen->zone_params[z].cool_fan_mode, "FAN") != 0
+        && strcmp(smartgreen->zone_params[z].cool_fan_mode, "IMD") != 0
+        && strcmp(smartgreen->zone_params[z].prewet_in_progress, "yes") != 0
+        && !c->imd && !c->user_off && !c->draining && !c->comms_lost;
+
+    if (!with_water || c->salinity_us >= 10.0f)
+    {
+        c->no_water_since = 0;
+        return;
+    }
+    if (c->no_water_since == 0)
+    {
+        c->no_water_since = now;
+        return;
+    }
+    if (now - c->no_water_since < detect_s)
+        return;
+
+    // Sin agua 20 s seguidos: PARADA (proteger la bomba y no meter aire caliente)
+    c->water_stop = 1;
+    c->water_stop_since = now;
+    c->no_water_since = 0;
+    ft_water_outputs(smartgreen, c->unit_id, REG50_SOLENOID_ON);   // R50=24: solenoide abierto, drenaje cerrado, bomba y fan parados
+    snprintf(msg, sizeof(msg), "🟡 Evaporativo unit_id=%d sin agua: parado, intentando llenar (%d s)", c->unit_id, refill_s);
+    db_save_error(smartgreen, c->unit_id, msg);
+    printf("[AGUA] %s\n", msg); fflush(stdout);
+
+    // ¿Se han quedado sin agua TODOS los evaporativos que funcionan? → corte del suministro general
+    int total = 0, stopped = 0;
+    for (int k = 0; k < smartgreen->num_coolers; k++)
+    {
+        if (smartgreen->coolers[k].broken_cooler || smartgreen->coolers[k].user_off || smartgreen->coolers[k].comms_lost)
+            continue;
+        total++;
+        if (smartgreen->coolers[k].water_stop == 1)
+            stopped++;
+    }
+    if (total > 1 && stopped == total)
+    {
+        db_save_error(smartgreen, 0, "🟡 Ningun evaporativo recibe agua: posible CORTE DEL SUMINISTRO GENERAL (llave de paso)");
+        printf("[AGUA] Ningun evaporativo recibe agua: posible corte del suministro general\n"); fflush(stdout);
+    }
 }
 
 // ¿Ningún equipo del bus contesta? (todos los coolers sin respuesta y todos los sensores fallando)
@@ -407,29 +540,8 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
         else if ((smartgreen->coolers[i].salinity_us >= 10.0 || !with_water) && smartgreen->coolers[i].alarm_water)
             smartgreen->coolers[i].alarm_water = 0;
 
-        // 🟡 Sin agua MANTENIDO funcionando → proteger la bomba (no se distingue corte de agua de sensor roto)
-        if (with_water && smartgreen->coolers[i].salinity_us < 10.0)
-        {
-            if (smartgreen->coolers[i].no_water_since == 0)
-                smartgreen->coolers[i].no_water_since = now;
-            else if (now - smartgreen->coolers[i].no_water_since >= NO_WATER_FAULT_SECONDS && !smartgreen->coolers[i].fault_solenoid)
-            {
-                snprintf(msg, sizeof(msg), "🟡 AVISO: Cooler unit_id=%d sin agua %d s funcionando — revisar suministro, solenoide y sensor de agua. Solo modo FAN",
-                    smartgreen->coolers[i].unit_id, NO_WATER_FAULT_SECONDS);
-                ft_cooler_warning(smartgreen, i, msg, 0);          // para la bomba y cierra el agua
-                // La zona sigue encendida, pero solo ventilando (igual que en el prewet)
-                pthread_mutex_lock(&smartgreen->data_mutex);
-                ft_strcpy(smartgreen->zone_params[z].cool_fan_mode, "FAN", sizeof(smartgreen->zone_params->cool_fan_mode));
-                smartgreen->zone_params[z].pump_on = 0;
-                if (smartgreen->zone_params[z].fan_speed_cmd <= 0)
-                    smartgreen->zone_params[z].fan_speed_cmd = 3;
-                db_update_zone_params(smartgreen, &smartgreen->zone_params[z]);
-                pthread_mutex_unlock(&smartgreen->data_mutex);
-                smartgreen->coolers[i].no_water_since = 0;
-            }
-        }
-        else
-            smartgreen->coolers[i].no_water_since = 0;              // hay agua o no se espera: reiniciar
+        // 💧 Agua: parada, rellenado y averías A/B
+        ft_check_water(smartgreen, i, now);
 
         // 🔴 Garantía vencida  (pendiente: pasará a información, no alarma)
         if (now > warranty_end && !smartgreen->coolers[i].alarm_warranty)
@@ -453,16 +565,6 @@ void    ft_check_alarms(t_smartgreen *smartgreen)
         int     is_ext = (strcmp(smartgreen->sensors[i].type, "EXT") == 0);
         float   tmin = is_ext ? -30.0f : 0.0f;          // exterior: puede helar
         float   tmax = is_ext ?  60.0f : 50.0f;
-
-        // 🔴 sensor sin señal
-        // if (!smartgreen->sensors[i].valid && !smartgreen->sensors[i].alarm_signal)
-        // {
-        //     snprintf(msg, sizeof(msg), "🔴 CRITICO: Sensor sin señal sensor_id=%d", smartgreen->sensors[i].sensor_id);
-        //     db_save_error(smartgreen, smartgreen->sensors[i].sensor_id, msg);
-        //     smartgreen->sensors[i].alarm_signal = 1;
-        // }
-        // else if (smartgreen->sensors[i].valid && smartgreen->sensors[i].alarm_signal)
-        //     smartgreen->sensors[i].alarm_signal = 0;
 
         // 🟡 temperatura fuera de rango
         if (smartgreen->sensors[i].valid && (smartgreen->sensors[i].temperature < tmin || smartgreen->sensors[i].temperature > tmax) && !smartgreen->sensors[i].alarm_temp)

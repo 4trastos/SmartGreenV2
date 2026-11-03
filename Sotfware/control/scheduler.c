@@ -391,7 +391,7 @@ void    scheduler_run(t_smartgreen *smartgreen)
                     // Coolers de esta zona que están funcionando (no los apagados por el usuario ni los que están en IMD)
                     for (int i = 0; i < smartgreen->num_coolers; i++)
                         if (smartgreen->coolers[i].zone_id == smartgreen->zone_params[h].zone_id
-                            && !smartgreen->coolers[i].user_off && !smartgreen->coolers[i].imd)
+                            && !smartgreen->coolers[i].user_off && !smartgreen->coolers[i].imd && !smartgreen->coolers[i].water_stop)
                         {
                             t_drain_args *drain_args = malloc(sizeof(t_drain_args));
                             if (drain_args)

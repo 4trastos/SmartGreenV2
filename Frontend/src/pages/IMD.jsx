@@ -383,6 +383,33 @@ export default function IMD({ data, unitId, onExit }) {
             {/* SENSORES */}
             <div className="bg-white/4 rounded-2xl p-4">
               <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Sensores</p>
+
+              {/* Estado de cada sensor */}
+              <div className="space-y-2 mb-3">
+                {data.sensors.map(s => {
+                  const ago = s.last_read ? Math.round(Date.now() / 1000 - s.last_read) : null
+                  return (
+                    <div key={s.sensor_id} className={`rounded-xl p-3 border ${s.valid ? 'bg-white/4 border-white/10' : 'bg-red-500/10 border-red-500/40'}`}>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-white font-bold text-sm">{s.type === 'EXT' ? 'Exterior' : 'Interior'} · #{s.sensor_id}</span>
+                        <span className={`text-xs font-bold ${s.valid ? 'text-green-400' : 'text-red-400'}`}>
+                          {s.valid ? `✔ ${s.temperature}°C · ${s.humidity}%` : '✘ SIN SEÑAL'}
+                        </span>
+                      </div>
+                      <p className="text-white/40 text-xs mt-1">
+                        Última lectura: {ago === null ? 'nunca' : `hace ${ago} s`} · errores seguidos: {s.error_count}
+                      </p>
+                      {!s.valid && (
+                        <p className="text-red-300 text-xs mt-2">
+                          Revise el sensor y su cable. Si se ha desconectado y vuelto a conectar, quite y vuelva conectar el cable del cooler al Modulink durante 4 minutos para que el sensor vuelva a funcionar.
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Offsets (calibración) */}
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { key: 'sensor_1_offset',           label: 'Offset Tª INT',  unit: '°C' },
@@ -497,6 +524,10 @@ export default function IMD({ data, unitId, onExit }) {
                   value={config.no_water_fault_seconds ?? 120}
                   options={[60, 120, 180, 300]}
                   onChange={v => saveConfig('no_water_fault_seconds', v)} />
+                <SelectParam label="Sin señal del sensor → aviso" unit="s"
+                  value={config.sensor_lost_seconds ?? 120}
+                  options={[60, 90, 120, 180, 300]}
+                  onChange={v => saveConfig('sensor_lost_seconds', v)} />
               </div>
             </div>
 

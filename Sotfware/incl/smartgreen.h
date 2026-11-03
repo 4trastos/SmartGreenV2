@@ -329,6 +329,11 @@ typedef struct  s_cooler_state
     time_t              last_try_read;                  // última lectura encolada (para espaciar las de un equipo que no contesta)
     int                 imd;                            // 1 = en IMD: apartado del control de la zona; solo recibe órdenes del técnico
     int                 user_off;
+    int                 water_stop;                     // 0 = normal, 1 = parado llenando, 2 = agua de vuelta, mojando paneles
+    time_t              water_stop_since;
+    int                 water_stops;                    // paradas por falta de agua en la ventana de 24 h
+    time_t              water_stops_since;
+    int                 draining;                       // 1 = drenaje en curso (no se vigila el agua)
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
@@ -515,6 +520,7 @@ void                ft_check_board(t_smartgreen *smartgreen, int i);
 int                 ft_probe_retry(t_smartgreen *smartgreen, int addr, int start, int count, uint16_t *regs, int tries);
 void                ft_save_comms_state(t_smartgreen *smartgreen, int i);
 int                 ft_cooler_silent(t_cooler_state *c);
+void                ft_check_water(t_smartgreen *smartgreen, int i, time_t now);
 
 
 
