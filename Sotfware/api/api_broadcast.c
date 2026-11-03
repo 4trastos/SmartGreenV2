@@ -123,7 +123,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             "\"temperature\":%.2f,\"humidity\":%.2f,"
             "\"valid\":%d,\"error_count\":%d,"
             "\"disabled\":%d,"
-            "\"alarm_signal\":%d,\"alarm_temp\":%d}",
+            "\"alarm_signal\":%d,\"alarm_temp\":%d,\"last_read\":%ld}",
             i > 0 ? "," : "",
             smartgreen->sensors[i].sensor_id,
             smartgreen->sensors[i].zone_id,
@@ -134,7 +134,8 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             smartgreen->sensors[i].error_count,
             smartgreen->sensors[i].disabled,
             smartgreen->sensors[i].alarm_signal,
-            smartgreen->sensors[i].alarm_temp
+            smartgreen->sensors[i].alarm_temp,
+            (long)smartgreen->sensors[i].last_read
         );
     }
     offset += snprintf(buffer + offset, sizeof(buffer) - offset, "],");
