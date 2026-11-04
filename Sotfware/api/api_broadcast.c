@@ -52,7 +52,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             "\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
             "\"extended_status\":%d,\"modbus_addr\":%d,\"r0_config\":%d,\"broken_cooler\":%d,\"fault_solenoid\":%d,\"fault_pump\":%d,"
             "\"board_id\":\"%04X-%04X-%04X-%04X\",\"comms_events\":%d,\"hb_disabled\":%d,"
-            "\"imd\":%d,\"user_off\":%d,\"comms_lost\":%d,\"model\":\"%s\",\"firmware\":%d"
+            "\"imd\":%d,\"user_off\":%d,\"water_stop\":%d,\"comms_lost\":%d,\"model\":\"%s\",\"firmware\":%d"
             "}",
             i > 0 ? "," : "",
             smartgreen->coolers[i].unit_id,
@@ -107,6 +107,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             smartgreen->coolers[i].comms_events, smartgreen->coolers[i].hb_disabled,
             smartgreen->coolers[i].imd,
             smartgreen->coolers[i].user_off,
+            smartgreen->coolers[i].water_stop,
             smartgreen->coolers[i].comms_lost,
             smartgreen->coolers[i].model,
             smartgreen->coolers[i].firmware

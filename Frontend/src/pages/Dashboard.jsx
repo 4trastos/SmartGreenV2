@@ -4,8 +4,9 @@ import { API_URL } from '../config.js'
 function coolerStatus(c, zone) {
   if (Number(c.broken_cooler) === 1) return 'broken'
   if (Number(c.comms_lost) === 1) return 'nocomms'
+  if (Number(c.water_stop) === 1) return 'filling'
+  if (Number(c.water_stop) === 2) return 'wetting'
   if (zone?.on_off === 'ON' && Number(c.user_off) === 1) return 'useroff'
-  if (Number(c.fault_solenoid) === 1 || Number(c.fault_pump) === 1) return 'fanonly'
   if (c.alarm_fault || c.fault_present) return 'fault'
   if (c.alarm_comms || c.disabled) return 'offline'
   if (c.alarm_water && c.salinity_us <= 10) return 'warning'
@@ -29,8 +30,9 @@ const STATUS = {
   warranty:{ gradient: 'from-orange-900/25 to-transparent',  border: 'border-orange-500/35', dot: 'bg-orange-400 shadow-[0_0_10px_#f97316]',  label: 'GARANTÍA',          lc: 'text-orange-400' },
   broken:  { gradient: 'from-red-900/40 to-transparent',     border: 'border-red-500/60',    dot: 'bg-red-500 shadow-[0_0_10px_#ef4444]',     label: 'AVERÍA',            lc: 'text-red-400' },
   nocomms: { gradient: 'from-red-900/25 to-transparent',     border: 'border-red-500/40',    dot: 'bg-red-500/60',                            label: 'SIN COMUNICACIÓN',  lc: 'text-red-400' },
-  fanonly: { gradient: 'from-yellow-900/30 to-transparent',  border: 'border-yellow-500/40', dot: 'bg-yellow-400 shadow-[0_0_10px_#eab308]',  label: 'SOLO FAN',          lc: 'text-yellow-400' },
   useroff: { gradient: 'from-white/4 to-transparent',        border: 'border-white/15',      dot: 'bg-white/40',                              label: 'APAGADO',           lc: 'text-white/40' },
+  filling: { gradient: 'from-yellow-900/30 to-transparent', border: 'border-yellow-500/40', dot: 'bg-yellow-400 shadow-[0_0_10px_#eab308]', label: 'SIN AGUA: LLENANDO', lc: 'text-yellow-400' },
+  wetting: { gradient: 'from-[#004d89]/30 to-transparent',  border: 'border-[#088fc3]/30',  dot: 'bg-[#088fc3]',                           label: 'MOJANDO PANELES',    lc: 'text-[#088fc3]' },
 }
 
 const formatHours = (seconds) => {
@@ -59,7 +61,7 @@ const toggleLabel = (cooler, zone) =>
 
 function MiniChart({ value, status }) {
   const bars = [3,5,4,6,5,7,value]
-  const color = status === 'active' ? '#088fc3' : status === 'fault' || status === 'broken' ? '#ef4444' : status === 'warning' || status === 'fanonly' ? '#eab308' : '#ffffff30'
+  const color = status === 'active' ? '#088fc3' : status === 'fault' || status === 'broken' ? '#ef4444' : status === 'warning' ? '#eab308' : '#ffffff30'
   return (
     <div className="flex items-end gap-0.5 h-8 flex-1 min-w-0">
       {bars.map((v, i) => (

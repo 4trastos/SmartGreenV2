@@ -149,3 +149,7 @@ int main(int argc, char **argv)
     }
     return (0);
 }
+
+
+/*  convert captura.png -colorspace Gray -negate -level 10%,90% captura_bn.png  */
+/*  ssh -p 2222 pi@192.168.1.91 "DISPLAY=:0 scrot -o /tmp/captura.png" && scp -P 2222 pi@192.168.1.91:/tmp/captura.png .   */

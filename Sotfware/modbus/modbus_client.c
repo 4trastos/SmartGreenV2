@@ -125,7 +125,7 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
     static time_t   started = 0;                // arranque: referencia para un sensor que aún no se ha leído
     uint16_t        tab_reg[MODBUS_SENSOR_REGS];
     int             rc;
-    char            msg[256];
+    char            msg[320];
     int             unit_idx = ft_find_sensor(smartgreen, unit_id);
 
     if (lost_s == -1)
@@ -164,7 +164,7 @@ int     ft_modbus_read_sensor(t_smartgreen *smartgreen, int unit_id)
             if (!s->alarm_signal)
             {
                 s->alarm_signal = 1;
-                snprintf(msg, sizeof(msg), "🔴 Sensor sensor_id=%d sin señal. Revise el sensor y su cable. Si se ha desconectado y vuelto a conectar, quite y vuelva a dar corriente al Modulink para que el sensor vuelva a funcionar.",
+                snprintf(msg, sizeof(msg), "🔴 Sensor sensor_id=%d sin señal. Revise el sensor y su cable. Desconecte el cable del evaporativo al Modulink durante 4 minutos y vuelva a conectarlo para que el sensor vuelva a funcionar. Si después de esto no funciona, sustituya el sensor.",
                     s->sensor_id);
                 db_save_error(smartgreen, s->sensor_id, msg);
             }

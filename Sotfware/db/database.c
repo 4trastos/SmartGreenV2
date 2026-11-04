@@ -63,7 +63,7 @@ void    db_load_cooler_faults(t_smartgreen *smartgreen)
     {
         sqlite3_stmt *st = NULL;
 
-        if (sqlite3_prepare_v2(smartgreen->db, "SELECT broken_cooler, fault_solenoid, fault_pump, board_fw, board_r10, board_r16, board_r17, board_r44, comms_lost, comms_events, comms_events_since, zone_id, power_events, power_events_since, water_stops, water_stops_since FROM cooler_state WHERE unit_id = ?", -1, &st, NULL) == SQLITE_OK)
+        if (sqlite3_prepare_v2(smartgreen->db, "SELECT broken_cooler, fault_solenoid, fault_pump, board_fw, board_r10, board_r16, board_r17, board_r44, comms_lost, comms_events, comms_events_since, zone_id, power_events, power_events_since, water_stops, water_stops_since, prewet_wait, run_wait FROM cooler_state WHERE unit_id = ?", -1, &st, NULL) == SQLITE_OK)
         {
             sqlite3_bind_int(st, 1, smartgreen->coolers[i].unit_id);
             if (sqlite3_step(st) == SQLITE_ROW)
@@ -85,6 +85,8 @@ void    db_load_cooler_faults(t_smartgreen *smartgreen)
                 smartgreen->coolers[i].power_events_since = sqlite3_column_int64(st, 13);
                 smartgreen->coolers[i].water_stops       = sqlite3_column_int(st, 14);
                 smartgreen->coolers[i].water_stops_since = sqlite3_column_int64(st, 15);
+                smartgreen->coolers[i].prewet_wait = sqlite3_column_int(st, 16);
+                smartgreen->coolers[i].run_wait    = sqlite3_column_int(st, 17);
             }
             sqlite3_finalize(st);
         }

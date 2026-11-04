@@ -1,5 +1,15 @@
 #include "../incl/smartgreen.h"
 
+void    db_save_cooler_waits(t_smartgreen *smartgreen, int i)
+{
+    char            sql[160];
+    t_cooler_state  *c = &smartgreen->coolers[i];
+
+    snprintf(sql, sizeof(sql), "UPDATE cooler_state SET prewet_wait=%d, run_wait=%d WHERE unit_id=%d",
+        c->prewet_wait, c->run_wait, c->unit_id);
+    sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
+}
+
 int     ft_cooler_silent(t_cooler_state *c)
 {
     time_t ref;
@@ -123,6 +133,7 @@ void    ft_check_water(t_smartgreen *smartgreen, int i, time_t now)
         if (refill_s <= 0) refill_s = 120;
         if (wet_s <= 0)    wet_s = 30;
     }
+    int wait_s = (c->run_wait > 0) ? c->run_wait : refill_s;     // espera de este evaporativo
     if (z == -1 || c->broken_cooler)
         return;
 
@@ -159,11 +170,11 @@ void    ft_check_water(t_smartgreen *smartgreen, int i, time_t now)
             db_save_error(smartgreen, c->unit_id, msg);
             printf("[AGUA] %s\n", msg); fflush(stdout);
         }
-        else if (now - c->water_stop_since >= refill_s)
+        else if (now - c->water_stop_since >= wait_s)
         {
             c->water_stop = 0;
             snprintf(msg, sizeof(msg), "🔴 CRITICO: Evaporativo unit_id=%d NO LLEGA AGUA en %d s — revise el suministro, el solenoide y el sensor de agua",
-                c->unit_id, refill_s);
+                c->unit_id, wait_s);
             ft_cooler_fault(smartgreen, i, msg, 1);
         }
         return;
@@ -208,7 +219,7 @@ void    ft_check_water(t_smartgreen *smartgreen, int i, time_t now)
     c->water_stop_since = now;
     c->no_water_since = 0;
     ft_water_outputs(smartgreen, c->unit_id, REG50_SOLENOID_ON);   // R50=24: solenoide abierto, drenaje cerrado, bomba y fan parados
-    snprintf(msg, sizeof(msg), "🟡 Evaporativo unit_id=%d sin agua: parado, intentando llenar (%d s)", c->unit_id, refill_s);
+    snprintf(msg, sizeof(msg), "🟡 Evaporativo unit_id=%d sin agua: parado, intentando llenar (%d s)", c->unit_id, wait_s);
     db_save_error(smartgreen, c->unit_id, msg);
     printf("[AGUA] %s\n", msg); fflush(stdout);
 
@@ -377,41 +388,6 @@ void    ft_check_comms(t_smartgreen *smartgreen, int i, time_t now)
         }
         ft_save_comms_state(smartgreen, i);
     }
-}
-
-// Aviso amarillo: el cooler solo puede funcionar en modo FAN hasta que el técnico rearme
-void    ft_cooler_warning(t_smartgreen *smartgreen, int cooler_idx, const char *msg, int is_pump)
-{
-    t_cooler_state  *c = &smartgreen->coolers[cooler_idx];
-    char            sql[128];
-
-    db_save_error(smartgreen, c->unit_id, msg);
-    printf("[AVISO] %s\n", msg); fflush(stdout);
-
-    pthread_mutex_lock(&smartgreen->data_mutex);
-    if (is_pump)
-        c->fault_pump = 1;
-    else
-        c->fault_solenoid = 1;
-    pthread_mutex_unlock(&smartgreen->data_mutex);
-
-    snprintf(sql, sizeof(sql), "UPDATE cooler_state SET %s=1 WHERE unit_id=%d", is_pump ? "fault_pump" : "fault_solenoid", c->unit_id);
-    sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
-
-    // Cerrar el agua: bomba OFF, solenoide OFF, drenaje cerrado, fan 0
-    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, c->unit_id, 50, REG50_SOLENOID_OFF);
-    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, c->unit_id, 51, 0);
-    ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, c->unit_id, 52, 0);
-}
-
-// 1 si algún cooler de la zona tiene un aviso que obliga a modo FAN
-int     ft_zone_fan_only(t_smartgreen *smartgreen, int zone_id)
-{
-    for (int i = 0; i < smartgreen->num_coolers; i++)
-        if (smartgreen->coolers[i].zone_id == zone_id
-            && (smartgreen->coolers[i].fault_solenoid || smartgreen->coolers[i].fault_pump))
-            return (1);
-    return (0);
 }
 
 void    ft_cooler_fault(t_smartgreen *smartgreen, int cooler_idx, const char *msg, int grave)

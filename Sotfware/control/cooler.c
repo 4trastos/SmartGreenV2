@@ -1,5 +1,10 @@
 #include "../incl/smartgreen.h"
 
+int  ft_prewet_limit(t_cooler_state *c, int global)
+{
+    return (c->prewet_wait > 0 ? c->prewet_wait : global);
+}
+
 void *ft_drain_dry_thread(void *arg)
 {
     t_drain_args    *args = (t_drain_args *)arg;
@@ -540,9 +545,11 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
         if (smartgreen->coolers[i].zone_id == zone_id)
             ft_modbus_enqueue(&smartgreen->modbus_queue, CMD_WRITE, smartgreen->coolers[i].unit_id, 50, calculate_register_51(1, 1));
 
-    // PASO 3 — esperar agua (max_wait segundos)
-    while (elapsed < max_wait)
+    // PASO 3 — esperar agua: cada evaporativo tiene su propio límite
+    while (1)
     {
+        int pending = 0;                                    // ¿queda alguno sin agua DENTRO de su límite?
+
         sleep(check_interval);
         elapsed += check_interval;
         all_water = 1;
@@ -561,16 +568,51 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
         for (int i = 0; i < smartgreen->num_coolers; i++)
             if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd && !smartgreen->coolers[i].user_off)
             {
-                printf("PREWET agua cooler unit=%d water_present=%d salinity_us=%.1f\n", smartgreen->coolers[i].unit_id,
-                    smartgreen->coolers[i].water_present, smartgreen->coolers[i].salinity_us); fflush(stdout);
-                // Usar salinity_us en vez de water_present
+                printf("PREWET agua cooler unit=%d water_present=%d salinity_us=%.1f (limite %ds)\n", smartgreen->coolers[i].unit_id,
+                    smartgreen->coolers[i].water_present, smartgreen->coolers[i].salinity_us,
+                    ft_prewet_limit(&smartgreen->coolers[i], max_wait)); fflush(stdout);
                 if (smartgreen->coolers[i].salinity_us < 10.0f)
+                {
                     all_water = 0;
+                    if (elapsed < ft_prewet_limit(&smartgreen->coolers[i], max_wait))
+                        pending = 1;
+                }
             }
         printf("PREWET agua: elapsed=%d all_water=%d\n", elapsed, all_water); fflush(stdout);
-        if (all_water)
+        if (!pending)
             break;
     }
+    // PASO 3 — esperar agua (max_wait segundos)
+    // while (elapsed < max_wait)
+    // {
+    //     sleep(check_interval);
+    //     elapsed += check_interval;
+    //     all_water = 1;
+
+    //     if (smartgreen->setup_mode)
+    //         for (int i = 0; i < smartgreen->num_coolers; i++)
+    //             if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd && !smartgreen->coolers[i].user_off)
+    //             {
+    //                 uint16_t r54;
+    //                 if (ft_probe_retry(smartgreen, smartgreen->coolers[i].unit_id, 54, 1, &r54, 2) == 0)
+    //                 {
+    //                     smartgreen->coolers[i].salinity_us = calculate_salinity_us(r54);
+    //                     smartgreen->coolers[i].water_present = (smartgreen->coolers[i].salinity_us >= 10.0f);
+    //                 }
+    //             }
+    //     for (int i = 0; i < smartgreen->num_coolers; i++)
+    //         if (smartgreen->coolers[i].zone_id == zone_id && !smartgreen->coolers[i].imd && !smartgreen->coolers[i].user_off)
+    //         {
+    //             printf("PREWET agua cooler unit=%d water_present=%d salinity_us=%.1f\n", smartgreen->coolers[i].unit_id,
+    //                 smartgreen->coolers[i].water_present, smartgreen->coolers[i].salinity_us); fflush(stdout);
+    //             // Usar salinity_us en vez de water_present
+    //             if (smartgreen->coolers[i].salinity_us < 10.0f)
+    //                 all_water = 0;
+    //         }
+    //     printf("PREWET agua: elapsed=%d all_water=%d\n", elapsed, all_water); fflush(stdout);
+    //     if (all_water)
+    //         break;
+    // }
 
     // Sin agua tras prewet_max_wait: AVERÍA A en los que no la tienen; la zona sigue con los que sí
     if (!all_water)
@@ -590,12 +632,13 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
             if (smartgreen->setup_mode)
             {
                 // Setup: es el resultado de la prueba, no una avería del equipo
-                printf("[SETUP] Prueba de agua FALLIDA cooler unit_id=%d: no llega agua en %ds\n", smartgreen->coolers[i].unit_id, max_wait); fflush(stdout);
+                //printf("[SETUP] Prueba de agua FALLIDA cooler unit_id=%d: no llega agua en %ds\n", smartgreen->coolers[i].unit_id, max_wait); fflush(stdout);
+                printf("[SETUP] Prueba de agua FALLIDA cooler unit_id=%d: no llega agua en %ds\n", smartgreen->coolers[i].unit_id, ft_prewet_limit(&smartgreen->coolers[i], max_wait)); fflush(stdout);
                 smartgreen->setup_water_fail = smartgreen->coolers[i].unit_id;
                 continue;
             }
-            snprintf(msg, sizeof(msg), "🔴 CRITICO: Evaporativo unit_id=%d NO LLEGA AGUA en el prewet (%d s) — revise el suministro, el solenoide y el sensor de agua",
-                smartgreen->coolers[i].unit_id, max_wait);
+            // snprintf(msg, sizeof(msg), "🔴 CRITICO: Evaporativo unit_id=%d NO LLEGA AGUA en el prewet (%d s) — revise el suministro, el solenoide y el sensor de agua", smartgreen->coolers[i].unit_id, max_wait);
+            snprintf(msg, sizeof(msg), "🔴 CRITICO: Evaporativo unit_id=%d NO LLEGA AGUA en el prewet (%d s) — revise el suministro, el solenoide y el sensor de agua", smartgreen->coolers[i].unit_id, ft_prewet_limit(&smartgreen->coolers[i], max_wait));
             ft_cooler_fault(smartgreen, i, msg, 1);
         }
         if (!with_water_left || smartgreen->setup_mode)

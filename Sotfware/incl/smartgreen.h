@@ -334,6 +334,8 @@ typedef struct  s_cooler_state
     int                 water_stops;                    // paradas por falta de agua en la ventana de 24 h
     time_t              water_stops_since;
     int                 draining;                       // 1 = drenaje en curso (no se vigila el agua)
+    int                 prewet_wait;                    // espera de agua en el prewet de ESTE evaporativo (s); 0 = la global
+    int                 run_wait;                       // espera de agua parado, en funcionamiento (s); 0 = la global
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
@@ -513,15 +515,15 @@ int                 ft_is_quiet_mode(t_smartgreen *smartgreen);
 int                 ft_quiet_max_speed(t_smartgreen *smartgreen);
 void                *ft_drain_dry_thread(void *arg);
 void                ft_cooler_fault(t_smartgreen *smartgreen, int cooler_idx, const char *msg, int grave);
-void                ft_cooler_warning(t_smartgreen *smartgreen, int cooler_idx, const char *msg, int is_pump);
-int                 ft_zone_fan_only(t_smartgreen *smartgreen, int zone_id);
 void                ft_check_comms(t_smartgreen *smartgreen, int i, time_t now);
 void                ft_check_board(t_smartgreen *smartgreen, int i);
 int                 ft_probe_retry(t_smartgreen *smartgreen, int addr, int start, int count, uint16_t *regs, int tries);
 void                ft_save_comms_state(t_smartgreen *smartgreen, int i);
 int                 ft_cooler_silent(t_cooler_state *c);
 void                ft_check_water(t_smartgreen *smartgreen, int i, time_t now);
-
+void                db_save_cooler_waits(t_smartgreen *smartgreen, int i);
+int                 ft_prewet_limit(t_cooler_state *c, int global);
+int                 ft_wait_valid(int v);
 
 
 /*  UTILS   */
@@ -582,6 +584,7 @@ enum MHD_Result     api_post_imd_assign(t_smartgreen *smartgreen, struct MHD_Con
 enum MHD_Result     api_post_cooler_imd(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
 enum MHD_Result     api_post_cooler_out(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
 enum MHD_Result     api_post_cooler_onoff(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size);
+enum MHD_Result     api_post_setup_water_waits(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t len);
 
 /*  WEBSOCKET   */
 int                 ft_ws_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);

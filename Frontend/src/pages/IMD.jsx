@@ -256,7 +256,6 @@ export default function IMD({ data, unitId, onExit }) {
     setResetting(false)
   }
 
-  const fanOnly = cooler && (Number(cooler.fault_solenoid) === 1 || Number(cooler.fault_pump) === 1)
   const broken  = cooler && Number(cooler.broken_cooler) === 1
 
   return (
@@ -279,7 +278,7 @@ export default function IMD({ data, unitId, onExit }) {
           </button>
           <p className={`text-xs text-right max-w-[260px] ${zoneOn ? 'text-yellow-400' : 'text-white/40'}`}>
             {zoneOn
-              ? `⚠ Al salir, el evaporativo volverá a funcionar: ${zone?.name || 'la zona'} está encendida en ${zone?.cool_fan_mode}`
+              ? `Al salir, el evaporativo volverá a funcionar: ${zone?.name || 'la zona'} está encendida en ${zone?.cool_fan_mode}`
               : `Al salir, el evaporativo seguirá parado: ${zone?.name || 'la zona'} está apagada`}
           </p>
         </div>
@@ -290,11 +289,11 @@ export default function IMD({ data, unitId, onExit }) {
       ) : (<>
 
         {/* AVERÍA — rearme */}
-        {(broken || fanOnly) && (
+        {broken && (
           <div className="shrink-0 bg-red-500/15 rounded-2xl p-4 border border-red-500/40 flex items-center justify-between gap-3">
             <div>
               <p className="text-red-400 text-xs uppercase tracking-wider font-bold">
-                ⚠ {broken ? 'Avería grave activa' : 'Aviso activo: solo modo FAN'}
+                'Avería grave activa'
               </p>
               <p className="text-white/60 text-sm">Revisa el historial de alarmas antes de rearmar.</p>
             </div>
@@ -380,6 +379,8 @@ export default function IMD({ data, unitId, onExit }) {
         {/* CONFIG — parámetros técnicos (comunes a toda la instalación) */}
         {section === 'config' && (
           <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+            <p className="text-yellow-400/80 text-xs">Estos parámetros se aplican a TODOS los evaporativos de la instalación.</p>
+
             {/* SENSORES */}
             <div className="bg-white/4 rounded-2xl p-4">
               <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Sensores</p>
@@ -401,7 +402,7 @@ export default function IMD({ data, unitId, onExit }) {
                       </p>
                       {!s.valid && (
                         <p className="text-red-300 text-xs mt-2">
-                          Revise el sensor y su cable. Si se ha desconectado y vuelto a conectar, quite y vuelva conectar el cable del cooler al Modulink durante 4 minutos para que el sensor vuelva a funcionar.
+                          Revise el sensor y su cable. Desconecte el cable del evaporativo al Modulink durante 4 minutos y vuelva a conectarlo para que el sensor vuelva a funcionar. Si después de esto no funciona, sustituya el sensor.
                         </p>
                       )}
                     </div>
@@ -520,7 +521,11 @@ export default function IMD({ data, unitId, onExit }) {
                   value={config.comms_lost_seconds ?? 60}
                   options={[30, 60, 120, 300]}
                   onChange={v => saveConfig('comms_lost_seconds', v)} />
-                <SelectParam label="Sin agua funcionando → aviso" unit="s"
+                <SelectParam label="Sin agua: parará a los:" unit="s"
+                  value={config.water_detect_seconds ?? 20}
+                  options={[10, 20, 30, 60]}
+                  onChange={v => saveConfig('water_detect_seconds', v)} />
+                <SelectParam label="Sin agua parado: espera llenado:" unit="s"
                   value={config.no_water_fault_seconds ?? 120}
                   options={[60, 120, 180, 300]}
                   onChange={v => saveConfig('no_water_fault_seconds', v)} />
@@ -626,7 +631,7 @@ export default function IMD({ data, unitId, onExit }) {
               {l:'Drenajes',               v: cooler.tank_drains},
               {l:'Llenado medio',          v: `${cooler.avg_tank_fill}s`},
               {l:'Sensor de agua',         v: `${Number(cooler.salinity_us).toFixed(0)} µS`},
-              {l:'Estado',                 v: broken ? '🔴 Avería grave' : fanOnly ? '🟡 Solo FAN' : '✔ Normal'},
+              {l:'Estado',                 v: broken ? '🔴 Avería grave' : '✔ Normal'},
             ].map(({l,v}) => (
               <div key={l} className="bg-white/4 rounded-xl p-4">
                 <p className="text-white/30 text-xs uppercase tracking-wider mb-1">{l}</p>

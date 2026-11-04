@@ -104,6 +104,8 @@ const char *SCHEMA_SQL =
     "    power_events_since     INTEGER DEFAULT 0,\n"
     "    water_stops            INTEGER DEFAULT 0,\n"
     "    water_stops_since      INTEGER DEFAULT 0,\n"
+    "    prewet_wait            INTEGER DEFAULT 0,\n"
+    "    run_wait               INTEGER DEFAULT 0,\n"
     "    FOREIGN KEY (zone_id) REFERENCES zones(id)\n"
     ");\n"
     "\n"

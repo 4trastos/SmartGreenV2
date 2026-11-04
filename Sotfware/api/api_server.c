@@ -133,6 +133,8 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
                 ret = api_post_setup_confirm(smartgreen, connection);
             else if (strcmp(action, "purge") == 0)
                 ret = api_post_setup_purge(smartgreen, connection);
+            else if (strcmp(action, "water_waits") == 0)
+                ret = api_post_setup_water_waits(smartgreen, connection, ctx->body, ctx->len);
             else
                 ret = api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Unknown\"}");
             free(ctx);

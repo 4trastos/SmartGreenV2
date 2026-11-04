@@ -198,9 +198,7 @@ void    *ft_modbus_worker(void *arg)
                     break;
 
                 // 2. Averías (el técnico desde el IMD sí puede)
-                if (cmd->type != CMD_WRITE_IMD && cidx != -1
-                    && ((smartgreen->coolers[cidx].broken_cooler && !ft_is_safe_write(cmd->addr, cmd->value))
-                    || ((smartgreen->coolers[cidx].fault_solenoid || smartgreen->coolers[cidx].fault_pump) && cmd->addr == 50 && (cmd->value & 0x0F))))
+                if (cmd->type != CMD_WRITE_IMD && cidx != -1 && smartgreen->coolers[cidx].broken_cooler && !ft_is_safe_write(cmd->addr, cmd->value))
                 {
                     printf("MODBUS BLOQUEADO (averia) -> unit=%d addr=%d value=%d\n", cmd->unit_id, cmd->addr, cmd->value); fflush(stdout);
                     break;

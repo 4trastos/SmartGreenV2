@@ -444,3 +444,37 @@ enum MHD_Result api_post_setup_sensors(t_smartgreen *smartgreen, struct MHD_Conn
     db_update_config(smartgreen, "num_sensors", n);
     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
+
+int  ft_wait_valid(int v)
+{
+    return (v == 0 || v == 60 || v == 90 || v == 120 || v == 180 || v == 300);
+}
+
+// POST /api/setup/water_waits {"unit_id":2,"prewet_wait":180,"run_wait":0}
+enum MHD_Result api_post_setup_water_waits(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t len)
+{
+    const char  *p;
+    int         unit_id = 0, prewet = 0, run = 0, idx;
+
+    (void)len;
+    if (!body)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
+    if ((p = strstr(body, "\"unit_id\"")))
+        sscanf(p, "\"unit_id\":%d", &unit_id);
+    if ((p = strstr(body, "\"prewet_wait\"")))
+        sscanf(p, "\"prewet_wait\":%d", &prewet);
+    if ((p = strstr(body, "\"run_wait\"")))
+        sscanf(p, "\"run_wait\":%d", &run);
+    idx = ft_find_cooler(smartgreen, unit_id);
+    if (idx == -1)
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Cooler not found\"}"));
+    if (!ft_wait_valid(prewet) || !ft_wait_valid(run))
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Valor no valido\"}"));
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    smartgreen->coolers[idx].prewet_wait = prewet;
+    smartgreen->coolers[idx].run_wait = run;
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    db_save_cooler_waits(smartgreen, idx);
+    printf("[SETUP] Esperas de agua cooler unit_id=%d: prewet=%d run=%d (0 = global)\n", unit_id, prewet, run); fflush(stdout);
+    return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
+}

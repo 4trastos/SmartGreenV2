@@ -155,10 +155,9 @@ export default function Control({ data, onImdActivate, connected }) {
               const zoneCoolers = data.coolers.filter(c => c.zone_id === zone.zone_id)
               const hasFault = zoneCoolers.some(c => c.alarm_fault || c.fault_present)
               // 🟡 Avisos que limitan los modos
-              const fanOnly = zoneCoolers.some(c => Number(c.fault_solenoid) === 1 || Number(c.fault_pump) === 1)
               const sensorFail = data.sensors.some(s => (s.zone_id ?? zone.zone_id) === zone.zone_id && s.type === 'INT' && !s.valid)
-              const hasWarning = fanOnly || sensorFail || zoneCoolers.some(c => c.alarm_water && c.salinity_us <= 10)
-              const modeDisabled = m => (fanOnly && (m === 'AUTO' || m === 'MANUAL')) || (sensorFail && m === 'AUTO')
+              const hasWarning = sensorFail || zoneCoolers.some(c => c.alarm_water && c.salinity_us <= 10)
+              const modeDisabled = m => (sensorFail && m === 'AUTO')
               return (
                 <div key={zone.zone_id}
                   className={`flex-1 rounded-3xl border p-6 flex flex-col gap-6 transition-all duration-300
@@ -269,12 +268,7 @@ export default function Control({ data, onImdActivate, connected }) {
                             </button>
                           ))}
                         </div>
-                        {fanOnly && (
-                          <div className="mt-2 py-2 px-3 rounded-xl bg-yellow-500/15 border border-yellow-500/40 text-yellow-400 text-xs font-bold text-center">
-                            ⚠️ Avería en el sistema de agua — solo modo FAN. Llame al servicio técnico
-                          </div>
-                        )}
-                        {!fanOnly && sensorFail && (
+                        {sensorFail && (
                           <div className="mt-2 py-2 px-3 rounded-xl bg-yellow-500/15 border border-yellow-500/40 text-yellow-400 text-xs font-bold text-center">
                             ⚠️ Sensor de temperatura sin señal — modo AUTO no disponible
                           </div>
@@ -363,17 +357,15 @@ export default function Control({ data, onImdActivate, connected }) {
               {data.coolers.filter(c => c.zone_id === imdSelectZone).map(c => {
                 const broken = Number(c.broken_cooler) === 1
                 const nocomm = Number(c.comms_lost) === 1
-                const fanOnlyC = Number(c.fault_solenoid) === 1 || Number(c.fault_pump) === 1
                 return (
                   <button key={c.unit_id}
                     onClick={() => { setImdSelectZone(null); onImdActivate(c.unit_id) }}
                     className={`flex items-center justify-between px-4 py-3 rounded-xl border cursor-pointer transition-all
                       ${broken || nocomm ? 'bg-red-500/10 border-red-500/40 hover:bg-red-500/20'
-                        : fanOnlyC ? 'bg-yellow-500/10 border-yellow-500/40 hover:bg-yellow-500/20'
                         : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
                     <span className="text-white font-bold">Evaporativo #{c.unit_id} <span className="text-white/40 font-normal text-sm">{c.model}</span></span>
-                    <span className={`text-xs font-bold ${broken || nocomm ? 'text-red-400' : fanOnlyC ? 'text-yellow-400' : 'text-[#088fc3]'}`}>
-                      {broken ? 'AVERÍA' : nocomm ? 'SIN COMUNICACIÓN' : fanOnlyC ? 'SOLO FAN' : 'OK'}
+                    <span className={`text-xs font-bold ${broken || nocomm ? 'text-red-400' : 'text-[#088fc3]'}`}>
+                      {broken ? 'AVERÍA' : nocomm ? 'SIN COMUNICACIÓN' : 'OK'}
                     </span>
                   </button>
                 )

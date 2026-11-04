@@ -1,5 +1,5 @@
 import { API_URL } from '../config.js'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Keyboard from '../components/Keyboard'
 
 // ─── TRADUCCIONES ────────────────────────────────────────────
@@ -40,6 +40,12 @@ const T = {
     water_fail_body: 'No llega agua al evaporativo',
     water_fail_hint: 'Revise el suministro, la llave de paso, el solenoide y el sensor de agua.',
     water_repeat: 'HE CORREGIDO EL PROBLEMA: REPETIR PURGA',
+    water_edit: 'MODIFICAR PARÁMETROS',
+    wait_hint: 'Aumente la espera si el agua tarda más en llegar a este evaporativo (instalaciones grandes).',
+    wait_prewet: 'Espera de agua en la purga',
+    wait_run: 'Espera de agua en funcionamiento',
+    wait_save: 'GUARDAR Y REPETIR PURGA',
+    wait_back: 'VOLVER',
     new_install: 'NUEVA INSTALACIÓN',
   },
   en: {
@@ -78,6 +84,12 @@ const T = {
     water_fail_body: 'No water is reaching the evaporative cooler.',
     water_fail_hint: 'Check the supply, the shut-off valve, the solenoid, and the water sensor.',
     water_repeat: 'I HAVE FIXED THE PROBLEM: REPEAT PURGE',
+    water_edit: 'MODIFY SETTINGS',
+    wait_hint: 'Increase the wait if water takes longer to reach this cooler (large installations).',
+    wait_prewet: 'Water wait during purge',
+    wait_run: 'Water wait during operation',
+    wait_save: 'SAVE AND REPEAT PURGE',
+    wait_back: 'BACK',
     new_install: 'NEW INSTALLATION',
   },
   pt: {
@@ -112,6 +124,12 @@ const T = {
     water_fail_body: 'Nenhuma água chega ao refrigerador evaporativo.',
     water_fail_hint: 'Verifique o abastecimento, a válvula de corte, o solenóide e o sensor de água.',
     water_repeat: 'RESOLVI O PROBLEMA: REPETIR A LIMPEZA',
+    water_edit: 'MODIFICAR PARÂMETROS',
+    wait_hint: 'Aumente a espera se a água demorar mais a chegar a este refrigerador (instalações grandes).',
+    wait_prewet: 'Espera de água na limpeza',
+    wait_run: 'Espera de água em funcionamento',
+    wait_save: 'GUARDAR E REPETIR A LIMPEZA',
+    wait_back: 'VOLTAR',
     new_install: 'NOVA INSTALAÇÃO',
   },
   ca: {
@@ -146,6 +164,12 @@ const T = {
     water_fail_body: 'No arriba aigua a l\'evaporatiu',
     water_fail_hint: 'Reviseu el subministrament, la clau de pas, el solenoide i el sensor d\'aigua.',
     water_repeat: 'HE CORREGIT EL PROBLEMA: REPETIR PURGA',
+    water_edit: 'MODIFICAR PARÀMETRES',
+    wait_hint: 'Augmenteu l\'espera si l\'aigua triga més a arribar a aquest evaporatiu (instal·lacions grans).',
+    wait_prewet: 'Espera d\'aigua en la purga',
+    wait_run: 'Espera d\'aigua en funcionament',
+    wait_save: 'DESAR I REPETIR PURGA',
+    wait_back: 'TORNAR',
     new_install: 'NOVA INSTAL·LACIÓ',
   },
   fr: {
@@ -180,6 +204,12 @@ const T = {
     water_fail_body: 'L\'eau n\'arrive pas au refroidisseur par évaporation.',
     water_fail_hint: 'Vérifiez l\'alimentation, le robinet d\'arrêt, l\'électrovanne et le capteur d\'eau.',
     water_repeat: 'J\'AI CORRIGÉ LE PROBLÈME : RÉPÉTER LA PURGE',
+    water_edit: 'MODIFIER LES PARAMÈTRES',
+    wait_hint: 'Augmentez l\'attente si l\'eau met plus de temps à arriver à ce refroidisseur (grandes installations).',
+    wait_prewet: 'Attente d\'eau pendant la purge',
+    wait_run: 'Attente d\'eau en fonctionnement',
+    wait_save: 'ENREGISTRER ET RÉPÉTER LA PURGE',
+    wait_back: 'RETOUR',
     new_install: 'NOUVELLE INSTALLATION',
   },
   it: {
@@ -214,6 +244,12 @@ const T = {
     water_fail_body: 'Nessuna acqua raggiunge il raffreddatore evaporativo.',
     water_fail_hint: 'Verificare l\'alimentazione, la valvola di intercettazione, il solenoide e il sensore dell\'acqua.',
     water_repeat: 'HO RISOLTO IL PROBLEMA: RIPETI LA PURGAZIONE',
+    water_edit: 'MODIFICA PARAMETRI',
+    wait_hint: 'Aumentare l\'attesa se l\'acqua impiega più tempo ad arrivare a questo raffrescatore (grandi impianti).',
+    wait_prewet: 'Attesa acqua durante lo spurgo',
+    wait_run: 'Attesa acqua in funzionamento',
+    wait_save: 'SALVA E RIPETI LO SPURGO',
+    wait_back: 'INDIETRO',
     new_install: 'NUOVA INSTALLAZIONE',
   },
 }
@@ -225,6 +261,10 @@ const loadSaved = () => {
   try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {} } catch { return {} }
 }
 const clearSaved = () => { try { localStorage.removeItem(SAVE_KEY) } catch {} }
+
+// Valores por defecto de las esperas de agua (configuración de fábrica). Si se deja el valor por defecto, se envía 0 = usar el global
+const WAIT_DEFAULT = { prewet: 90, run: 120 }
+const WAIT_OPTIONS = { prewet: [60, 90, 120, 180, 300], run: [60, 120, 180, 300] }
 
 // ─── COMPONENTES ─────────────────────────────────────────────
 function Header({ title, subtitle }) {
@@ -278,6 +318,10 @@ export default function Setup({ onComplete, data }) {
   const [assigning, setAssigning] = useState(false)
   const [assignMsg, setAssignMsg] = useState('')
   const [waterFail, setWaterFail] = useState(saved.waterFail ?? 0)    // unit_id del cooler sin agua (0 = bien)
+  const [editWaits, setEditWaits] = useState(false)
+  const [wPrewet, setWPrewet] = useState(WAIT_DEFAULT.prewet)
+  const [wRun, setWRun] = useState(WAIT_DEFAULT.run)
+  const pendingWaits = useRef(null)
 
   const t = T[lang] || T.es
   const tt = key => t[key] ?? T.es[key]          // si falta una traducción, usar el español
@@ -401,10 +445,30 @@ export default function Setup({ onComplete, data }) {
     await post('zones', { num_zones: numZones, zones })
     await post('coolers', { zone_id: 1, num_coolers: numCoolers, coolers: coolersToSave })
     await post('sensors', { sensors: foundSensors.map(s => ({ unit_id: s.unit_id, role: sensorRoles[s.unit_id] || 'INT' })) })
+    if (pendingWaits.current) {
+      await post('water_waits', pendingWaits.current)
+      pendingWaits.current = null
+    }
     await fetch(`${API_URL}/setup/purge`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
     }).catch(err => console.error('Error purga:', err))
     await waitPurgeEnd()
+  }
+
+  const openWaits = () => {
+    setWPrewet(WAIT_DEFAULT.prewet)
+    setWRun(WAIT_DEFAULT.run)
+    setEditWaits(true)
+  }
+
+  const saveWaitsAndPurge = () => {
+    pendingWaits.current = {
+      unit_id: waterFail,
+      prewet_wait: wPrewet === WAIT_DEFAULT.prewet ? 0 : wPrewet,
+      run_wait: wRun === WAIT_DEFAULT.run ? 0 : wRun,
+    }
+    setEditWaits(false)
+    purge()
   }
 
   // Si la página se recargó en mitad de la purga: volver a la pantalla de espera
@@ -420,6 +484,7 @@ export default function Setup({ onComplete, data }) {
     clearSaved()
     setWaterFail(0)
     setFoundCoolers([]); setFoundSensors([]); setSensorRoles({})
+    setEditWaits(false); pendingWaits.current = null
     setStep(0)
   }
 
@@ -687,10 +752,33 @@ export default function Setup({ onComplete, data }) {
             <p className="text-red-400 text-5xl mb-3">✘</p>
             <p className="text-white font-bold mb-1">{tt('water_fail_body')} {String(waterFail - 1).padStart(2, '0')}</p>
             <p className="text-white/60 text-sm mb-8">{tt('water_fail_hint')}</p>
-            <div className="flex flex-col gap-3">
-              <Btn full label={tt('water_repeat')} onClick={purge} />
-              <Btn full label={tt('new_install')} onClick={newInstall} />
-            </div>
+            {!editWaits ? (
+              <div className="flex flex-col gap-3">
+                <Btn full label={tt('water_repeat')} onClick={purge} />
+                <Btn full label={tt('water_edit')} onClick={openWaits} />
+                <Btn full label={tt('new_install')} onClick={newInstall} />
+              </div>
+            ) : (
+              <div className="text-left">
+                <p className="text-white/60 text-xs mb-4">{tt('wait_hint')}</p>
+                {[
+                  { label: tt('wait_prewet'), value: wPrewet, set: setWPrewet, options: WAIT_OPTIONS.prewet },
+                  { label: tt('wait_run'),    value: wRun,    set: setWRun,    options: WAIT_OPTIONS.run },
+                ].map(({ label, value, set, options }) => (
+                  <label key={label} className="flex items-center justify-between gap-3 mb-3">
+                    <span className="text-white/80 text-sm">{label}</span>
+                    <select value={value} onChange={e => set(Number(e.target.value))}
+                      className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white">
+                      {options.map(o => <option key={o} value={o} className="bg-[#0a1118]">{o} s</option>)}
+                    </select>
+                  </label>
+                ))}
+                <div className="flex flex-col gap-3 mt-5">
+                  <Btn full label={tt('wait_save')} onClick={saveWaitsAndPurge} />
+                  <Btn full label={tt('wait_back')} onClick={() => setEditWaits(false)} />
+                </div>
+              </div>
+            )}
           </div>
         </>)}
 
