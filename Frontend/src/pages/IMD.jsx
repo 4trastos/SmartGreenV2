@@ -1,3 +1,4 @@
+import { useLang, saveLang, LANGS, LANG_NAMES } from '../i18n.js'
 import { useState, useEffect } from 'react'
 import { API_URL } from '../config.js'
 import Keyboard from '../components/Keyboard'
@@ -199,6 +200,7 @@ export default function IMD({ data, unitId, onExit }) {
   const [showRestart, setShowRestart] = useState(false)
   // Salidas del evaporativo en prueba (al entrar en el IMD, todo parado)
   const [out, setOut] = useState({ pump: 0, solenoid: 0, drain: 0, speed: 0 })
+  const lang = useLang()
 
   const cooler = data.coolers.find(c => c.unit_id === unitId)
   const zone = data.zones.find(z => z.zone_id === cooler?.zone_id)
@@ -533,6 +535,20 @@ export default function IMD({ data, unitId, onExit }) {
                   value={config.sensor_lost_seconds ?? 120}
                   options={[60, 90, 120, 180, 300]}
                   onChange={v => saveConfig('sensor_lost_seconds', v)} />
+              </div>
+            </div>
+
+            {/* IDIOMA */}
+            <div className="bg-white/4 rounded-2xl p-4">
+              <p className="text-white/40 text-xs uppercase tracking-wider mb-3">Idioma / Language</p>
+              <div className="grid grid-cols-3 gap-2">
+                {LANGS.map(l => (
+                  <button key={l} onClick={() => saveLang(l).catch(() => {})}
+                    className={`py-2 rounded-xl text-sm font-bold cursor-pointer transition-all
+                      ${lang === l ? 'bg-[#088fc3] text-white' : 'bg-white/8 text-white/60 hover:bg-white/15'}`}>
+                    {LANG_NAMES[l]}
+                  </button>
+                ))}
               </div>
             </div>
 

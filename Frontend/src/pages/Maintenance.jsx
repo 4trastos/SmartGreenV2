@@ -1,6 +1,118 @@
 import { useState } from 'react'
 import { API_URL } from '../config.js'
 import Keyboard from '../components/Keyboard'
+import { useLang, translate, LOCALES } from '../i18n.js'
+
+const T = {
+  es: {
+    maint: 'Mantenimiento',
+    tile_opening: 'Apertura', tile_opening_desc: 'Inicio de temporada',
+    tile_closing: 'Cierre', tile_closing_desc: 'Fin de temporada',
+    tile_legionella: 'Legionela', tile_legionella_desc: 'Tratamiento bacteriológico',
+    tile_repair: 'Reparación', tile_repair_desc: 'Intervención técnica',
+    tile_status: 'Estado equipos', tile_status_desc: 'Ver todos los equipos',
+    tile_future: 'Próximamente', tile_future_desc: 'Funcionalidad futura',
+    pin_restricted: 'Acceso restringido', pin_title: 'PIN técnico', pin_wrong: 'PIN incorrecto', cancel: 'Cancelar',
+    register_maint: 'Registrar mantenimiento', cooler: 'Cooler', technician: 'Técnico', tech_placeholder: 'Nombre del técnico',
+    notes: 'Observaciones', notes_placeholder: 'Descripción del trabajo realizado...',
+    registered_ok: '✓ Registrado correctamente', register_btn: 'Registrar',
+    registered: 'equipos registrados', warranty_alert: '⚠ Garantía', in_warranty: '✓ En garantía',
+    run_hours: 'Horas funcionamiento', state: 'Estado', active: 'Activo', standby: 'Standby',
+    last_repair: 'Última reparación', active_alarms: 'Alarmas activas', yes: 'Sí', no: 'No',
+    done_f: 'Realizada', done_m: 'Realizado', pending: 'Pendiente', no_repairs: 'Sin reparaciones',
+  },
+  en: {
+    maint: 'Maintenance',
+    tile_opening: 'Opening', tile_opening_desc: 'Start of season',
+    tile_closing: 'Closing', tile_closing_desc: 'End of season',
+    tile_legionella: 'Legionella', tile_legionella_desc: 'Bacteriological treatment',
+    tile_repair: 'Repair', tile_repair_desc: 'Technical intervention',
+    tile_status: 'Equipment status', tile_status_desc: 'View all equipment',
+    tile_future: 'Coming soon', tile_future_desc: 'Future feature',
+    pin_restricted: 'Restricted access', pin_title: 'Technician PIN', pin_wrong: 'Wrong PIN', cancel: 'Cancel',
+    register_maint: 'Log maintenance', cooler: 'Cooler', technician: 'Technician', tech_placeholder: 'Technician name',
+    notes: 'Notes', notes_placeholder: 'Description of the work done...',
+    registered_ok: '✓ Logged successfully', register_btn: 'Log',
+    registered: 'registered devices', warranty_alert: '⚠ Warranty', in_warranty: '✓ In warranty',
+    run_hours: 'Running hours', state: 'Status', active: 'Active', standby: 'Standby',
+    last_repair: 'Last repair', active_alarms: 'Active alarms', yes: 'Yes', no: 'No',
+    done_f: 'Done', done_m: 'Done', pending: 'Pending', no_repairs: 'No repairs',
+  },
+  pt: {
+    maint: 'Manutenção',
+    tile_opening: 'Abertura', tile_opening_desc: 'Início da temporada',
+    tile_closing: 'Fecho', tile_closing_desc: 'Fim da temporada',
+    tile_legionella: 'Legionela', tile_legionella_desc: 'Tratamento bacteriológico',
+    tile_repair: 'Reparação', tile_repair_desc: 'Intervenção técnica',
+    tile_status: 'Estado dos equipamentos', tile_status_desc: 'Ver todos os equipamentos',
+    tile_future: 'Brevemente', tile_future_desc: 'Funcionalidade futura',
+    pin_restricted: 'Acesso restrito', pin_title: 'PIN técnico', pin_wrong: 'PIN incorreto', cancel: 'Cancelar',
+    register_maint: 'Registar manutenção', cooler: 'Cooler', technician: 'Técnico', tech_placeholder: 'Nome do técnico',
+    notes: 'Observações', notes_placeholder: 'Descrição do trabalho realizado...',
+    registered_ok: '✓ Registado com sucesso', register_btn: 'Registar',
+    registered: 'equipamentos registados', warranty_alert: '⚠ Garantia', in_warranty: '✓ Em garantia',
+    run_hours: 'Horas de funcionamento', state: 'Estado', active: 'Ativo', standby: 'Standby',
+    last_repair: 'Última reparação', active_alarms: 'Alarmes ativos', yes: 'Sim', no: 'Não',
+    done_f: 'Realizada', done_m: 'Realizado', pending: 'Pendente', no_repairs: 'Sem reparações',
+  },
+  ca: {
+    maint: 'Manteniment',
+    tile_opening: 'Obertura', tile_opening_desc: 'Inici de temporada',
+    tile_closing: 'Tancament', tile_closing_desc: 'Fi de temporada',
+    tile_legionella: 'Legionel·la', tile_legionella_desc: 'Tractament bacteriològic',
+    tile_repair: 'Reparació', tile_repair_desc: 'Intervenció tècnica',
+    tile_status: 'Estat dels equips', tile_status_desc: 'Veure tots els equips',
+    tile_future: 'Pròximament', tile_future_desc: 'Funcionalitat futura',
+    pin_restricted: 'Accés restringit', pin_title: 'PIN tècnic', pin_wrong: 'PIN incorrecte', cancel: 'Cancel·lar',
+    register_maint: 'Registrar manteniment', cooler: 'Cooler', technician: 'Tècnic', tech_placeholder: 'Nom del tècnic',
+    notes: 'Observacions', notes_placeholder: 'Descripció del treball realitzat...',
+    registered_ok: '✓ Registrat correctament', register_btn: 'Registrar',
+    registered: 'equips registrats', warranty_alert: '⚠ Garantia', in_warranty: '✓ En garantia',
+    run_hours: 'Hores de funcionament', state: 'Estat', active: 'Actiu', standby: 'Standby',
+    last_repair: 'Última reparació', active_alarms: 'Alarmes actives', yes: 'Sí', no: 'No',
+    done_f: 'Realitzada', done_m: 'Realitzat', pending: 'Pendent', no_repairs: 'Sense reparacions',
+  },
+  fr: {
+    maint: 'Maintenance',
+    tile_opening: 'Ouverture', tile_opening_desc: 'Début de saison',
+    tile_closing: 'Fermeture', tile_closing_desc: 'Fin de saison',
+    tile_legionella: 'Légionelle', tile_legionella_desc: 'Traitement bactériologique',
+    tile_repair: 'Réparation', tile_repair_desc: 'Intervention technique',
+    tile_status: 'État des équipements', tile_status_desc: 'Voir tous les équipements',
+    tile_future: 'Prochainement', tile_future_desc: 'Fonctionnalité à venir',
+    pin_restricted: 'Accès restreint', pin_title: 'PIN technicien', pin_wrong: 'PIN incorrect', cancel: 'Annuler',
+    register_maint: 'Enregistrer la maintenance', cooler: 'Cooler', technician: 'Technicien', tech_placeholder: 'Nom du technicien',
+    notes: 'Observations', notes_placeholder: 'Description du travail effectué...',
+    registered_ok: '✓ Enregistré avec succès', register_btn: 'Enregistrer',
+    registered: 'équipements enregistrés', warranty_alert: '⚠ Garantie', in_warranty: '✓ Sous garantie',
+    run_hours: 'Heures de fonctionnement', state: 'État', active: 'Actif', standby: 'Standby',
+    last_repair: 'Dernière réparation', active_alarms: 'Alarmes actives', yes: 'Oui', no: 'Non',
+    done_f: 'Effectuée', done_m: 'Effectué', pending: 'En attente', no_repairs: 'Aucune réparation',
+  },
+  it: {
+    maint: 'Manutenzione',
+    tile_opening: 'Apertura', tile_opening_desc: 'Inizio stagione',
+    tile_closing: 'Chiusura', tile_closing_desc: 'Fine stagione',
+    tile_legionella: 'Legionella', tile_legionella_desc: 'Trattamento batteriologico',
+    tile_repair: 'Riparazione', tile_repair_desc: 'Intervento tecnico',
+    tile_status: 'Stato apparecchiature', tile_status_desc: 'Vedi tutte le apparecchiature',
+    tile_future: 'Prossimamente', tile_future_desc: 'Funzionalità futura',
+    pin_restricted: 'Accesso riservato', pin_title: 'PIN tecnico', pin_wrong: 'PIN errato', cancel: 'Annulla',
+    register_maint: 'Registra manutenzione', cooler: 'Cooler', technician: 'Tecnico', tech_placeholder: 'Nome del tecnico',
+    notes: 'Osservazioni', notes_placeholder: 'Descrizione del lavoro svolto...',
+    registered_ok: '✓ Registrato correttamente', register_btn: 'Registra',
+    registered: 'apparecchiature registrate', warranty_alert: '⚠ Garanzia', in_warranty: '✓ In garanzia',
+    run_hours: 'Ore di funzionamento', state: 'Stato', active: 'Attivo', standby: 'Standby',
+    last_repair: 'Ultima riparazione', active_alarms: 'Allarmi attivi', yes: 'Sì', no: 'No',
+    done_f: 'Eseguita', done_m: 'Eseguito', pending: 'In sospeso', no_repairs: 'Nessuna riparazione',
+  },
+}
+
+// Texto de esta pantalla en el idioma activo (si falta, en español)
+function useT() {
+  const lang = useLang()
+  return key => translate(T, lang, key)
+}
 
 const formatHours = (seconds) => {
   const h = Math.floor(seconds / 3600)
@@ -10,18 +122,20 @@ const formatHours = (seconds) => {
   return `${h}h ${m}m`
 }
 
+// El texto de cada tarjeta (tile_<id> y tile_<id>_desc) está en el diccionario de arriba
 const TILES = [
-  { id: 'opening',    label: 'Apertura',       icon: '▲', desc: 'Inicio de temporada',       color: 'from-[#004d89]/40 to-[#088fc3]/10', border: 'border-[#088fc3]/40' },
-  { id: 'closing',    label: 'Cierre',          icon: '▼', desc: 'Fin de temporada',           color: 'from-blue-900/30 to-transparent',   border: 'border-blue-500/30' },
-  { id: 'legionella', label: 'Legionela',       icon: '◈', desc: 'Tratamiento bacteriológico', color: 'from-orange-900/30 to-transparent', border: 'border-orange-500/30' },
-  { id: 'repair',     label: 'Reparación',      icon: '◧', desc: 'Intervención técnica',       color: 'from-purple-900/30 to-transparent', border: 'border-purple-500/30' },
-  { id: 'status',     label: 'Estado equipos',  icon: '◉', desc: 'Ver todos los equipos',      color: 'from-green-900/30 to-transparent',  border: 'border-green-500/30' },
-  { id: 'future',     label: 'Próximamente',    icon: '○', desc: 'Funcionalidad futura',       color: 'from-white/2 to-transparent',       border: 'border-white/10' },
+  { id: 'opening',    icon: '▲', color: 'from-[#004d89]/40 to-[#088fc3]/10', border: 'border-[#088fc3]/40' },
+  { id: 'closing',    icon: '▼', color: 'from-blue-900/30 to-transparent',   border: 'border-blue-500/30' },
+  { id: 'legionella', icon: '◈', color: 'from-orange-900/30 to-transparent', border: 'border-orange-500/30' },
+  { id: 'repair',     icon: '◧', color: 'from-purple-900/30 to-transparent', border: 'border-purple-500/30' },
+  { id: 'status',     icon: '◉', color: 'from-green-900/30 to-transparent',  border: 'border-green-500/30' },
+  { id: 'future',     icon: '○', color: 'from-white/2 to-transparent',       border: 'border-white/10' },
 ]
 
 const PIN_REQUIRED = ['opening', 'closing', 'legionella', 'repair']
 
 function PinModal({ onSuccess, onClose }) {
+  const t = useT()
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
 
@@ -47,8 +161,8 @@ function PinModal({ onSuccess, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         className="w-[300px] rounded-3xl border border-white/10 p-6 bg-[#060c12] shadow-2xl">
-        <p className="text-white/30 text-xs tracking-widest uppercase mb-1 text-center">Acceso restringido</p>
-        <p className="text-white text-xl font-black mb-6 text-center">PIN técnico</p>
+        <p className="text-white/30 text-xs tracking-widest uppercase mb-1 text-center">{t('pin_restricted')}</p>
+        <p className="text-white text-xl font-black mb-6 text-center">{t('pin_title')}</p>
 
         {/* Indicadores */}
         <div className="flex justify-center gap-3 mb-6">
@@ -71,11 +185,11 @@ function PinModal({ onSuccess, onClose }) {
           ))}
         </div>
 
-        {error && <p className="text-red-400 text-xs text-center mt-3">PIN incorrecto</p>}
+        {error && <p className="text-red-400 text-xs text-center mt-3">{t('pin_wrong')}</p>}
 
         <button onClick={onClose}
           className="w-full mt-4 py-2 rounded-xl bg-white/5 text-white/40 text-sm cursor-pointer hover:bg-white/10">
-          Cancelar
+          {t('cancel')}
         </button>
       </div>
     </div>
@@ -83,11 +197,12 @@ function PinModal({ onSuccess, onClose }) {
 }
 
 function MaintenanceModal({ type, coolers, onClose }) {
+  const t = useT()
   const [form, setForm] = useState({ unit_id: coolers[0]?.unit_id || 2, technician: '', description: '' })
   const [sent, setSent] = useState(false)
   const [showKbTechnician, setShowKbTechnician] = useState(false)
   const [showKbDescription, setShowKbDescription] = useState(false)
-  const t = TILES.find(t => t.id === type)
+  const tile = TILES.find(x => x.id === type)
 
   const submit = async () => {
     await fetch(`${API_URL}/maintenance/${form.unit_id}`, {
@@ -102,34 +217,34 @@ function MaintenanceModal({ type, coolers, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
-        className={`w-[420px] rounded-3xl border p-6 bg-[#060c12] shadow-2xl bg-gradient-to-br ${t.color} ${t.border}`}>
+        className={`w-[420px] rounded-3xl border p-6 bg-[#060c12] shadow-2xl bg-gradient-to-br ${tile.color} ${tile.border}`}>
         <div className="flex justify-between items-start mb-6">
           <div>
-            <p className="text-white/30 text-xs tracking-widest uppercase mb-1">Registrar mantenimiento</p>
-            <p className="text-white text-2xl font-black">{t.icon} {t.label}</p>
-            <p className="text-white/30 text-sm mt-1">{t.desc}</p>
+            <p className="text-white/30 text-xs tracking-widest uppercase mb-1">{t('register_maint')}</p>
+            <p className="text-white text-2xl font-black">{tile.icon} {t('tile_' + type)}</p>
+            <p className="text-white/30 text-sm mt-1">{t('tile_' + type + '_desc')}</p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white cursor-pointer">✕</button>
         </div>
 
         <div className="mb-4">
-          <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Cooler</label>
+          <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">{t('cooler')}</label>
           <select value={form.unit_id}
             onChange={e => setForm(f => ({ ...f, unit_id: +e.target.value }))}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#088fc3]/60"
             style={{ backgroundColor: '#0d1a26' }}>
             {coolers.map(c => (
-              <option key={c.unit_id} value={c.unit_id} style={{ backgroundColor: '#0d1a26' }}>Cooler #{c.unit_id}</option>
+              <option key={c.unit_id} value={c.unit_id} style={{ backgroundColor: '#0d1a26' }}>{t('cooler')} #{c.unit_id}</option>
             ))}
           </select>
         </div>
 
         <div className="mb-4">
-          <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Técnico</label>
+          <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">{t('technician')}</label>
           <input value={form.technician} readOnly
             onClick={e => { e.stopPropagation(); setShowKbTechnician(true) }}
             onTouchStart={e => e.stopPropagation()}
-            placeholder="Nombre del técnico"
+            placeholder={t('tech_placeholder')}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none cursor-pointer"
             style={{ borderColor: showKbTechnician ? '#088fc3' : undefined }} />
           {showKbTechnician && (
@@ -140,11 +255,11 @@ function MaintenanceModal({ type, coolers, onClose }) {
         </div>
 
         <div className="mb-6">
-          <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">Observaciones</label>
+          <label className="text-white/30 text-xs uppercase tracking-wider block mb-2">{t('notes')}</label>
           <input value={form.description} readOnly
             onClick={e => { e.stopPropagation(); setShowKbDescription(true) }}
             onTouchStart={e => e.stopPropagation()}
-            placeholder="Descripción del trabajo realizado..."
+            placeholder={t('notes_placeholder')}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none cursor-pointer"
             style={{ borderColor: showKbDescription ? '#088fc3' : undefined }} />
           {showKbDescription && (
@@ -158,7 +273,7 @@ function MaintenanceModal({ type, coolers, onClose }) {
           className={`w-full py-3 rounded-xl font-bold text-sm transition-all cursor-pointer
             ${sent ? 'bg-green-500/20 border border-green-500/40 text-green-400'
               : 'bg-[#004d89] border border-[#088fc3]/40 text-white hover:bg-[#005fa8]'}`}>
-          {sent ? '✓ Registrado correctamente' : `Registrar ${t.label}`}
+          {sent ? t('registered_ok') : `${t('register_btn')} ${t('tile_' + type)}`}
         </button>
       </div>
     </div>
@@ -166,16 +281,18 @@ function MaintenanceModal({ type, coolers, onClose }) {
 }
 
 function StatusModal({ coolers, onClose }) {
-  const fmt = (ts) => ts ? new Date(ts * 1000).toLocaleDateString('es-ES') : null
+  const t = useT()
+  const lang = useLang()
+  const fmt = (ts) => ts ? new Date(ts * 1000).toLocaleDateString(LOCALES[lang] || 'es-ES') : null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onClose}>
       <div onClick={e => e.stopPropagation()}
         className="w-[480px] max-h-[85vh] rounded-3xl border border-green-500/30 p-6 bg-[#060c12] shadow-2xl flex flex-col bg-gradient-to-br from-green-900/20 to-transparent">
         <div className="flex justify-between items-start mb-5 shrink-0">
           <div>
-            <p className="text-white/30 text-xs tracking-widest uppercase mb-1">Mantenimiento</p>
-            <p className="text-white text-2xl font-black">◉ Estado equipos</p>
-            <p className="text-white/30 text-sm mt-1">{coolers.length} equipos registrados</p>
+            <p className="text-white/30 text-xs tracking-widest uppercase mb-1">{t('maint')}</p>
+            <p className="text-white text-2xl font-black">◉ {t('tile_status')}</p>
+            <p className="text-white/30 text-sm mt-1">{coolers.length} {t('registered')}</p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white cursor-pointer">✕</button>
         </div>
@@ -186,42 +303,42 @@ function StatusModal({ coolers, onClose }) {
             return (
               <div key={c.unit_id} className="bg-white/4 border border-white/8 rounded-xl p-4">
                 <div className="flex justify-between items-center mb-3">
-                  <span className="text-white font-bold">{c.model || `Cooler #${c.unit_id}`}</span>
+                  <span className="text-white font-bold">{c.model || `${t('cooler')} #${c.unit_id}`}</span>
                   {c.alarm_warranty ? (
-                    <span className="text-orange-400 text-xs font-bold bg-orange-500/10 px-2 py-1 rounded-full border border-orange-500/30">⚠ Garantía</span>
+                    <span className="text-orange-400 text-xs font-bold bg-orange-500/10 px-2 py-1 rounded-full border border-orange-500/30">{t('warranty_alert')}</span>
                   ) : (
-                    <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded-full border border-green-500/30">✓ En garantía</span>
+                    <span className="text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded-full border border-green-500/30">{t('in_warranty')}</span>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="bg-white/3 rounded-lg p-2">
-                    <p className="text-white/30 mb-1">Horas funcionamiento</p>
+                    <p className="text-white/30 mb-1">{t('run_hours')}</p>
                     <p className="text-white font-mono font-bold">{formatHours(c.hours_running)}</p>
                   </div>
                   <div className="bg-white/3 rounded-lg p-2">
-                    <p className="text-white/30 mb-1">Estado</p>
-                    <p className={`font-bold ${c.fan_on ? 'text-[#088fc3]' : 'text-white/40'}`}>{c.fan_on ? 'Activo' : 'Standby'}</p>
+                    <p className="text-white/30 mb-1">{t('state')}</p>
+                    <p className={`font-bold ${c.fan_on ? 'text-[#088fc3]' : 'text-white/40'}`}>{c.fan_on ? t('active') : t('standby')}</p>
                   </div>
                   <div className="bg-white/3 rounded-lg p-2">
-                    <p className="text-white/30 mb-1">Apertura</p>
-                    <p className={aperturaOk ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>{aperturaOk ? `Realizada ${fmt(c.last_opening)}` : 'Pendiente'}</p>
+                    <p className="text-white/30 mb-1">{t('tile_opening')}</p>
+                    <p className={aperturaOk ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>{aperturaOk ? `${t('done_f')} ${fmt(c.last_opening)}` : t('pending')}</p>
                   </div>
                   <div className="bg-white/3 rounded-lg p-2">
-                    <p className="text-white/30 mb-1">Cierre</p>
-                    <p className={cierreOk ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>{cierreOk ? `Realizado ${fmt(c.last_closing)}` : 'Pendiente'}</p>
+                    <p className="text-white/30 mb-1">{t('tile_closing')}</p>
+                    <p className={cierreOk ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>{cierreOk ? `${t('done_m')} ${fmt(c.last_closing)}` : t('pending')}</p>
                   </div>
                   <div className="bg-white/3 rounded-lg p-2">
-                    <p className="text-white/30 mb-1">Legionela</p>
-                    <p className={c.last_legionella ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>{c.last_legionella ? `Realizado ${fmt(c.last_legionella)}` : 'Pendiente'}</p>
+                    <p className="text-white/30 mb-1">{t('tile_legionella')}</p>
+                    <p className={c.last_legionella ? 'text-white font-mono' : 'text-yellow-400 font-bold'}>{c.last_legionella ? `${t('done_m')} ${fmt(c.last_legionella)}` : t('pending')}</p>
                   </div>
                   <div className="bg-white/3 rounded-lg p-2">
-                    <p className="text-white/30 mb-1">Última reparación</p>
-                    <p className={c.last_repair ? 'text-white font-mono' : 'text-white/30 italic'}>{fmt(c.last_repair) || 'Sin reparaciones'}</p>
+                    <p className="text-white/30 mb-1">{t('last_repair')}</p>
+                    <p className={c.last_repair ? 'text-white font-mono' : 'text-white/30 italic'}>{fmt(c.last_repair) || t('no_repairs')}</p>
                   </div>
                   <div className="bg-white/3 rounded-lg p-2 col-span-2">
-                    <p className="text-white/30 mb-1">Alarmas activas</p>
+                    <p className="text-white/30 mb-1">{t('active_alarms')}</p>
                     <p className={`font-bold ${(c.alarm_fault || c.alarm_water || c.alarm_comms) ? 'text-red-400' : 'text-green-400'}`}>
-                      {(c.alarm_fault || c.alarm_water || c.alarm_comms) ? 'Sí' : 'No'}
+                      {(c.alarm_fault || c.alarm_water || c.alarm_comms) ? t('yes') : t('no')}
                     </p>
                   </div>
                 </div>
@@ -235,6 +352,7 @@ function StatusModal({ coolers, onClose }) {
 }
 
 export default function Maintenance({ data }) {
+  const t = useT()
   const [selected, setSelected] = useState(null)
   const [pinPending, setPinPending] = useState(null)
 
@@ -257,18 +375,18 @@ export default function Maintenance({ data }) {
 
   return (
     <div className="h-full flex flex-col p-4 gap-4 overflow-hidden">
-      <p className="text-white/20 text-xs font-bold tracking-widest uppercase shrink-0">Mantenimiento</p>
+      <p className="text-white/20 text-xs font-bold tracking-widest uppercase shrink-0">{t('maint')}</p>
 
       <div className="grid grid-cols-3 gap-3 flex-1">
-        {TILES.map(t => (
-          <button key={t.id}
-            onClick={() => handleTileClick(t.id)}
-            className={`rounded-2xl border p-4 text-left transition-all duration-200 bg-gradient-to-br ${t.color} ${t.border} flex flex-col justify-between
-              ${t.id === 'future' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:brightness-110'}`}>
-            <div className="text-white/60 text-3xl mb-2">{t.icon}</div>
+        {TILES.map(tile => (
+          <button key={tile.id}
+            onClick={() => handleTileClick(tile.id)}
+            className={`rounded-2xl border p-4 text-left transition-all duration-200 bg-gradient-to-br ${tile.color} ${tile.border} flex flex-col justify-between
+              ${tile.id === 'future' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:brightness-110'}`}>
+            <div className="text-white/60 text-3xl mb-2">{tile.icon}</div>
             <div>
-              <p className="text-white font-bold text-sm">{t.label}</p>
-              <p className="text-white/25 text-xs mt-0.5">{t.desc}</p>
+              <p className="text-white font-bold text-sm">{t('tile_' + tile.id)}</p>
+              <p className="text-white/25 text-xs mt-0.5">{t('tile_' + tile.id + '_desc')}</p>
             </div>
           </button>
         ))}

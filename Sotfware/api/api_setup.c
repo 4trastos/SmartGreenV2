@@ -60,13 +60,18 @@ enum MHD_Result api_get_setup_status(t_smartgreen *smartgreen, struct MHD_Connec
 
 enum MHD_Result api_post_setup_language(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
 {
-    (void)body_size;
-    char lang[8] = {0};
+    static const char   *langs[] = {"es", "en", "pt", "ca", "fr", "it"};     // mismo orden que Settings.jsx
+    char                lang[8] = {0};
+    int                 idx = 0;
 
+    (void)body_size;
     if (!body || sscanf(body, "{\"lang\":\"%7[^\"]\"}", lang) != 1)
         return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid JSON\"}");
-    db_save_config(smartgreen, "language", 0);                                      // guarda como string — necesita db_save_config_str
-    db_update_config(smartgreen, "language", strcmp(lang, "en") == 0 ? 1 : 0);
+    for (int i = 0; i < 6; i++)
+        if (strcmp(lang, langs[i]) == 0)
+            idx = i;
+    db_save_config(smartgreen, "language", 0);
+    db_update_config(smartgreen, "language", idx);
     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
 }
 
