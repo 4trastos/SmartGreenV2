@@ -227,10 +227,15 @@ void    ft_check_water(t_smartgreen *smartgreen, int i, time_t now)
     int total = 0, stopped = 0;
     for (int k = 0; k < smartgreen->num_coolers; k++)
     {
-        if (smartgreen->coolers[k].broken_cooler || smartgreen->coolers[k].user_off || smartgreen->coolers[k].comms_lost)
+        t_cooler_state  *ck = &smartgreen->coolers[k];
+        int             zk = ft_find_zone(smartgreen, ck->zone_id);
+
+        if (ck->broken_cooler || ck->user_off || ck->comms_lost || ck->imd)
             continue;
+        if (zk == -1 || strcmp(smartgreen->zone_params[zk].on_off, "ON") != 0)
+            continue;                                           // zona apagada: no está funcionando, no cuenta
         total++;
-        if (smartgreen->coolers[k].water_stop == 1)
+        if (ck->water_stop == 1)
             stopped++;
     }
     if (total > 1 && stopped == total)

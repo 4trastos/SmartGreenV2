@@ -3,6 +3,8 @@
 enum MHD_Result api_post_setup_purge(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {
     smartgreen->setup_water_fail = 0;
+    for (int i = 0; i < smartgreen->num_coolers; i++)
+        smartgreen->coolers[i].water_test_fail = 0;
     for (int z = 0; z < smartgreen->num_zones; z++)
     {
         int zid = smartgreen->zone_params[z].zone_id;
@@ -29,34 +31,33 @@ enum MHD_Result api_post_setup_purge(t_smartgreen *smartgreen, struct MHD_Connec
     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
 
-// enum MHD_Result api_post_setup_purge(t_smartgreen *smartgreen, struct MHD_Connection *connection)
-// {
-//     smartgreen->setup_water_fail = 0;
-//     if (smartgreen->num_coolers == 0)
-//         return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
-    
-//     t_prewet_args *args = malloc(sizeof(t_prewet_args));
-//     if (args)
-//     {
-//         args->smartgreen  = smartgreen;
-//         args->zone_id     = smartgreen->coolers[0].zone_id;
-//         args->need_prewet = 1;
-//         args->from_setup  = 1;  // ← restaura AUTO no IMD
-//         pthread_t tid;
-//         pthread_create(&tid, NULL, prewet_test_thread, args);
-//         pthread_detach(tid);
-//     }
-//     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
-// }
-
 enum MHD_Result api_get_setup_status(t_smartgreen *smartgreen, struct MHD_Connection *connection)
 {
-    char    buf[64];
-    
-    // snprintf(buf, sizeof(buf), "{\"setup_required\":%s}", smartgreen->setup_mode ? "true" : "false");
-    snprintf(buf, sizeof(buf), "{\"setup_required\":%s,\"water_fail\":%d}", smartgreen->setup_mode ? "true" : "false", smartgreen->setup_water_fail);
-    return api_send_response(connection, MHD_HTTP_OK, buf);
+    char    buf[1536];
+    int     off = 0;
+    int     first = 1;
+
+    off += snprintf(buf + off, sizeof(buf) - off, "{\"setup_required\":%s,\"water_fail\":%d,\"water_fails\":[",
+        smartgreen->setup_mode ? "true" : "false", smartgreen->setup_water_fail);
+    for (int i = 0; i < smartgreen->num_coolers && off < (int)sizeof(buf) - 64; i++)
+        if (smartgreen->coolers[i].water_test_fail)
+        {
+            off += snprintf(buf + off, sizeof(buf) - off, "%s{\"unit_id\":%d,\"zone_id\":%d}",
+                first ? "" : ",", smartgreen->coolers[i].unit_id, smartgreen->coolers[i].zone_id);
+            first = 0;
+        }
+    snprintf(buf + off, sizeof(buf) - off, "]}");
+    return (api_send_response(connection, MHD_HTTP_OK, buf));
 }
+
+// enum MHD_Result api_get_setup_status(t_smartgreen *smartgreen, struct MHD_Connection *connection)
+// {
+//     char    buf[64];
+    
+//     // snprintf(buf, sizeof(buf), "{\"setup_required\":%s}", smartgreen->setup_mode ? "true" : "false");
+//     snprintf(buf, sizeof(buf), "{\"setup_required\":%s,\"water_fail\":%d}", smartgreen->setup_mode ? "true" : "false", smartgreen->setup_water_fail);
+//     return api_send_response(connection, MHD_HTTP_OK, buf);
+// }
 
 enum MHD_Result api_post_setup_language(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
 {
@@ -80,95 +81,105 @@ enum MHD_Result api_post_setup_zones(t_smartgreen *smartgreen, struct MHD_Connec
     (void)body_size;
     int     num_zones = 0;
     char    zone_name[64] = {0};
-    char    sql[256];
 
     if (!body || sscanf(body, "{\"num_zones\":%d", &num_zones) != 1 || num_zones < 1 || num_zones > 8)
         return api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid\"}");
 
     db_update_config(smartgreen, "num_zones", num_zones);
-    smartgreen->num_zones = num_zones;
 
-    // Leer nombres de zonas y guardar en BD
+    // Ajustar la memoria de las zonas (hay DOS arrays: zones y zone_params). Solo si crece:
+    // si no, con más zonas que al arrancar el programa leería fuera de los arrays
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    if (num_zones > smartgreen->num_zones)
+    {
+        int             old = smartgreen->num_zones;
+        t_zones         *nzs = realloc(smartgreen->zones, sizeof(t_zones) * num_zones);
+        t_zone_params   *nzp = NULL;
+
+        if (nzs)
+        {
+            smartgreen->zones = nzs;                        // realloc puede mover el bloque: hay que quedarse con el nuevo
+            nzp = realloc(smartgreen->zone_params, sizeof(t_zone_params) * num_zones);
+        }
+        if (!nzs || !nzp)
+        {
+            pthread_mutex_unlock(&smartgreen->data_mutex);
+            return (api_send_response(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, "{\"error\":\"Sin memoria\"}"));
+        }
+        smartgreen->zone_params = nzp;
+        for (int z = old; z < num_zones; z++)               // las zonas nuevas nacen con los mismos valores que en ft_init_data
+        {
+            memset(&nzp[z], 0, sizeof(t_zone_params));
+            nzp[z].zone_id = z + 1;
+            nzp[z].fan_speed_cmd = 3;
+            nzp[z].target_temp = 20.0;
+            nzp[z].humidity_min = 60.0;
+            nzp[z].humidity_max = 85.0;
+            ft_strcpy(nzp[z].cool_fan_mode, "AUTO", sizeof(nzp[z].cool_fan_mode));
+            ft_strcpy(nzp[z].drain_valve, "close", sizeof(nzp[z].drain_valve));
+            ft_strcpy(nzp[z].solenoid, "on", sizeof(nzp[z].solenoid));
+            ft_strcpy(nzp[z].on_off, "OFF", sizeof(nzp[z].on_off));
+            ft_strcpy(nzp[z].inmediate_drain, "no", sizeof(nzp[z].inmediate_drain));
+            ft_strcpy(nzp[z].prewet_in_progress, "no", sizeof(nzp[z].prewet_in_progress));
+            memset(&nzs[z], 0, sizeof(t_zones));
+            nzs[z].id = z + 1;
+            ft_strcpy(nzs[z].name, "Zona de Prueba", sizeof(nzs[z].name));
+            nzs[z].enabled = 1;
+        }
+    }
+    smartgreen->num_zones = num_zones;
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+
+    // Leer nombres de zonas y guardar en BD (consulta preparada: un apóstrofo en el nombre no rompe nada)
     for (int i = 0; i < num_zones; i++)
     {
-        const char *ptr = body;
+        const char  *ptr = body;
+
         for (int j = 0; j <= i; j++)
         {
             ptr = strstr(ptr, "\"name\":\"");
             if (!ptr) break;
             if (j < i) ptr++;
         }
-        if (ptr)
+        if (!ptr)
+            continue;
+        ptr += 8;                                           // saltar "name":"
+
+        // Copiar hasta la comilla de cierre (sin contar las escapadas \"), quitando " y \ del nombre
+        int len = 0;
+        while (*ptr && *ptr != '"' && len < 63)
         {
-            ptr += 8; // saltar "name":"
-            char *end = strchr(ptr, '"');
-            if (end)
+            if (*ptr == '\\' && ptr[1])
+                ptr += 2;                                   // saltar el carácter escapado
+            else
+                zone_name[len++] = *ptr++;
+        }
+        zone_name[len] = '\0';
+
+        // 1.º crea la fila si no existe; 2.º pone el nombre
+        for (int k = 0; k < 2; k++)
+        {
+            sqlite3_stmt    *st = NULL;
+            const char      *q = (k == 0)
+                ? "INSERT OR IGNORE INTO zones (id, name, enabled) VALUES (?1, ?2, 1);"
+                : "UPDATE zones SET name = ?2 WHERE id = ?1;";
+
+            if (sqlite3_prepare_v2(smartgreen->db, q, -1, &st, NULL) == SQLITE_OK)
             {
-                int len = end - ptr;
-                if (len > 63) len = 63;
-                strncpy(zone_name, ptr, len);
-                zone_name[len] = '\0';
-                snprintf(sql, sizeof(sql),
-                    "UPDATE zones SET name='%s' WHERE id=%d;", zone_name, i + 1);
-                sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
-                printf("[SETUP] Zona %d nombre: %s\n", i + 1, zone_name); fflush(stdout);
+                sqlite3_bind_int(st, 1, i + 1);
+                sqlite3_bind_text(st, 2, zone_name, -1, SQLITE_TRANSIENT);
+                sqlite3_step(st);
+                sqlite3_finalize(st);
             }
         }
+        pthread_mutex_lock(&smartgreen->data_mutex);
+        ft_strcpy(smartgreen->zones[i].name, zone_name, sizeof(smartgreen->zones[i].name));     // el nombre también en memoria
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+        printf("[SETUP] Zona %d nombre: %s\n", i + 1, zone_name); fflush(stdout);
     }
 
     return api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}");
 }
-
-// Guarda los coolers del setup. Cada cooler N tiene que estar ya en la dirección MODBUS_FIRST_COOLER + N - 1
-// (el setup asigna las direcciones antes de llamar aquí): así lo configurado coincide con lo que hay en el bus
-// enum MHD_Result api_post_setup_coolers(t_smartgreen *smartgreen, struct MHD_Connection *connection, const char *body, size_t body_size)
-// {
-//     (void)body_size;
-//     int         zone_id = 0;
-//     int         num_coolers = 0;
-//     int         idx = 0;
-//     const char  *ptr;
-//     char        err[160];
-
-//     if (!body || sscanf(body, "{\"zone_id\":%d,\"num_coolers\":%d", &zone_id, &num_coolers) != 2 || num_coolers < 1)
-//         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Invalid\"}"));
-
-//     // 1. Comprobar ANTES de guardar nada: cada cooler en su dirección
-//     ptr = body;
-//     while ((ptr = strstr(ptr, "\"unit_id\":")) != NULL && idx < num_coolers)
-//     {
-//         int unit_id = 0;
-//         sscanf(ptr + 10, "%d", &unit_id);
-//         if (unit_id != MODBUS_FIRST_COOLER + idx)
-//         {
-//             snprintf(err, sizeof(err), "{\"error\":\"El cooler %d debe estar en la direccion %d (esta en la %d). Configure la placa\"}",
-//                 idx + 1, MODBUS_FIRST_COOLER + idx, unit_id);
-//             return (api_send_response(connection, MHD_HTTP_CONFLICT, err));
-//         }
-//         idx++;
-//         ptr++;
-//     }
-//     if (idx != num_coolers)
-//         return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Faltan coolers por configurar\"}"));
-
-//     // 2. Todo correcto: guardar
-//     db_update_config(smartgreen, "num_coolers", num_coolers);
-//     smartgreen->num_coolers = num_coolers;
-//     for (int i = 0; i < num_coolers; i++)
-//     {
-//         char sql[128];
-//         int  unit_id = MODBUS_FIRST_COOLER + i;
-
-//         snprintf(sql, sizeof(sql), "INSERT OR IGNORE INTO cooler_state (unit_id, zone_id) VALUES(%d, %d);", unit_id, zone_id);
-//         sqlite3_exec(smartgreen->db, sql, NULL, NULL, NULL);
-//         if (smartgreen->coolers)
-//         {
-//             smartgreen->coolers[i].unit_id = unit_id;
-//             smartgreen->coolers[i].zone_id = zone_id;
-//         }
-//     }
-//     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
-// }
 
 // Guarda los evaporativos del setup, cada uno con su zona.
 // Cada evaporativo N tiene que estar ya en su dirección (MODBUS_FIRST_COOLER + N - 1)

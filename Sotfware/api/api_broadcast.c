@@ -52,7 +52,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             "\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
             "\"extended_status\":%d,\"modbus_addr\":%d,\"r0_config\":%d,\"broken_cooler\":%d,\"fault_solenoid\":%d,\"fault_pump\":%d,"
             "\"board_id\":\"%04X-%04X-%04X-%04X\",\"comms_events\":%d,\"hb_disabled\":%d,"
-            "\"imd\":%d,\"user_off\":%d,\"water_stop\":%d,\"comms_lost\":%d,\"model\":\"%s\",\"firmware\":%d"
+            "\"imd\":%d,\"user_off\":%d,\"water_stop\":%d,\"water_stop_since\":%ld,\"comms_lost\":%d,\"comms_lost_since\":%ld,\"last_off\":%ld,\"model\":\"%s\",\"firmware\":%d"
             "}",
             i > 0 ? "," : "",
             smartgreen->coolers[i].unit_id,
@@ -108,7 +108,10 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             smartgreen->coolers[i].imd,
             smartgreen->coolers[i].user_off,
             smartgreen->coolers[i].water_stop,
+            (long)smartgreen->coolers[i].water_stop_since,
             smartgreen->coolers[i].comms_lost,
+            (long)smartgreen->coolers[i].comms_lost_since,
+            (long)smartgreen->coolers[i].last_off,
             smartgreen->coolers[i].model,
             smartgreen->coolers[i].firmware
         );
@@ -180,10 +183,12 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
     }
     offset += snprintf(buffer + offset, sizeof(buffer) - offset,
         "\"status\":{\"alarm_level\":%d,\"alarm_text\":\"%s\","
-        "\"modbus_connected\":%d,\"bus_lost\":%d}}",
+        "\"modbus_connected\":%d,\"bus_lost\":%d,\"bus_lost_since\":%ld,\"now\":%ld}}",
         alarm_level, alarm_text,
         smartgreen->modbus_ctx != NULL ? 1 : 0,
-        smartgreen->bus_lost
+        smartgreen->bus_lost,
+        (long)smartgreen->bus_lost_since,
+        (long)time(NULL)
     );
 
     ft_ws_broadcast(smartgreen, buffer);

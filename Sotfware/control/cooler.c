@@ -631,9 +631,8 @@ int     cooler_prewet(t_smartgreen *smartgreen, int zone_id)
             }
             if (smartgreen->setup_mode)
             {
-                // Setup: es el resultado de la prueba, no una avería del equipo
-                //printf("[SETUP] Prueba de agua FALLIDA cooler unit_id=%d: no llega agua en %ds\n", smartgreen->coolers[i].unit_id, max_wait); fflush(stdout);
                 printf("[SETUP] Prueba de agua FALLIDA cooler unit_id=%d: no llega agua en %ds\n", smartgreen->coolers[i].unit_id, ft_prewet_limit(&smartgreen->coolers[i], max_wait)); fflush(stdout);
+                smartgreen->coolers[i].water_test_fail = 1;
                 smartgreen->setup_water_fail = smartgreen->coolers[i].unit_id;
                 continue;
             }

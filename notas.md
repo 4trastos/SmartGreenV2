@@ -152,6 +152,13 @@ Nov 05 13:04:22 raspberrypi smartgreen[605]: DRAIN SALINITY completado
 10. NUEVA FUNCIONALIDAD POCA PRESIÓN DE AGUA:
     - opciones de arrancado por zonas o por equipos. 
     - Ejemplo. cada vez que se enciende un equipo que el siguiente espere X tiempo antes de arrancar la bomba para esperar a que no se queden sin presión.
+    - Creo que esto ya lo estamos soucionando con la instalacion, Ya memorizamos ek tiempo de prewet de detecccion de agua en cada cooler. por lo tanto no deberia de dar ese error nucan mas. 
+
+11. NUEVA FUNCIONALIDAD:
+    - Instalar electrovalvula para drenar las tuberias de agua de la instalación. 
+    - Cuando se realiza el cierre de la campañ ade invierno, los coolers se pasan a modo "hibernación". Se vacian todas las cubetas, se cambian pieza o no, se cuvbren los eqiupos (sin el cliente lo ha contratado) y se vacina las tuberías del suministro de agua para qye no se congelen en invierno.
+    - Mi jefe quiere instañlar una electrovalvula que abra, vacie y cierre. La tenemos que conectar al modulink y de ahi al connect como un periferico mas.
+    - No creo que la instalación nos suponga muicho trabajo porque no tenemos que interpretar nmada. ¿no crres? solo abir y cerrar. si lleva un detector de agua la electrovalvula mejor. ¿que se te ocurre?
 
 
 

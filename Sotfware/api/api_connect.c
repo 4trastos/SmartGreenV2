@@ -93,7 +93,7 @@ enum MHD_Result api_get_cooler(t_smartgreen *smartgreen, struct MHD_Connection *
         "\"extended_status\":%d,\"modbus_addr\":%d,\"r0_config\":%d,"
         "\"prev_fan_starts\":%d,\"fan_zero_ticks\":%d,\"fan_running\":%d,\"last_off\":%ld,\"broken_cooler\":%d,\"fault_solenoid\":%d,\"fault_pump\":%d,"
         "\"board_id\":\"%04X-%04X-%04X-%04X\",\"comms_events\":%d,\"hb_disabled\":%d,"
-        "\"imd\":%d,\"user_off\":%d,\"water_stop\":%d,\"comms_lost\":%d,\"model\":\"%s\""
+        "\"imd\":%d,\"user_off\":%d,\"water_stop\":%d,\"water_stop_since\":%ld,\"comms_lost\":%d,\"comms_lost_since\":%ld,\"model\":\"%s\""
         "}",
         smartgreen->coolers[idx].unit_id, smartgreen->coolers[idx].zone_id, smartgreen->coolers[idx].is_extractor,
         smartgreen->coolers[idx].drain_valve_open, smartgreen->coolers[idx].drain_valve_confirm,
@@ -122,7 +122,9 @@ enum MHD_Result api_get_cooler(t_smartgreen *smartgreen, struct MHD_Connection *
         smartgreen->coolers[idx].imd,
         smartgreen->coolers[idx].user_off,
         smartgreen->coolers[idx].water_stop,
+        (long)smartgreen->coolers[idx].water_stop_since,
         smartgreen->coolers[idx].comms_lost,
+        (long)smartgreen->coolers[idx].comms_lost_since,
         smartgreen->coolers[idx].model);
 
     pthread_mutex_unlock(&smartgreen->data_mutex);
@@ -410,7 +412,7 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
             "\"fan_speed_z2\":%d,\"fan_speed_z3\":%d,\"fan_speed_z4\":%d,\"fan_speed_z5\":%d,"
             "\"extended_status\":%d,\"modbus_addr\":%d,\"r0_config\":%d,\"prev_fan_starts\":%d,\"fan_zero_ticks\":%d,\"fan_running\":%d,\"last_off\":%ld,\"broken_cooler\":%d,\"fault_solenoid\":%d,\"fault_pump\":%d,"
             "\"board_id\":\"%04X-%04X-%04X-%04X\",\"comms_events\":%d,\"hb_disabled\":%d,"
-            "\"imd\":%d,\"user_off\":%d,\"water_stop\":%d,\"comms_lost\":%d,\"model\":\"%s\""
+            "\"imd\":%d,\"user_off\":%d,\"water_stop\":%d,\"water_stop_since\":%ld,\"comms_lost\":%d,\"comms_lost_since\":%ld,\"model\":\"%s\""
             "}",
             i > 0 ? "," : "",
             smartgreen->coolers[i].unit_id,
@@ -473,7 +475,9 @@ enum MHD_Result     api_get_coolers(t_smartgreen *smartgreen, struct MHD_Connect
             smartgreen->coolers[i].imd,
             smartgreen->coolers[i].user_off,
             smartgreen->coolers[i].water_stop,
+            (long)smartgreen->coolers[i].water_stop_since,
             smartgreen->coolers[i].comms_lost,
+            (long)smartgreen->coolers[i].comms_lost_since,
             smartgreen->coolers[i].model
         );
     }

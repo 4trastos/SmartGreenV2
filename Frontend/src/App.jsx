@@ -10,6 +10,8 @@ import IMD from './pages/IMD'
 import Setup from './pages/Setup'
 import Quiet from './pages/Quiet'
 import { API_URL } from './config.js'
+import PinModal from './components/PinModal'
+import { countAlarms } from './alarmLogic.js'
 import { useLang, translate, reloadLang, LOCALES } from './i18n.js'
 
 const T = {
@@ -18,7 +20,7 @@ const T = {
     nav_quiet: 'Modo Silencio', nav_maint: 'Mantenimiento', nav_settings: 'Configuración',
     reboot_title: '¿Reiniciar el sistema?', reboot_body: 'Connect se reiniciará y la pantalla quedará apagada unos segundos.',
     rebooting: 'Reiniciando...', cancel: 'Cancelar', reboot: 'Reiniciar',
-    pin_restricted: 'Acceso restringido', imd_mode: 'Modo IMD', pin_wrong: 'PIN incorrecto',
+    imd_mode: 'Modo IMD',
     no_comms_big: 'SIN COMUNICACIÓN', broken_big: 'AVERÍA GRAVE',
     bus_msg: 'Ningún equipo responde. Revise el cable del bus y su conexión al controlador',
     comms_msg: 'Revise la alimentación del equipo. Si persiste, llame al servicio técnico', call_tech: 'Llame al servicio técnico',
@@ -35,7 +37,7 @@ const T = {
     nav_quiet: 'Quiet mode', nav_maint: 'Maintenance', nav_settings: 'Settings',
     reboot_title: 'Restart the system?', reboot_body: 'Connect will restart and the screen will go dark for a few seconds.',
     rebooting: 'Restarting...', cancel: 'Cancel', reboot: 'Restart',
-    pin_restricted: 'Restricted access', imd_mode: 'IMD mode', pin_wrong: 'Wrong PIN',
+    imd_mode: 'IMD mode',
     no_comms_big: 'NO COMMUNICATION', broken_big: 'SEVERE FAULT',
     bus_msg: 'No device is responding. Check the bus cable and its connection to the controller',
     comms_msg: 'Check the unit\'s power supply. If it persists, call technical service', call_tech: 'Call technical service',
@@ -52,7 +54,7 @@ const T = {
     nav_quiet: 'Modo silêncio', nav_maint: 'Manutenção', nav_settings: 'Definições',
     reboot_title: 'Reiniciar o sistema?', reboot_body: 'O Connect vai reiniciar e o ecrã ficará apagado durante alguns segundos.',
     rebooting: 'A reiniciar...', cancel: 'Cancelar', reboot: 'Reiniciar',
-    pin_restricted: 'Acesso restrito', imd_mode: 'Modo IMD', pin_wrong: 'PIN incorreto',
+    imd_mode: 'Modo IMD',
     no_comms_big: 'SEM COMUNICAÇÃO', broken_big: 'AVARIA GRAVE',
     bus_msg: 'Nenhum equipamento responde. Verifique o cabo do barramento e a sua ligação ao controlador',
     comms_msg: 'Verifique a alimentação do equipamento. Se persistir, contacte o serviço técnico', call_tech: 'Contacte o serviço técnico',
@@ -69,7 +71,7 @@ const T = {
     nav_quiet: 'Mode silenci', nav_maint: 'Manteniment', nav_settings: 'Configuració',
     reboot_title: 'Reiniciar el sistema?', reboot_body: 'Connect es reiniciarà i la pantalla quedarà apagada uns segons.',
     rebooting: 'Reiniciant...', cancel: 'Cancel·lar', reboot: 'Reiniciar',
-    pin_restricted: 'Accés restringit', imd_mode: 'Mode IMD', pin_wrong: 'PIN incorrecte',
+    imd_mode: 'Mode IMD',
     no_comms_big: 'SENSE COMUNICACIÓ', broken_big: 'AVARIA GREU',
     bus_msg: 'Cap equip respon. Reviseu el cable del bus i la seva connexió al controlador',
     comms_msg: 'Reviseu l\'alimentació de l\'equip. Si persisteix, truqueu al servei tècnic', call_tech: 'Truqueu al servei tècnic',
@@ -86,7 +88,7 @@ const T = {
     nav_quiet: 'Mode silencieux', nav_maint: 'Maintenance', nav_settings: 'Paramètres',
     reboot_title: 'Redémarrer le système ?', reboot_body: 'Connect va redémarrer et l\'écran restera éteint quelques secondes.',
     rebooting: 'Redémarrage...', cancel: 'Annuler', reboot: 'Redémarrer',
-    pin_restricted: 'Accès restreint', imd_mode: 'Mode IMD', pin_wrong: 'PIN incorrect',
+    imd_mode: 'Mode IMD',
     no_comms_big: 'SANS COMMUNICATION', broken_big: 'PANNE GRAVE',
     bus_msg: 'Aucun équipement ne répond. Vérifiez le câble du bus et sa connexion au contrôleur',
     comms_msg: 'Vérifiez l\'alimentation de l\'équipement. Si le problème persiste, appelez le service technique', call_tech: 'Appelez le service technique',
@@ -103,7 +105,7 @@ const T = {
     nav_quiet: 'Modalità silenziosa', nav_maint: 'Manutenzione', nav_settings: 'Impostazioni',
     reboot_title: 'Riavviare il sistema?', reboot_body: 'Connect si riavvierà e lo schermo rimarrà spento per alcuni secondi.',
     rebooting: 'Riavvio in corso...', cancel: 'Annulla', reboot: 'Riavvia',
-    pin_restricted: 'Accesso riservato', imd_mode: 'Modalità IMD', pin_wrong: 'PIN errato',
+    imd_mode: 'Modalità IMD',
     no_comms_big: 'SENZA COMUNICAZIONE', broken_big: 'GUASTO GRAVE',
     bus_msg: 'Nessuna apparecchiatura risponde. Controllare il cavo del bus e il suo collegamento al controller',
     comms_msg: 'Controllare l\'alimentazione dell\'apparecchiatura. Se persiste, chiamare l\'assistenza tecnica', call_tech: 'Chiamare l\'assistenza tecnica',
@@ -188,68 +190,6 @@ function Clock() {
     <div className="text-right">
       <p className="text-white font-mono text-sm font-bold leading-none">{time.toLocaleTimeString(locale)}</p>
       <p className="text-white/30 text-xs mt-0.5">{time.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })}</p>
-    </div>
-  )
-}
-
-// Teclado de PIN del técnico (único para toda la aplicación)
-function PinModal({ onSuccess, onCancel }) {
-  const t = useT()
-  const [pin, setPin] = useState('')
-  const [pinError, setPinError] = useState(false)
-
-  const confirmPin = async (pinValue) => {
-    const res = await fetch(`${API_URL}/imd/unlock`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: pinValue })
-    }).catch(() => null)
-    if (res && res.ok) {
-      setPin('')
-      setPinError(false)
-      onSuccess()
-    } else {
-      setPinError(true)
-      setPin('')
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 backdrop-blur-lg" onClick={onCancel}>
-      <div onClick={e => e.stopPropagation()}
-        className="w-[300px] rounded-3xl border border-white/10 p-6 bg-[#060c12] shadow-2xl">
-        <p className="text-white/30 text-xs tracking-widest uppercase mb-1 text-center">{t('pin_restricted')}</p>
-        <p className="text-white text-xl font-black mb-6 text-center">{t('imd_mode')}</p>
-        <div className="flex justify-center gap-3 mb-6">
-          {[0,1,2,3].map(i => (
-            <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all
-              ${pinError ? 'border-red-500 bg-red-500' :
-                pin.length > i ? 'border-[#088fc3] bg-[#088fc3]' : 'border-white/20 bg-transparent'}`} />
-          ))}
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {[1,2,3,4,5,6,7,8,9,'⌫',0,''].map((k, i) => (
-            k === '' ? <div key={i} /> :
-            <button key={i} onClick={() => {
-              if (k === '⌫') { setPin(p => p.slice(0,-1)); setPinError(false); return }
-              if (pin.length >= 4) return
-              const newPin = pin + k
-              setPin(newPin)
-              setPinError(false)
-              if (newPin.length === 4) confirmPin(newPin)
-            }}
-              className={`h-12 rounded-xl font-bold text-lg cursor-pointer transition-all
-                ${k === '⌫' ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-white/8 text-white hover:bg-white/15'}`}>
-              {k}
-            </button>
-          ))}
-        </div>
-        {pinError && <p className="text-red-400 text-xs text-center mt-3">{t('pin_wrong')}</p>}
-        <button onClick={onCancel}
-          className="w-full mt-4 py-2 rounded-xl bg-white/5 text-white/40 text-sm cursor-pointer hover:bg-white/10">
-          {t('cancel')}
-        </button>
-      </div>
     </div>
   )
 }
@@ -357,11 +297,7 @@ export default function App() {
     return () => clearInterval(interval)
   }, [])
 
-  const alarmCount = data.coolers.filter(c =>
-    c.alarm_fault || c.alarm_water || c.alarm_comms || c.alarm_salinity
-  ).length + data.sensors.filter(s =>
-    s.alarm_signal || s.alarm_temp
-  ).length
+  const alarmCount = countAlarms(data)     // críticos + avisos; lo informativo no cuenta
 
   // Evaporativos fuera de servicio: avería grave o sin comunicación
   const outCoolers = data.coolers.filter(c => Number(c.broken_cooler) === 1 || Number(c.comms_lost) === 1)
@@ -505,7 +441,7 @@ export default function App() {
 
       {/* PIN del técnico — para entrar en el IMD de un evaporativo, venga de donde venga */}
       {pendingImdUnit !== null && (
-        <PinModal
+        <PinModal title={t('imd_mode')}
           onSuccess={() => { const u = pendingImdUnit; setPendingImdUnit(null); openImd(u) }}
           onCancel={() => setPendingImdUnit(null)} />
       )}

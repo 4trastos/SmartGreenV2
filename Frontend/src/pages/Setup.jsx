@@ -36,9 +36,14 @@ const T = {
     new_board: 'Placa nueva encontrada', assign_as: 'CONFIGURAR COMO EVAPORATIVO',
     assigning: 'CONFIGURANDO...', one_at_a_time: 'Hay varias placas nuevas. Conecte solo una cada vez.',
     connect_next: 'Conecte el siguiente evaporativo (solo uno) y pulse REINT.',
+    coolers_zones_hint: 'Indique en qué zona está cada evaporativo',
+    zone_empty: 'La zona {n} no tiene ningún evaporativo',
+    multi_zone_sensors_pending: 'Con varias zonas, la asignación del sensor interior de cada zona aún no está disponible en este asistente.',
     water_fail_title: 'NO LLEGA AGUA',
-    water_fail_body: 'No llega agua al evaporativo',
     water_fail_hint: 'Revise el suministro, la llave de paso, el solenoide y el sensor de agua.',
+    water_fail_zone_one: 'Sin agua en la zona {z}: evaporativo {e}',
+    water_fail_zone_many: 'Sin agua en la zona {z}: evaporativos {e}',
+    and_word: 'y',
     water_repeat: 'HE CORREGIDO EL PROBLEMA: REPETIR PURGA',
     water_edit: 'MODIFICAR PARÁMETROS',
     wait_hint: 'Aumente la espera si el agua tarda más en llegar a este evaporativo (instalaciones grandes).',
@@ -80,9 +85,14 @@ const T = {
     new_board: 'New board found', assign_as: 'SET UP AS COOLER',
     assigning: 'SETTING UP...', one_at_a_time: 'Several new boards found. Connect only one at a time.',
     connect_next: 'Connect the next cooler (only one) and press RETRY.',
+    coolers_zones_hint: 'Indicate which zone each cooler is in',
+    zone_empty: 'Zone {n} has no cooler',
+    multi_zone_sensors_pending: 'With several zones, assigning an indoor sensor to each zone is not yet available in this wizard.',
     water_fail_title: 'NO WATER IS COMING THROUGH',
-    water_fail_body: 'No water is reaching the evaporative cooler.',
     water_fail_hint: 'Check the supply, the shut-off valve, the solenoid, and the water sensor.',
+    water_fail_zone_one: 'No water in zone {z}: cooler {e}',
+    water_fail_zone_many: 'No water in zone {z}: coolers {e}',
+    and_word: 'and',
     water_repeat: 'I HAVE FIXED THE PROBLEM: REPEAT PURGE',
     water_edit: 'MODIFY SETTINGS',
     wait_hint: 'Increase the wait if water takes longer to reach this cooler (large installations).',
@@ -120,9 +130,18 @@ const T = {
     confirm_btn: '✓  CONFIRMAR INSTALAÇÃO',
     zone_placeholder: 'Zona',
     no_devices: 'Nenhum dispositivo encontrado',
+    configured: 'CONFIGURADO', pending: 'PENDENTE',
+    new_board: 'Placa nova encontrada', assign_as: 'CONFIGURAR COMO REFRIGERADOR',
+    assigning: 'A CONFIGURAR...', one_at_a_time: 'Há várias placas novas. Ligue apenas uma de cada vez.',
+    connect_next: 'Ligue o refrigerador seguinte (apenas um) e prima TENTAR.',
+    coolers_zones_hint: 'Indique em que zona está cada refrigerador',
+    zone_empty: 'A zona {n} não tem nenhum refrigerador',
+    multi_zone_sensors_pending: 'Com várias zonas, a atribuição do sensor interior a cada zona ainda não está disponível neste assistente.',
     water_fail_title: 'NÃO CHEGA ÁGUA',
-    water_fail_body: 'Nenhuma água chega ao refrigerador evaporativo.',
     water_fail_hint: 'Verifique o abastecimento, a válvula de corte, o solenóide e o sensor de água.',
+    water_fail_zone_one: 'Sem água na zona {z}: refrigerador {e}',
+    water_fail_zone_many: 'Sem água na zona {z}: refrigeradores {e}',
+    and_word: 'e',
     water_repeat: 'RESOLVI O PROBLEMA: REPETIR A LIMPEZA',
     water_edit: 'MODIFICAR PARÂMETROS',
     wait_hint: 'Aumente a espera se a água demorar mais a chegar a este refrigerador (instalações grandes).',
@@ -160,9 +179,18 @@ const T = {
     confirm_btn: '✓  CONFIRMAR INSTAL·LACIÓ',
     zone_placeholder: 'Zona',
     no_devices: 'No s\'han trobat dispositius',
+    configured: 'CONFIGURAT', pending: 'PENDENT',
+    new_board: 'Placa nova trobada', assign_as: 'CONFIGURAR COM A CLIMATITZADOR',
+    assigning: 'CONFIGURANT...', one_at_a_time: 'Hi ha diverses plaques noves. Connecteu-ne només una cada vegada.',
+    connect_next: 'Connecteu el següent climatitzador (només un) i premeu REINTENTAR.',
+    coolers_zones_hint: 'Indiqueu en quina zona és cada climatitzador',
+    zone_empty: 'La zona {n} no té cap climatitzador',
+    multi_zone_sensors_pending: 'Amb diverses zones, l\'assignació del sensor interior de cada zona encara no està disponible en aquest assistent.',
     water_fail_title: 'NO ARRIBA AIGUA',
-    water_fail_body: 'No arriba aigua a l\'evaporatiu',
     water_fail_hint: 'Reviseu el subministrament, la clau de pas, el solenoide i el sensor d\'aigua.',
+    water_fail_zone_one: 'Sense aigua a la zona {z}: climatitzador {e}',
+    water_fail_zone_many: 'Sense aigua a la zona {z}: climatitzadors {e}',
+    and_word: 'i',
     water_repeat: 'HE CORREGIT EL PROBLEMA: REPETIR PURGA',
     water_edit: 'MODIFICAR PARÀMETRES',
     wait_hint: 'Augmenteu l\'espera si l\'aigua triga més a arribar a aquest evaporatiu (instal·lacions grans).',
@@ -200,9 +228,18 @@ const T = {
     confirm_btn: '✓  CONFIRMER L\'INSTALLATION',
     zone_placeholder: 'Zone',
     no_devices: 'Aucun appareil trouvé',
+    configured: 'CONFIGURÉ', pending: 'EN ATTENTE',
+    new_board: 'Nouvelle carte trouvée', assign_as: 'CONFIGURER COMME REFROIDISSEUR',
+    assigning: 'CONFIGURATION...', one_at_a_time: 'Plusieurs nouvelles cartes détectées. Connectez-en une seule à la fois.',
+    connect_next: 'Connectez le refroidisseur suivant (un seul) et appuyez sur RÉESSAYER.',
+    coolers_zones_hint: 'Indiquez dans quelle zone se trouve chaque refroidisseur',
+    zone_empty: 'La zone {n} n\'a aucun refroidisseur',
+    multi_zone_sensors_pending: 'Avec plusieurs zones, l\'attribution du capteur intérieur à chaque zone n\'est pas encore disponible dans cet assistant.',
     water_fail_title: 'L\'EAU N\'ARRIVE PAS',
-    water_fail_body: 'L\'eau n\'arrive pas au refroidisseur par évaporation.',
     water_fail_hint: 'Vérifiez l\'alimentation, le robinet d\'arrêt, l\'électrovanne et le capteur d\'eau.',
+    water_fail_zone_one: 'Pas d\'eau dans la zone {z} : refroidisseur {e}',
+    water_fail_zone_many: 'Pas d\'eau dans la zone {z} : refroidisseurs {e}',
+    and_word: 'et',
     water_repeat: 'J\'AI CORRIGÉ LE PROBLÈME : RÉPÉTER LA PURGE',
     water_edit: 'MODIFIER LES PARAMÈTRES',
     wait_hint: 'Augmentez l\'attente si l\'eau met plus de temps à arriver à ce refroidisseur (grandes installations).',
@@ -240,9 +277,18 @@ const T = {
     confirm_btn: '✓  CONFERMA INSTALLAZIONE',
     zone_placeholder: 'Zona',
     no_devices: 'Nessun dispositivo trovato',
+    configured: 'CONFIGURATO', pending: 'IN ATTESA',
+    new_board: 'Nuova scheda trovata', assign_as: 'CONFIGURA COME RAFFRESCATORE',
+    assigning: 'CONFIGURAZIONE...', one_at_a_time: 'Sono state trovate più schede nuove. Collegarne una sola alla volta.',
+    connect_next: 'Collegare il raffrescatore successivo (uno solo) e premere RIPROVA.',
+    coolers_zones_hint: 'Indicare in quale zona si trova ogni raffrescatore',
+    zone_empty: 'La zona {n} non ha nessun raffrescatore',
+    multi_zone_sensors_pending: 'Con più zone, l\'assegnazione del sensore interno a ciascuna zona non è ancora disponibile in questa procedura guidata.',
     water_fail_title: 'NON ARRIVA L\'ACQUA',
-    water_fail_body: 'Nessuna acqua raggiunge il raffreddatore evaporativo.',
     water_fail_hint: 'Verificare l\'alimentazione, la valvola di intercettazione, il solenoide e il sensore dell\'acqua.',
+    water_fail_zone_one: 'Senz\'acqua nella zona {z}: raffrescatore {e}',
+    water_fail_zone_many: 'Senz\'acqua nella zona {z}: raffrescatori {e}',
+    and_word: 'e',
     water_repeat: 'HO RISOLTO IL PROBLEMA: RIPETI LA PURGAZIONE',
     water_edit: 'MODIFICA PARAMETRI',
     wait_hint: 'Aumentare l\'attesa se l\'acqua impiega più tempo ad arrivare a questo raffrescatore (grandi impianti).',
@@ -308,6 +354,7 @@ export default function Setup({ onComplete, data }) {
   const [zones, setZones] = useState(saved.zones ?? [{ name: 'Zona 1' }])
   const [activeZoneKeyboard, setActiveZoneKeyboard] = useState(null)
   const [numCoolers, setNumCoolers] = useState(saved.numCoolers ?? 1)
+  const [coolerZones, setCoolerZones] = useState(saved.coolerZones ?? {})   // posición del evaporativo (0, 1, ...) → zona (1 por defecto)
   const [scanning, setScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState(0)
   const [foundCoolers, setFoundCoolers] = useState(saved.foundCoolers ?? [])
@@ -317,10 +364,9 @@ export default function Setup({ onComplete, data }) {
   const [purgeProgress, setPurgeProgress] = useState(0)
   const [assigning, setAssigning] = useState(false)
   const [assignMsg, setAssignMsg] = useState('')
-  const [waterFail, setWaterFail] = useState(saved.waterFail ?? 0)    // unit_id del cooler sin agua (0 = bien)
+  const [waterFails, setWaterFails] = useState(saved.waterFails ?? [])    // evaporativos sin agua: [{unit_id, zone_id}] (vacío = bien)
   const [editWaits, setEditWaits] = useState(false)
-  const [wPrewet, setWPrewet] = useState(WAIT_DEFAULT.prewet)
-  const [wRun, setWRun] = useState(WAIT_DEFAULT.run)
+  const [waitEdits, setWaitEdits] = useState({})                        // unit_id → { prewet, run } elegidos en la pantalla
   const pendingWaits = useRef(null)
 
   const t = T[lang] || T.es
@@ -333,16 +379,34 @@ export default function Setup({ onComplete, data }) {
   const newBoards = foundCoolers.filter(c => !slots.includes(c.unit_id))       // de fábrica o en otra dirección
   const nextSlot  = slots.find(s => !okBoards.some(c => c.unit_id === s))      // primer hueco libre
   const allReady  = okBoards.length === numCoolers
-  const coolersToSave = slots.map(a => ({ unit_id: a }))
+
+  // Zona de cada evaporativo (si se reduce el número de zonas, nunca queda apuntando a una que ya no existe)
+  const multi = numZones > 1
+  const zoneOf = i => Math.min(coolerZones[i] ?? 1, numZones)
+  const setCoolerZone = (i, z) => setCoolerZones(prev => ({ ...prev, [i]: z }))
+  const zoneName = j => zones[j - 1]?.name || `${t.zone_placeholder} ${j}`
+  const emptyZones = multi
+    ? Array.from({ length: numZones }, (_, j) => j + 1).filter(z => !slots.some((_, i) => zoneOf(i) === z))
+    : []
+  const coolersToSave = slots.map((a, i) => ({ unit_id: a, zone_id: zoneOf(i) }))
+
+  // Fallos de agua: agrupados por zona ("Sin agua en la zona X: evaporativos 03 y 04")
+  const evoNum = u => String(u - FIRST + 1).padStart(2, '0')
+  const joinList = arr => arr.length <= 1 ? arr.join('') : `${arr.slice(0, -1).join(', ')} ${tt('and_word')} ${arr[arr.length - 1]}`
+  const failGroups = (() => {
+    const g = {}
+    waterFails.forEach(f => { if (!g[f.zone_id]) g[f.zone_id] = []; g[f.zone_id].push(f.unit_id) })
+    return Object.keys(g).map(Number).sort((a, b) => a - b).map(z => ({ zone: z, units: g[z].sort((a, b) => a - b) }))
+  })()
 
   // Guardar el progreso cada vez que cambia algo
   useEffect(() => {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        step, lang, numZones, zones, numCoolers, foundCoolers, foundSensors, sensorRoles, purging, waterFail
+        step, lang, numZones, zones, numCoolers, coolerZones, foundCoolers, foundSensors, sensorRoles, purging, waterFails
       }))
     } catch {}
-  }, [step, lang, numZones, zones, numCoolers, foundCoolers, foundSensors, sensorRoles, purging, waterFail])
+  }, [step, lang, numZones, zones, numCoolers, coolerZones, foundCoolers, foundSensors, sensorRoles, purging, waterFails])
 
   // Cambiar idioma y actualizar nombres de zona por defecto
   const changeLanguage = (code) => {
@@ -430,7 +494,10 @@ export default function Setup({ onComplete, data }) {
     setPurgeProgress(100)
     try {
       const s = await (await fetch(`${API_URL}/setup/status`)).json()
-      if (s.water_fail) { setPurging(false); setWaterFail(s.water_fail); return }
+      const fails = Array.isArray(s.water_fails) && s.water_fails.length > 0
+        ? s.water_fails
+        : (s.water_fail ? [{ unit_id: s.water_fail, zone_id: 1 }] : [])      // por si el backend solo envía uno
+      if (fails.length > 0) { setPurging(false); setWaterFails(fails); return }
     } catch {}
     await new Promise(resolve => setTimeout(resolve, 500))
     setPurging(false)
@@ -438,7 +505,7 @@ export default function Setup({ onComplete, data }) {
   }
 
   const purge = async () => {
-    setWaterFail(0)
+    setWaterFails([])
     setPurging(true)
     setPurgeProgress(0)
     await post('language', { lang })
@@ -446,7 +513,8 @@ export default function Setup({ onComplete, data }) {
     await post('coolers', { zone_id: 1, num_coolers: numCoolers, coolers: coolersToSave })
     await post('sensors', { sensors: foundSensors.map(s => ({ unit_id: s.unit_id, role: sensorRoles[s.unit_id] || 'INT' })) })
     if (pendingWaits.current) {
-      await post('water_waits', pendingWaits.current)
+      for (const w of pendingWaits.current)
+        await post('water_waits', w)
       pendingWaits.current = null
     }
     await fetch(`${API_URL}/setup/purge`, {
@@ -455,18 +523,25 @@ export default function Setup({ onComplete, data }) {
     await waitPurgeEnd()
   }
 
+  // Un par de esperas por cada evaporativo que ha fallado
   const openWaits = () => {
-    setWPrewet(WAIT_DEFAULT.prewet)
-    setWRun(WAIT_DEFAULT.run)
+    const init = {}
+    waterFails.forEach(f => { init[f.unit_id] = { prewet: WAIT_DEFAULT.prewet, run: WAIT_DEFAULT.run } })
+    setWaitEdits(init)
     setEditWaits(true)
   }
 
+  const setWait = (unit, key, val) => setWaitEdits(prev => ({ ...prev, [unit]: { ...prev[unit], [key]: val } }))
+
   const saveWaitsAndPurge = () => {
-    pendingWaits.current = {
-      unit_id: waterFail,
-      prewet_wait: wPrewet === WAIT_DEFAULT.prewet ? 0 : wPrewet,
-      run_wait: wRun === WAIT_DEFAULT.run ? 0 : wRun,
-    }
+    pendingWaits.current = waterFails.map(f => {
+      const w = waitEdits[f.unit_id] || WAIT_DEFAULT
+      return {
+        unit_id: f.unit_id,
+        prewet_wait: w.prewet === WAIT_DEFAULT.prewet ? 0 : w.prewet,
+        run_wait: w.run === WAIT_DEFAULT.run ? 0 : w.run,
+      }
+    })
     setEditWaits(false)
     purge()
   }
@@ -482,8 +557,8 @@ export default function Setup({ onComplete, data }) {
 
   const newInstall = () => {
     clearSaved()
-    setWaterFail(0)
-    setFoundCoolers([]); setFoundSensors([]); setSensorRoles({})
+    setWaterFails([])
+    setFoundCoolers([]); setFoundSensors([]); setSensorRoles({}); setCoolerZones({})
     setEditWaits(false); pendingWaits.current = null
     setStep(0)
   }
@@ -574,7 +649,7 @@ export default function Setup({ onComplete, data }) {
           </div>
         </>)}
 
-        {/* PASO 2 — Coolers */}
+        {/* PASO 2 — Coolers (y, con varias zonas, la zona de cada uno) */}
         {step === 2 && (<>
           <Header title={t.title} subtitle={t.coolers_sub} />
           <div className="p-6">
@@ -585,9 +660,34 @@ export default function Setup({ onComplete, data }) {
               <button onClick={() => { if(numCoolers < 20) setNumCoolers(n => n+1) }}
                 className="w-12 h-12 rounded-full bg-white/10 border-2 border-white/20 text-white text-2xl font-black cursor-pointer hover:bg-white/20">+</button>
             </div>
+
+            {multi && (
+              <div className="mb-4">
+                <p className="text-white/50 text-xs mb-2 text-center">{tt('coolers_zones_hint')}</p>
+                <div className="max-h-48 overflow-y-auto pr-1">
+                  {slots.map((addr, i) => (
+                    <div key={addr} className="flex items-center justify-between py-1.5">
+                      <span className="text-white font-bold text-sm">{t.fridge} {String(i + 1).padStart(2, '0')}</span>
+                      <select value={zoneOf(i)} onChange={e => setCoolerZone(i, Number(e.target.value))}
+                        className="bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-white text-sm">
+                        {zones.map((z, j) => (
+                          <option key={j} value={j + 1} className="bg-[#0a1118]">{zoneName(j + 1)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                {emptyZones.length > 0 && (
+                  <p className="text-red-300 text-xs text-center mt-2 font-bold">
+                    {tt('zone_empty').replace('{n}', zoneName(emptyZones[0]))}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="flex justify-between">
               <Btn label={t.back} onClick={() => setStep(1)} />
-              <Btn label={t.next} onClick={() => setStep(3)} />
+              <Btn label={t.next} disabled={emptyZones.length > 0} onClick={() => setStep(3)} />
             </div>
           </div>
         </>)}
@@ -643,7 +743,7 @@ export default function Setup({ onComplete, data }) {
           <div className="p-6">
             {slots.map((addr, i) => {
               const ok = okBoards.some(c => c.unit_id === addr)
-              return <Row key={addr} label={`${t.fridge} ${String(i + 1).padStart(2, '0')}`}
+              return <Row key={addr} label={`${t.fridge} ${String(i + 1).padStart(2, '0')}${multi ? ` · ${zoneName(zoneOf(i))}` : ''}`}
                           value={ok ? `✔ ${tt('configured')}` : tt('pending')} />
             })}
 
@@ -670,7 +770,7 @@ export default function Setup({ onComplete, data }) {
             <div className="flex justify-between mt-6">
               <Btn label={t.back} onClick={() => setStep(3)} />
               <Btn label={t.retry} disabled={assigning} onClick={() => { setStep(3); setTimeout(scan, 100) }} />
-              <Btn label={t.ok} disabled={!allReady || assigning} onClick={() => setStep(foundSensors.length > 0 ? 6 : 7)} />
+              <Btn label={t.ok} disabled={!allReady || assigning} onClick={() => setStep(foundSensors.length > 0 || multi ? 6 : 7)} />
             </div>
           </div>
         </>)}
@@ -696,15 +796,19 @@ export default function Setup({ onComplete, data }) {
                 </div>
               </div>
             ))}
+            {/* Con varias zonas, cada una necesita su sensor interior: esa asignación está pendiente, y el asistente no continúa a medias */}
+            {multi && (
+              <p className="text-yellow-300 text-xs text-center my-3 font-bold">{tt('multi_zone_sensors_pending')}</p>
+            )}
             <div className="flex justify-between mt-4">
               <Btn label={t.back} onClick={() => setStep(5)} />
-              <Btn label={t.next} onClick={() => setStep(7)} />
+              <Btn label={t.next} disabled={multi} onClick={() => setStep(7)} />
             </div>
           </div>
         </>)}
 
         {/* PASO 7 — Purga */}
-        {step === 7 && !purging && waterFail === 0 && (<>
+        {step === 7 && !purging && waterFails.length === 0 && (<>
           <Header title={t.title} subtitle={t.purge_sub} />
           <div className="p-6 text-center">
             <p className="text-white/80 font-bold mb-1">{t.purge_body}</p>
@@ -746,12 +850,18 @@ export default function Setup({ onComplete, data }) {
         </>)}
 
         {/* PASO 7 — Fallo: no llega agua */}
-        {step === 7 && !purging && waterFail > 0 && (<>
+        {step === 7 && !purging && waterFails.length > 0 && (<>
           <Header title={t.title} subtitle={tt('water_fail_title')} />
           <div className="p-6 text-center">
             <p className="text-red-400 text-5xl mb-3">✘</p>
-            <p className="text-white font-bold mb-1">{tt('water_fail_body')} {String(waterFail - 1).padStart(2, '0')}</p>
-            <p className="text-white/60 text-sm mb-8">{tt('water_fail_hint')}</p>
+            {failGroups.map(g => (
+              <p key={g.zone} className="text-white font-bold mb-1">
+                {tt(g.units.length > 1 ? 'water_fail_zone_many' : 'water_fail_zone_one')
+                  .replace('{z}', zoneName(g.zone))
+                  .replace('{e}', joinList(g.units.map(evoNum)))}
+              </p>
+            ))}
+            <p className="text-white/60 text-sm mt-2 mb-8">{tt('water_fail_hint')}</p>
             {!editWaits ? (
               <div className="flex flex-col gap-3">
                 <Btn full label={tt('water_repeat')} onClick={purge} />
@@ -761,18 +871,26 @@ export default function Setup({ onComplete, data }) {
             ) : (
               <div className="text-left">
                 <p className="text-white/60 text-xs mb-4">{tt('wait_hint')}</p>
-                {[
-                  { label: tt('wait_prewet'), value: wPrewet, set: setWPrewet, options: WAIT_OPTIONS.prewet },
-                  { label: tt('wait_run'),    value: wRun,    set: setWRun,    options: WAIT_OPTIONS.run },
-                ].map(({ label, value, set, options }) => (
-                  <label key={label} className="flex items-center justify-between gap-3 mb-3">
-                    <span className="text-white/80 text-sm">{label}</span>
-                    <select value={value} onChange={e => set(Number(e.target.value))}
-                      className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white">
-                      {options.map(o => <option key={o} value={o} className="bg-[#0a1118]">{o} s</option>)}
-                    </select>
-                  </label>
-                ))}
+                <div className="max-h-56 overflow-y-auto pr-1">
+                  {waterFails.map(f => (
+                    <div key={f.unit_id} className="mb-3 pb-2 border-b border-white/10">
+                      <p className="text-yellow-300 font-bold text-xs mb-2">{t.fridge} {evoNum(f.unit_id)} · {zoneName(f.zone_id)}</p>
+                      {[
+                        { key: 'prewet', label: tt('wait_prewet'), options: WAIT_OPTIONS.prewet },
+                        { key: 'run',    label: tt('wait_run'),    options: WAIT_OPTIONS.run },
+                      ].map(({ key, label, options }) => (
+                        <label key={key} className="flex items-center justify-between gap-3 mb-2">
+                          <span className="text-white/80 text-sm">{label}</span>
+                          <select value={waitEdits[f.unit_id]?.[key] ?? WAIT_DEFAULT[key]}
+                            onChange={e => setWait(f.unit_id, key, Number(e.target.value))}
+                            className="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white">
+                            {options.map(o => <option key={o} value={o} className="bg-[#0a1118]">{o} s</option>)}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  ))}
+                </div>
                 <div className="flex flex-col gap-3 mt-5">
                   <Btn full label={tt('wait_save')} onClick={saveWaitsAndPurge} />
                   <Btn full label={tt('wait_back')} onClick={() => setEditWaits(false)} />
@@ -788,6 +906,10 @@ export default function Setup({ onComplete, data }) {
           <div className="p-6">
             <Row label={t.lang_label} value={lang.toUpperCase()} />
             <Row label={t.zones_label} value={numZones} />
+            {multi && zones.map((z, j) => (
+              <Row key={j} label={`  · ${zoneName(j + 1)}`}
+                   value={slots.map((_, i) => i).filter(i => zoneOf(i) === j + 1).map(i => String(i + 1).padStart(2, '0')).join(', ') || '—'} />
+            ))}
             <Row label={t.coolers_label} value={numCoolers} />
             <Row label={t.sensors_label} value={foundSensors.length} />
             {foundSensors.map(s => (

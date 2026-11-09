@@ -336,6 +336,7 @@ typedef struct  s_cooler_state
     int                 draining;                       // 1 = drenaje en curso (no se vigila el agua)
     int                 prewet_wait;                    // espera de agua en el prewet de ESTE evaporativo (s); 0 = la global
     int                 run_wait;                       // espera de agua parado, en funcionamiento (s); 0 = la global
+    int                 water_test_fail;        // 1 = falló la prueba de agua del setup
 }   t_cooler_state;
 
 typedef struct  s_sensor_state
