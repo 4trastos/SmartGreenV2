@@ -205,6 +205,15 @@ enum MHD_Result     api_request_handler(void *cls, struct MHD_Connection *connec
         }
 
         ctx = *con_cls;
+        if (sscanf(url, "/api/sensors/%d/%31s", &id, action) == 2 && strcmp(action, "offsets") == 0)
+        {
+            ret = api_post_sensor_offsets(smartgreen, connection, id, ctx->body, ctx->len);
+            free(ctx);
+            *con_cls = NULL;
+            return (ret);
+        }
+
+        ctx = *con_cls;
         if (strcmp(url, "/api/config") == 0)
         {
             ret = api_post_config(smartgreen, connection, ctx->body, ctx->len);

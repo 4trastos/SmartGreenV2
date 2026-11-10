@@ -508,6 +508,7 @@ enum MHD_Result     api_get_sensors(t_smartgreen *smartgreen, struct MHD_Connect
             "\"flags\":%d,"
             "\"valid\":%d,"
             "\"offset_val\":%d,"
+            "\"humidity_offset_val\":%d,"
             "\"error_count\":%d,"
             "\"last_read\":%ld,"
             "\"last_mod\":%ld,"
@@ -524,6 +525,7 @@ enum MHD_Result     api_get_sensors(t_smartgreen *smartgreen, struct MHD_Connect
             smartgreen->sensors[i].flags,
             smartgreen->sensors[i].valid,
             smartgreen->sensors[i].offset_val,
+            smartgreen->sensors[i].humidity_offset_val,
             smartgreen->sensors[i].error_count,
             smartgreen->sensors[i].last_read,
             smartgreen->sensors[i].last_mod,

@@ -125,7 +125,7 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
         offset += snprintf(buffer + offset, sizeof(buffer) - offset,
             "%s{\"sensor_id\":%d,\"zone_id\":%d,\"type\":\"%s\","
             "\"temperature\":%.2f,\"humidity\":%.2f,"
-            "\"valid\":%d,\"error_count\":%d,"
+            "\"valid\":%d,\"error_count\":%d,\"offset_val\":%d,\"humidity_offset_val\":%d,"
             "\"disabled\":%d,"
             "\"alarm_signal\":%d,\"alarm_temp\":%d,\"last_read\":%ld}",
             i > 0 ? "," : "",
@@ -136,6 +136,8 @@ void    ft_ws_broadcast_status(t_smartgreen *smartgreen)
             smartgreen->sensors[i].humidity,
             smartgreen->sensors[i].valid,
             smartgreen->sensors[i].error_count,
+            smartgreen->sensors[i].offset_val,
+            smartgreen->sensors[i].humidity_offset_val,
             smartgreen->sensors[i].disabled,
             smartgreen->sensors[i].alarm_signal,
             smartgreen->sensors[i].alarm_temp,

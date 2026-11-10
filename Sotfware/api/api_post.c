@@ -626,6 +626,66 @@ enum MHD_Result     api_post_config(t_smartgreen *smartgreen, struct MHD_Connect
     return (api_send_response(connection, MHD_HTTP_OK, "{\"ok\":true}"));
 }
 
+// POST /api/sensors/175/offsets {"offset":-4,"humidity_offset":25}
+// Calibración de un sensor: se aplica al momento (la lectura actual se corrige) y se guarda, sin reiniciar
+enum MHD_Result     api_post_sensor_offsets(t_smartgreen *smartgreen, struct MHD_Connection *connection, int sensor_id, const char *body, size_t body_size)
+{
+    int             temp = 0, hum = 0, have_t = 0, have_h = 0, idx = -1;
+    const char      *p;
+    char            resp[96];
+    sqlite3_stmt    *st = NULL;
+
+    if (!body || body_size == 0)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"No body\"}"));
+    if ((p = strstr(body, "\"offset\"")))
+        have_t = (sscanf(p, "\"offset\":%d", &temp) == 1);
+    if ((p = strstr(body, "\"humidity_offset\"")))
+        have_h = (sscanf(p, "\"humidity_offset\":%d", &hum) == 1);
+    if (!have_t && !have_h)
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"offset o humidity_offset requerido\"}"));
+    if ((have_t && (temp < -20 || temp > 20)) || (have_h && (hum < -50 || hum > 50)))
+        return (api_send_response(connection, MHD_HTTP_BAD_REQUEST, "{\"error\":\"Valor fuera de rango\"}"));
+
+    pthread_mutex_lock(&smartgreen->data_mutex);
+    for (int i = 0; i < smartgreen->num_sensors; i++)
+        if (smartgreen->sensors[i].sensor_id == sensor_id)
+        {
+            idx = i;
+            break;
+        }
+    if (idx == -1)
+    {
+        pthread_mutex_unlock(&smartgreen->data_mutex);
+        return (api_send_response(connection, MHD_HTTP_NOT_FOUND, "{\"error\":\"Sensor not found\"}"));
+    }
+    t_sensor_state *s = &smartgreen->sensors[idx];
+
+    if (have_t)
+    {
+        if (s->valid)
+            s->temperature += temp - s->offset_val;         // la lectura actual se corrige ya, sin esperar a la siguiente
+        s->offset_val = temp;
+    }
+    if (have_h)
+    {
+        if (s->valid)
+            s->humidity += hum - s->humidity_offset_val;
+        s->humidity_offset_val = hum;
+    }
+    if (sqlite3_prepare_v2(smartgreen->db, "UPDATE sensor_state SET offset_val = ?1, humidity_offset_val = ?2 WHERE sensor_id = ?3;", -1, &st, NULL) == SQLITE_OK)
+    {
+        sqlite3_bind_int(st, 1, s->offset_val);
+        sqlite3_bind_int(st, 2, s->humidity_offset_val);
+        sqlite3_bind_int(st, 3, sensor_id);
+        sqlite3_step(st);
+        sqlite3_finalize(st);
+    }
+    snprintf(resp, sizeof(resp), "{\"ok\":true,\"offset\":%d,\"humidity_offset\":%d}", s->offset_val, s->humidity_offset_val);
+    printf("[SENSORES] Calibracion sensor %d: Tª %+d, Hr %+d\n", sensor_id, s->offset_val, s->humidity_offset_val); fflush(stdout);
+    pthread_mutex_unlock(&smartgreen->data_mutex);
+    return (api_send_response(connection, MHD_HTTP_OK, resp));
+}
+
 enum MHD_Result     api_post_maintenance(t_smartgreen *smartgreen, struct MHD_Connection *connection, int unit_id, const char *body, size_t body_size)
 {
     t_maintenance_log   maint;

@@ -26,15 +26,25 @@ const ROWS_NUMERIC = [
   ['⌫','0','↵']
 ]
 
-export default function Keyboard({ value, onChange, onClose, numeric = false }) {
+// Con signo (offsets de calibración, que suelen ser negativos): la tecla "-" cambia el signo del número
+const ROWS_NUMERIC_SIGNED = [
+  ['1','2','3'],
+  ['4','5','6'],
+  ['7','8','9'],
+  ['-','0','⌫'],
+  ['↵']
+]
+
+export default function Keyboard({ value, onChange, onClose, numeric = false, signed = false }) {
   const lang = useLang()
   const [caps, setCaps] = useState(false)
-  const ROWS = numeric ? ROWS_NUMERIC : ROWS_FULL
+  const ROWS = numeric ? (signed ? ROWS_NUMERIC_SIGNED : ROWS_NUMERIC) : ROWS_FULL
 
   const press = (key) => {
     if (key === '⌫') onChange(value.slice(0, -1))
     else if (key === 'CAPS') setCaps(c => !c)
     else if (key === '↵') onClose()
+    else if (key === '-' && numeric) onChange(value.startsWith('-') ? value.slice(1) : '-' + value)
     else if (key === 'ESPACIO') onChange(value + ' ')
     else onChange(value + (caps ? key.toUpperCase() : key))
   }
